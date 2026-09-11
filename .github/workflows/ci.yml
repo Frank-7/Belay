@@ -1,0 +1,70 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  contract:
+    name: contract invariants (${{ matrix.os }} / py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # POSIX only: the experiments need a real SIGKILL. See belay/chaos.py.
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Contract invariants under real SIGKILL
+        run: python3 tests/test_contract.py
+
+      - name: Divergence mechanism demo
+        run: python3 experiments/run_divergence.py
+
+      # A short matrix, enough to catch a regression without a 3-minute CI run.
+      - name: Crash matrix (short)
+        run: |
+          python3 experiments/run_matrix.py --reps 2
+          python3 experiments/run_revocation.py --reps 2
+          python3 experiments/analyze.py
+
+      - name: Docs agree with the committed results
+        # Only meaningful on a full run; the short CI matrix produces a
+        # different draw, so we check the committed numbers instead.
+        run: git checkout -- results/ && python3 experiments/check_docs.py
+
+      - name: Assert zero contract violations for `anchored`
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open("results/findings.json"))
+          a = d["runtimes"]["anchored"]
+          print(f"anchored: {a['violations']}/{a['trials']} violations, "
+                f"{a['cents_overpaid']} cents overpaid")
+          if a["violations"] or a["cents_overpaid"]:
+              sys.exit("contract violated; see results/findings.json")
+          rv = d["revocation"]["anchored"]["unauthorized"]
+          print(f"anchored unauthorized-after-revocation: {rv}")
+          if rv:
+              sys.exit("invariant 2 violated")
+          PY
+
+      - name: Build the trace viewer
+        run: python3 viewer/build_viewer.py
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check .

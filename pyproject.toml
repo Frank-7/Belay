@@ -1,0 +1,51 @@
+[project]
+name = "belay"
+version = "0.1.0"
+description = "Durable side effects for nondeterministic agents"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+
+# No runtime dependencies, on purpose. Everything here is standard library:
+# sqlite3 for the ledger, os/signal for the crash injection, json for the
+# journal. A reproducibility claim is easier to trust when there is no
+# dependency tree to resolve.
+dependencies = []
+
+keywords = [
+    "durable-execution", "agents", "idempotency", "distributed-systems",
+    "exactly-once", "crash-recovery", "llm-agents",
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Distributed Computing",
+]
+
+[project.optional-dependencies]
+# Only for linting. The experiments and tests need nothing.
+dev = ["ruff>=0.5"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# `belay` is the importable runtime. `experiments/`, `tests/` and `worker.py`
+# are not packaged: they are meant to be run from a clone, because the
+# harness spawns worker.py by path.
+packages = ["belay", "belay.runtimes", "services"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",  # long lines in prose docstrings are deliberate
+]

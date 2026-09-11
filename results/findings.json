@@ -1,0 +1,220 @@
+{
+  "n_crashes_confirmed": 960,
+  "runtimes": {
+    "naive": {
+      "trials": 240,
+      "violations": 144,
+      "violation_rate": 0.6,
+      "verdicts": {
+        "clean": 96,
+        "duplicate_effect": 144
+      },
+      "by_tier": {
+        "idempotent": {
+          "trials": 80,
+          "violations": 48,
+          "escalated": 0,
+          "clean": 32
+        },
+        "queryable": {
+          "trials": 80,
+          "violations": 48,
+          "escalated": 0,
+          "clean": 32
+        },
+        "opaque": {
+          "trials": 80,
+          "violations": 48,
+          "escalated": 0,
+          "clean": 32
+        }
+      },
+      "mean_fsyncs": 4.54,
+      "cents_overpaid": 570000
+    },
+    "replay_position": {
+      "trials": 240,
+      "violations": 83,
+      "violation_rate": 0.3458,
+      "verdicts": {
+        "clean": 157,
+        "misattributed": 19,
+        "duplicate_effect": 64
+      },
+      "by_tier": {
+        "idempotent": {
+          "trials": 80,
+          "violations": 9,
+          "escalated": 0,
+          "clean": 71
+        },
+        "queryable": {
+          "trials": 80,
+          "violations": 37,
+          "escalated": 0,
+          "clean": 43
+        },
+        "opaque": {
+          "trials": 80,
+          "violations": 37,
+          "escalated": 0,
+          "clean": 43
+        }
+      },
+      "mean_fsyncs": 3.45,
+      "cents_overpaid": 266000
+    },
+    "replay_content": {
+      "trials": 240,
+      "violations": 89,
+      "violation_rate": 0.3708,
+      "verdicts": {
+        "clean": 151,
+        "duplicate_effect": 89
+      },
+      "by_tier": {
+        "idempotent": {
+          "trials": 80,
+          "violations": 15,
+          "escalated": 0,
+          "clean": 65
+        },
+        "queryable": {
+          "trials": 80,
+          "violations": 37,
+          "escalated": 0,
+          "clean": 43
+        },
+        "opaque": {
+          "trials": 80,
+          "violations": 37,
+          "escalated": 0,
+          "clean": 43
+        }
+      },
+      "mean_fsyncs": 3.51,
+      "cents_overpaid": 371000
+    },
+    "anchored": {
+      "trials": 240,
+      "violations": 0,
+      "violation_rate": 0.0,
+      "verdicts": {
+        "clean": 120,
+        "escalated": 120
+      },
+      "by_tier": {
+        "idempotent": {
+          "trials": 80,
+          "violations": 0,
+          "escalated": 32,
+          "clean": 48
+        },
+        "queryable": {
+          "trials": 80,
+          "violations": 0,
+          "escalated": 32,
+          "clean": 48
+        },
+        "opaque": {
+          "trials": 80,
+          "violations": 0,
+          "escalated": 56,
+          "clean": 24
+        }
+      },
+      "mean_fsyncs": 3.84,
+      "cents_overpaid": 0
+    }
+  },
+  "anchored_availability_cost": {
+    "journaled": {
+      "idempotent": {
+        "trials": 40,
+        "escalated": 0,
+        "escalation_rate": 0.0,
+        "escalations_with_no_effect": 0
+      },
+      "queryable": {
+        "trials": 40,
+        "escalated": 0,
+        "escalation_rate": 0.0,
+        "escalations_with_no_effect": 0
+      },
+      "opaque": {
+        "trials": 40,
+        "escalated": 24,
+        "escalation_rate": 0.6,
+        "escalations_with_no_effect": 8
+      }
+    },
+    "inline": {
+      "idempotent": {
+        "trials": 40,
+        "escalated": 32,
+        "escalation_rate": 0.8,
+        "escalations_with_no_effect": 0
+      },
+      "queryable": {
+        "trials": 40,
+        "escalated": 32,
+        "escalation_rate": 0.8,
+        "escalations_with_no_effect": 0
+      },
+      "opaque": {
+        "trials": 40,
+        "escalated": 32,
+        "escalation_rate": 0.8,
+        "escalations_with_no_effect": 8
+      }
+    }
+  },
+  "money": {
+    "naive": {
+      "trials": 240,
+      "trials_overpaid": 144,
+      "total_overpaid_cents": 570000,
+      "worst_single_overpay_cents": 5000,
+      "trials_books_wrong": 0
+    },
+    "replay_position": {
+      "trials": 240,
+      "trials_overpaid": 71,
+      "total_overpaid_cents": 266000,
+      "worst_single_overpay_cents": 5000,
+      "trials_books_wrong": 19
+    },
+    "replay_content": {
+      "trials": 240,
+      "trials_overpaid": 89,
+      "total_overpaid_cents": 371000,
+      "worst_single_overpay_cents": 5000,
+      "trials_books_wrong": 0
+    },
+    "anchored": {
+      "trials": 240,
+      "trials_overpaid": 0,
+      "total_overpaid_cents": 0,
+      "worst_single_overpay_cents": 0,
+      "trials_books_wrong": 0
+    }
+  },
+  "revocation": {
+    "naive": {
+      "trials": 16,
+      "unauthorized": 0
+    },
+    "replay_position": {
+      "trials": 16,
+      "unauthorized": 16
+    },
+    "replay_content": {
+      "trials": 16,
+      "unauthorized": 16
+    },
+    "anchored": {
+      "trials": 16,
+      "unauthorized": 0
+    }
+  }
+}

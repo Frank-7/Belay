@@ -1,0 +1,1700 @@
+{
+  "trials": [
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": null,
+      "plan_after_recovery": null,
+      "diverged": null,
+      "fsyncs": 2,
+      "recovery_ms": 70.17,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": null,
+      "plan_after_recovery": null,
+      "diverged": null,
+      "fsyncs": 2,
+      "recovery_ms": 67.94,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": null,
+      "plan_after_recovery": null,
+      "diverged": null,
+      "fsyncs": 2,
+      "recovery_ms": 65.61,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": null,
+      "plan_after_recovery": null,
+      "diverged": null,
+      "fsyncs": 2,
+      "recovery_ms": 65.12,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": null,
+      "plan_after_recovery": null,
+      "diverged": null,
+      "fsyncs": 2,
+      "recovery_ms": 66.45,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": null,
+      "plan_after_recovery": null,
+      "diverged": null,
+      "fsyncs": 2,
+      "recovery_ms": 63.27,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": null,
+      "plan_after_recovery": null,
+      "diverged": null,
+      "fsyncs": 2,
+      "recovery_ms": 66.46,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": null,
+      "plan_after_recovery": null,
+      "diverged": null,
+      "fsyncs": 2,
+      "recovery_ms": 68.07,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 64.11,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 62.61,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 64.99,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 65.71,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 66.47,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 67.15,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 66.71,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "naive",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 65.08,
+      "crashed_as_asked": true,
+      "notes": [
+        "denied payments:refund at plan time"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 66.86,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 69.55,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 5,
+      "recovery_ms": 69.12,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 5,
+      "recovery_ms": 70.48,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 67.23,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 69.09,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 67.19,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 5,
+      "recovery_ms": 69.0,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 66.82,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 69.0,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 72.03,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 69.48,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 69.26,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 68.9,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 75.14,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_position",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 70.34,
+      "crashed_as_asked": true,
+      "notes": [
+        "replayed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 69.27,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision taken fresh on this pass"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 69.52,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision taken fresh on this pass"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 5,
+      "recovery_ms": 69.53,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision taken fresh on this pass"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 70.64,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision taken fresh on this pass"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 69.33,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision taken fresh on this pass"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 5,
+      "recovery_ms": 68.03,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision taken fresh on this pass"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 5,
+      "recovery_ms": 67.82,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision taken fresh on this pass"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 5,
+      "recovery_ms": 68.51,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision taken fresh on this pass"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 71.35,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision replayed from journal"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 74.05,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision replayed from journal"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 69.82,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision replayed from journal"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 70.06,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision replayed from journal"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 69.64,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision replayed from journal"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 72.07,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision replayed from journal"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        5000
+      ],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 5000,
+      "reported_refund": 5000,
+      "reported_status": "committed",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 67.46,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision replayed from journal"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "replay_content",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "unauthorized_effect",
+      "n_refunds": 1,
+      "refund_amounts": [
+        3000
+      ],
+      "n_credits": 1,
+      "credit_amounts": [
+        2000
+      ],
+      "total_returned_cents": 5000,
+      "reported_refund": 3000,
+      "reported_status": "committed",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 4,
+      "recovery_ms": 71.16,
+      "crashed_as_asked": true,
+      "notes": [
+        "decision replayed from journal"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 69.43,
+      "crashed_as_asked": true,
+      "notes": [
+        "payments:refund not held at execution time; no effect issued"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 68.44,
+      "crashed_as_asked": true,
+      "notes": [
+        "payments:refund not held at execution time; no effect issued"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 66.27,
+      "crashed_as_asked": true,
+      "notes": [
+        "payments:refund not held at execution time; no effect issued"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 66.99,
+      "crashed_as_asked": true,
+      "notes": [
+        "payments:refund not held at execution time; no effect issued"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 66.48,
+      "crashed_as_asked": true,
+      "notes": [
+        "payments:refund not held at execution time; no effect issued"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 65.7,
+      "crashed_as_asked": true,
+      "notes": [
+        "payments:refund not held at execution time; no effect issued"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 64.33,
+      "crashed_as_asked": true,
+      "notes": [
+        "payments:refund not held at execution time; no effect issued"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_decide_before_journal",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 3,
+      "recovery_ms": 69.65,
+      "crashed_as_asked": true,
+      "notes": [
+        "payments:refund not held at execution time; no effect issued"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 69.13,
+      "crashed_as_asked": true,
+      "notes": [
+        "in-flight refund never committed; payments:refund since revoked, so it was not completed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 68.82,
+      "crashed_as_asked": true,
+      "notes": [
+        "in-flight refund never committed; payments:refund since revoked, so it was not completed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 65.99,
+      "crashed_as_asked": true,
+      "notes": [
+        "in-flight refund never committed; payments:refund since revoked, so it was not completed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 64.14,
+      "crashed_as_asked": true,
+      "notes": [
+        "in-flight refund never committed; payments:refund since revoked, so it was not completed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 64.57,
+      "crashed_as_asked": true,
+      "notes": [
+        "in-flight refund never committed; payments:refund since revoked, so it was not completed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 67.12,
+      "crashed_as_asked": true,
+      "notes": [
+        "in-flight refund never committed; payments:refund since revoked, so it was not completed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "split_refund_plus_credit",
+      "plan_after_recovery": "split_refund_plus_credit",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 64.52,
+      "crashed_as_asked": true,
+      "notes": [
+        "in-flight refund never committed; payments:refund since revoked, so it was not completed"
+      ],
+      "run_dir": null
+    },
+    {
+      "runtime": "anchored",
+      "tier": "idempotent",
+      "crash_at": "after_intent",
+      "revoke_scope": "payments:refund",
+      "journal_decision": true,
+      "verdict": "refused",
+      "n_refunds": 0,
+      "refund_amounts": [],
+      "n_credits": 0,
+      "credit_amounts": [],
+      "total_returned_cents": 0,
+      "reported_refund": null,
+      "reported_status": "refused",
+      "plan_first_pass": "full_refund",
+      "plan_after_recovery": "full_refund",
+      "diverged": false,
+      "fsyncs": 2,
+      "recovery_ms": 66.34,
+      "crashed_as_asked": true,
+      "notes": [
+        "in-flight refund never committed; payments:refund since revoked, so it was not completed"
+      ],
+      "run_dir": null
+    }
+  ]
+}

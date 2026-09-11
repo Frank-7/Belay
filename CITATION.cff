@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+title: "Belay: durable side effects for nondeterministic agents"
+message: "If you refer to this work, please cite it as below."
+type: software
+abstract: >-
+  Replay-based durable execution is correct only under a discipline that no
+  framework enforces: every nondeterministic value must be persisted before it
+  can influence an external effect. For an LLM agent the decision is the
+  control flow, so this is exactly what developers get wrong, and the
+  resulting failures are rare, silent, and financial. Belay allocates effect
+  identity before the model is consulted, which makes the discipline
+  unnecessary. Measured across 960 confirmed SIGKILLs against an external
+  ledger: zero contract violations, versus 34-60% for replay and retry
+  baselines. Includes an impossibility result showing that escalation is
+  necessary rather than conservative when the target service offers neither
+  idempotency nor a post-hoc lookup.
+authors:
+  - name: "Belay contributors"
+license: MIT
+version: 0.1.0
+date-released: "2026-09-14"
+keywords:
+  - durable execution
+  - exactly-once
+  - idempotency
+  - LLM agents
+  - crash recovery
+  - distributed systems
