@@ -7,9 +7,9 @@ different decisions**, and the decision determines control flow.
 We do not use a real model here. A real model would make the experiment
 slower, non-reproducible, and no more convincing, because the mechanism
 under study is the runtime's response to divergence, not the model's
-reasoning. `experiments/run_live_agent.py` shows how to swap in a real
-model call, and the measured divergence rate it produces is the parameter
-this simulator takes as input.
+reasoning. Swapping one in means replacing `decide` below with a model call;
+the divergence rate it exhibits is the `BELAY_NONDET_P` this simulator takes
+as input, and measuring that rate is item 1 in FINDINGS.md §9.
 
 Each process seeds its own RNG from os.urandom, so a recovering process
 draws independently of the process that crashed. That is precisely the

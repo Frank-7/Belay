@@ -268,7 +268,111 @@ exhaustion, and we have not built it.
 
 ---
 
-## 8. What we would do next, in order
+## 8. Closing the escalation hole
+
+Section 5 measures the availability cost of I3: on the `opaque` tier,
+`anchored` halts 60% of the time, and the halt is a dead end. `second/`
+adjudicates those halted anchors against out-of-band records. The full
+account is in [docs/SECOND.md](docs/SECOND.md); the numbers are here.
+
+400 adjudications of anchors `anchored` really halted on, after a real
+SIGKILL. Graded against the ledger, never against the adjudicator's report.
+Both rows below run the same agents over the same evidence; the only
+difference is whether the agent's conclusion is verified.
+
+| pipeline | cases | closed | abstained | violations | duplicate refunds | overpaid |
+|---|---|---|---|---|---|---|
+| `trusting` | 200 | 108 | 79 | **13** | 7 | $210 |
+| `validated` | 200 | 90 | 110 | **0** | 0 | $0 |
+
+The 13 violations are the two failure modes from section 1 reappearing one
+level up, which is the part we did not expect. Seven are duplicate refunds:
+the agent read a settlement report whose cutoff preceded the attempt, found
+silence, concluded absence, and paid twice (I1). Six are books-wrong: the
+agent asserted commitment citing a digest nobody produced, the anchor
+closed, and the ledger holds nothing (I4). "Money wrong" and "books wrong"
+are not properties of replay. They are what happens whenever something
+nondeterministic is allowed to own an outcome.
+
+**Agent quality costs availability, not correctness.** On the tiers where
+the answer is knowable, the validated pipeline behaves like this:
+
+| agent profile | anchors closed | abstained |
+|---|---|---|
+| `competent` | 16 / 16 | 0 |
+| `hallucinating` | 16 / 16 | 0 |
+| `overconfident` | 16 / 16 | 0 |
+| `lazy` | 12 / 16 | 4 |
+| `adversarial` | 12 / 16 | 4 |
+
+Hallucination is free: a fabricated pointer resolves to nothing, costing
+one to two wasted fetches per case and changing no outcome. Overconfidence
+is free: 42 unsupported verdicts were rejected over the run and every one
+became an abstention. Only laziness costs anything, and what it costs is
+resolution — an agent that never asks what a source *covers* cannot
+establish absence, so it leaves resolvable anchors halted. It is never
+wrong about them.
+
+That asymmetry is the whole result, and it comes from constraining the
+agent's output surface rather than from improving the agent. It emits
+pointers, a three-way verdict, and prose. It cannot name an anchor, an
+amount, or a scope; those come from the journaled intent. Pointers are
+fetched deterministically, so a fabricated one is inert. Verdicts are
+checked against what was actually fetched, so an unsupported one abstains.
+
+**What did not change.** With no out-of-band records the adjudicator
+resolves nothing — 0 of 40 — which is CONTRACT.md §4 holding exactly as
+stated. The proof is about what is decidable from inside the process given
+the journal and the service API. Widening the input does not repeal it, and
+`stale_settlement` is the honest demonstration: a report that is perfectly
+truthful and completely uninformative about the window in question resolves
+0 of 40 under validation, because nothing there vouches for the silence.
+
+The trusting pipeline closes cases on that tier, and it cannot do otherwise.
+The only thing distinguishing a stale report from a complete one is a
+coverage claim, and a pipeline that does not check coverage cannot see the
+difference — both look like a report it searched and found nothing in.
+Whether any particular closure turns out to be right is then settled by
+whether the effect happened to commit, which is luck rather than evidence.
+Some of them are correct, and that is the point: an adjudicator can be right
+for no reason, and a rate of being right for no reason is not a safety
+property.
+
+All 90 closed anchors resumed to a committed workflow report. 110 of 200
+still need a human. The claim is only that the halt is now the floor rather
+than the whole outcome.
+
+**On run-to-run variance.** Both agents in this section draw fresh entropy
+per process, so most of the figures above are sample statistics and will
+move when you re-run. What moves: the trusting control's violation count
+and its split into duplicates and books-wrong; the overpaid figure; every
+per-tier and per-profile close rate; the wasted-pointer means. Read those
+for magnitude and direction, not as point estimates — `make adjudication`
+overwrites them with a new draw, exactly as `make all` does to section 1.
+
+Two things do not move, and this section is about them rather than about the
+rates.
+
+- **The validated pipeline's zero.** No draw of an agent's conclusion can
+  produce a citation that was never fetched, or a coverage claim a manifest
+  does not make. Zero false resolutions is a property of `validate`, not a
+  sample statistic, in the same way that `anchored`'s zero in section 1 is a
+  property of anchoring.
+- **The coverage asymmetry.** `none` and `stale_settlement` resolve nothing
+  under validation in every draw, because no source in either tier vouches
+  for its own silence. `webhook_only` closes some anchors and can never
+  close all of them, because a lossy source confirms and never exonerates.
+  Those are entailments of the table in docs/SECOND.md §4, not measurements.
+
+The *direction* of the headline comparison is also stable, though not by
+proof: the control's violation count varies and has not yet been zero across
+the runs we have done. `experiments/check_docs.py` fails the run if it ever
+is, on the grounds that a control which makes no mistakes demonstrates
+nothing.
+
+---
+
+## 9. What we would do next, in order
 
 1. **Measure real divergence.** Replace the simulated agent with a live
    model call and measure how often the decision changes across
@@ -279,7 +383,11 @@ exhaustion, and we have not built it.
    assumption is the weakest thing in CONTRACT.md.
 3. **Unbounded effect slots.** Whether anchoring survives an agent that
    decides how many actions to take. If it does not, say so.
-4. **Reduce the false-alarm third.** The 8-in-24 false escalations are
+4. **A real model in the adjudicator.** Section 8 is parameterised by the
+   agent's vices precisely so the safety result does not depend on the
+   model, but the *resolution* rate does, and we have not measured it with
+   a live model. Same swap as item 1, in `second/agent.py`.
+5. **Reduce the false-alarm third.** The 8-in-24 false escalations are
    irreducible given what an opaque service tells us, but a
    write-ahead-to-a-cooperating-proxy pattern might convert an opaque tier
    into a queryable one. That would move the cost rather than remove it,

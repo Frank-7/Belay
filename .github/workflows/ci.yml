@@ -29,6 +29,9 @@ jobs:
       - name: Contract invariants under real SIGKILL
         run: python3 tests/test_contract.py
 
+      - name: Adjudicator safety properties
+        run: python3 tests/test_second.py
+
       - name: Divergence mechanism demo
         run: python3 experiments/run_divergence.py
 
@@ -38,6 +41,31 @@ jobs:
           python3 experiments/run_matrix.py --reps 2
           python3 experiments/run_revocation.py --reps 2
           python3 experiments/analyze.py
+
+      # Short, but it must still show a zero next to a non-zero: a run in
+      # which the trusting control happens to make no mistake proves nothing.
+      # The next step restores the committed results/ before check_docs.
+      - name: Adjudication (short), and zero false resolutions
+        run: |
+          python3 experiments/run_adjudication.py --reps 2
+          python3 - <<'PY'
+          import json, sys
+          s = json.load(open("results/adjudication.json"))["summary"]
+          val = s["by_pipeline"].get("validated", {})
+          trust = s["by_pipeline"].get("trusting", {})
+          print(f"validated: {val.get('false', 0)} false of {sum(val.values())}")
+          print(f"trusting:  {trust.get('false', 0)} false of {sum(trust.values())}")
+          if val.get("false"):
+              sys.exit("CONTRACT.md I5 violated; see results/adjudication.json")
+          if not trust.get("false"):
+              print("note: the control produced no violations on this short "
+                    "run, so the comparison is uninformative here")
+          PY
+
+      - name: Docs agree with the committed results
+        # Only meaningful on a full run; the short CI matrix produces a
+        # different draw, so we check the committed numbers instead.
+        run: git checkout -- results/ && python3 experiments/check_docs.py
 
       - name: Assert zero contract violations for `anchored`
         run: |

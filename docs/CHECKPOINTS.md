@@ -82,7 +82,7 @@ teams will show a scaffold and a plan.
 
 ## Checkpoint 2 — Sunday 10:00
 
-**Build:** FINDINGS.md §8 item 1. Replace the simulated agent with a live
+**Build:** FINDINGS.md §9 item 1. Replace the simulated agent with a live
 model call and measure the real divergence rate — how often the same prompt
 yields a different decision — split by temperature and task ambiguity.
 
@@ -99,7 +99,7 @@ way.
 
 ## Checkpoint 3 — Sunday 22:00
 
-**Build:** FINDINGS.md §8 item 2, the largest gap. A lease so two processes
+**Build:** FINDINGS.md §9 item 2, the largest gap. A lease so two processes
 cannot recover the same journal, then extend invariant I1 to cover
 concurrency and re-run the matrix with concurrent recoverers injected.
 

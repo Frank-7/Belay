@@ -22,7 +22,7 @@ legitimate outcome, provided FINDINGS.md is updated to match.
 
 ## Things worth working on
 
-Listed in FINDINGS.md §8, roughly in order of value:
+Listed in FINDINGS.md §9, roughly in order of value:
 
 1. **Measure real divergence.** Swap the simulated agent for a live model
    call and measure how often the decision changes across invocations. Our

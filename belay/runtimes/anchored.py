@@ -19,9 +19,16 @@ Three rules, and everything else follows from them.
 
 3. **Ambiguity that the service cannot resolve is escalated, not guessed.**
    On a service offering neither idempotency nor lookup, a lost
-   acknowledgement is permanently ambiguous. We halt and hand it to a
+   acknowledgement is ambiguous *to this process*. We halt and hand it to a
    human. This costs availability, and we measure that cost rather than
    hiding it.
+
+   The halt is not a dead end. `second/` adjudicates escalated anchors
+   against out-of-band records and, when it can verify what happened,
+   appends an `adjudicated` record that this projection reads. That package
+   is never imported from here and never runs inside recovery; the only
+   thing crossing the boundary is a durable journal record carrying the
+   provenance of the artefact it came from.
 
 Authorisation is checked live, immediately before each external call, and
 is never journaled as a replayable fact.
@@ -70,7 +77,7 @@ class State:
         self.intents: dict[str, dict] = {}       # slot -> intent record
         self.settled: dict[str, dict] = {}       # slot -> settlement record
         self.plan: dict | None = None
-        self.escalated = False
+        self.escalated: set[str] = set()   # slots halted, awaiting a human
 
         for r in ctx.journal.read():
             k = r["kind"]
@@ -83,7 +90,19 @@ class State:
             elif k in ("settled", "resolved"):
                 self.settled[r["slot"]] = r
             elif k == "escalated":
-                self.escalated = True
+                self.escalated.add(r.get("slot") or "_workflow")
+            elif k == "adjudicated":
+                # Written by `second/apply.py` from out-of-band evidence,
+                # outside this process and outside the recovery path. It is
+                # treated exactly like a `resolved` record, because that is
+                # what it is: a *query* result carrying its provenance. The
+                # adjudicating agent's conclusion is not what lands here --
+                # a verified observation is, along with the digest and
+                # source of the artefact it came from. See second/__init__.py
+                # for why the import direction never reverses.
+                self.escalated.discard(r["slot"])
+                if r.get("outcome") in ("committed", "completed"):
+                    self.settled[r["slot"]] = r
 
     def ambiguous_slots(self) -> list[str]:
         return [s for s in self.intents if s not in self.settled]
@@ -141,7 +160,10 @@ def recover(ctx: Ctx) -> Outcome:
     )
 
     if st.escalated:
-        return Outcome(Status.ESCALATED, notes=["already escalated; awaiting a human"])
+        return Outcome(
+            Status.ESCALATED,
+            notes=[f"escalated slots awaiting a human: {sorted(st.escalated)}"],
+        )
 
     # Rule 2, first half: reconcile everything in flight before moving.
     for slot in st.ambiguous_slots():
