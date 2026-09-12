@@ -42,7 +42,6 @@ jobs:
           python3 experiments/run_revocation.py --reps 2
           python3 experiments/analyze.py
 
-<<<<<<< HEAD
       # Short, but it must still show a zero next to a non-zero: a run in
       # which the trusting control happens to make no mistake proves nothing.
       # The next step restores the committed results/ before check_docs.
@@ -68,8 +67,6 @@ jobs:
         # different draw, so we check the committed numbers instead.
         run: git checkout -- results/ && python3 experiments/check_docs.py
 
-=======
->>>>>>> origin/main
       - name: Assert zero contract violations for `anchored`
         run: |
           python3 - <<'PY'
