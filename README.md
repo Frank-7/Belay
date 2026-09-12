@@ -82,11 +82,38 @@ escalation rate of **0% on any service offering idempotency keys or a
 lookup**, rising to 60% on a service offering neither — where CONTRACT.md
 §4 proves no runtime can do better.
 
+That 60% is a halt, and a halt is a dead end: a human gets handed a hex
+string. `second/` is an agent that debugs the halted agent — it searches
+out-of-band records for the fact the service will not disclose. 400
+adjudications of anchors `anchored` really halted on, graded against the
+ledger:
+
+| pipeline | anchors closed | still halted | contract violations | overpaid |
+|---|---|---|---|---|
+| trusting the agent | 108 / 200 | 79 | **13** | $210 |
+| **verifying the agent** | **90 / 200** | 110 | **0** | **$0** |
+
+Same agents, same evidence; the only difference is whether the conclusion is
+verified. And the result that matters is not the zero — it is that agent
+quality moved the *closed* column and never the *violations* column. A
+hallucinating adjudicator is free, because a fabricated pointer resolves to
+nothing and cannot be cited. An overconfident one is free, because an
+unsupported verdict becomes an abstention. A lazy one costs resolution and
+nothing else. **[docs/SECOND.md](docs/SECOND.md)**.
+
 The baseline rows move by a couple of points between runs, because the agent
 draws fresh entropy per process by design, and `make all` will overwrite the
-committed numbers with a new draw. The `anchored` row does not move: zero is
-a property of the mechanism, not a sample statistic. Variance is quantified
-in FINDINGS.md §1.
+committed numbers with a new draw. The same is true of both adjudication
+rows above, for the same reason. Two figures do not move: `anchored`'s zero
+violations, and the verified adjudicator's zero false resolutions. Both are
+properties of their mechanism rather than sample statistics — no draw of a
+decision can shift an anchor that was fsynced before the model was called,
+and no draw of an agent's conclusion can supply a citation that was never
+fetched.
+
+After a fresh draw the committed tables will disagree with `results/`, and
+`make checkdocs` will say exactly which figure is stale. `make reset-results`
+prints the list of tables to update.
 
 Full numbers, the mechanism, and what we got wrong: **[FINDINGS.md](FINDINGS.md)**.
 The exact guarantee and its failure model: **[CONTRACT.md](CONTRACT.md)**.
@@ -108,6 +135,10 @@ Stated up front so nobody has to go looking.
 - **Not a claim about model quality.** Whether the refund decision was
   *correct* is a separate question from whether it was executed once and
   authorised.
+- **Not a repeal of the impossibility proof.** `second/` widens the evidence
+  admitted rather than defeating the argument. Given no out-of-band records
+  it resolves nothing, and 110 of 200 adjudications still end with a human
+  holding the anchor.
 
 ## Install
 
@@ -131,10 +162,11 @@ Clone or download this repository, then:
 ```bash
 cd belay
 make test          # 42 contract assertions under real SIGKILL   (~30s)
+make test-second   # 37 adjudicator assertions                   (~15s)
 ```
 
-There is nothing to install. If `make test` prints `42 passed, 0 failed`,
-you are set up.
+There is nothing to install. If those print `42 passed, 0 failed` and
+`37 passed, 0 failed`, you are set up.
 
 Optionally, for linting only:
 
@@ -146,8 +178,10 @@ pip install -e ".[dev]" && ruff check .
 
 ```bash
 make test          # contract invariants, under real SIGKILL          (~30s)
+make test-second   # the adjudicator's safety properties              (~15s)
 make demo          # the mechanism, one trial at a time, annotated     (~10s)
-make all           # full matrix + revocation + analysis + viewer      (~3m)
+make adjudication  # escalated anchors, adjudicated and graded         (~2m)
+make all           # everything above + analysis + viewer              (~5m)
 open viewer/trace.html
 ```
 
@@ -155,9 +189,11 @@ Every command has a direct equivalent, if you would rather not use `make`:
 
 ```bash
 python3 tests/test_contract.py
+python3 tests/test_second.py
 python3 experiments/run_divergence.py                  # the mechanism, explained
 python3 experiments/run_matrix.py --reps 8             # 960 trials
 python3 experiments/run_revocation.py --reps 8
+python3 experiments/run_adjudication.py --reps 4       # 400 adjudications
 python3 experiments/analyze.py                         # regenerates every quoted number
 python3 viewer/build_viewer.py
 ```
@@ -223,6 +259,13 @@ Adapting it to your own workflow is four changes:
    that is a new effect and needs a live permission check. Collapsing these
    two is a real bug; we shipped it and the harness caught it
    (FINDINGS.md §6).
+5. **If you put a model on the escalation queue, let it produce pointers and
+   never conclusions.** Fetch what it points at, and admit the retrieved
+   artefact rather than the model's summary of it. Require a source to vouch
+   for its own coverage before silence is allowed to mean absence. Keep the
+   amount and the scope on the journal side. That is the whole of
+   `second/`, and it is what makes a hallucinating adjudicator merely
+   useless (docs/SECOND.md).
 
 The hard part is not the code. It is knowing which of your services is
 `idempotent`, `queryable`, or `opaque`, because that determines which
@@ -262,6 +305,7 @@ reasonable thing to have built.
 ```
 CONTRACT.md               failure model, invariants, impossibility proof, out-of-scope
 FINDINGS.md               measured results, the mechanism, the bug we shipped, limits
+docs/SECOND.md            the adjudicator: closing the escalation hole
 docs/CHECKPOINTS.md       what changed at each 12-hour checkpoint
 examples/minimal.py       the pattern applied to a different workflow, runnable
 
@@ -278,6 +322,12 @@ belay/
     replay_content.py     baseline 3 — replay, matched by content hash
     anchored.py           ours — anchors allocated before the decision
 
+second/                   the agent that debugs the agent. never imported by belay/
+  evidence.py             pointers, deterministic fetch, coverage semantics
+  dossier.py              untrusted Claim vs validated Dossier; query vs completion
+  adjudicate.py           the pipeline, the validator, and the trusting control
+  apply.py                dossier to durable record; authorisation at execution
+
 services/
   ledger.py               the oracle; what actually committed
   payments.py             three tiers: idempotent / queryable / opaque
@@ -287,9 +337,12 @@ experiments/
   run_matrix.py           4 runtimes x 3 tiers x 5 crash points x 2 disciplines
   run_divergence.py       the mechanism, deterministically, with annotated journals
   run_revocation.py       invariant 2 under mid-flight permission changes
+  run_adjudication.py     escalated anchors x evidence tiers x agent profiles
+  build_evidence.py       materialises out-of-band records from the ledger
   analyze.py              produces every number quoted in FINDINGS.md
 
 tests/test_contract.py    invariants asserted directly, under real SIGKILL
+tests/test_second.py      the adjudicator's safety properties
 viewer/build_viewer.py    generates a self-contained forensic readout
 results/                  raw trial logs and findings.json  (committed on purpose)
 ```

@@ -47,6 +47,21 @@ If the runtime reports a workflow committed with value *v*, the ledger
 contains exactly that. A runtime that cannot say this truthfully must
 report under I3 instead.
 
+**I5 — An adjudication resolves only what evidence determines.**
+If an anchor halted under I3 is later marked resolved, the journal contains
+the digest and provenance of a retrieved artefact that entails the recorded
+outcome. Absence is entailed only by silence from a source claiming
+completeness over the window in which the effect may have been attempted;
+silence from a lossy source entails nothing. An adjudication that cannot
+meet this abstains, leaving the halt in place. I1, I2 and I4 hold through
+the adjudicator unchanged: the completion rung is gated on proven absence,
+it performs a live permission check immediately before acting, and a
+resolution of "committed" requires a record matching the journaled intent.
+
+I5 is about `second/`, which is not in the recovery path and is never
+imported by `belay/`. The only thing crossing that boundary is a durable
+journal record; see §5.1.
+
 ## 3. What makes I1 achievable: anchoring
 
 Three rules, in `belay/runtimes/anchored.py`.
@@ -98,6 +113,21 @@ conservatism or a missing feature. It is the only behaviour consistent with
 the information available. A runtime advertising exactly-once semantics
 over an opaque service is advertising something the world does not contain.
 
+**What the proof does not say.** Every clause of the claim is load-bearing,
+and the scope is narrower than it first reads. The recovering process has
+two sources of observation *because those are the two we granted it*: its
+own journal, and the service API. The argument shows the fact is
+undecidable from inside the process on that evidence. It does not show the
+fact is unknowable. A settlement report, a webhook archive or a bank
+statement may record what the service API will not disclose, and admitting
+one of those is widening the input rather than defeating the proof.
+
+§5.1 does exactly that, and the distinction survives measurement: given no
+out-of-band records, the adjudicator resolves nothing at all, which is this
+proof holding. Given a report whose coverage window excludes the attempt,
+it also resolves nothing — silence is not absence unless something vouches
+for the silence.
+
 ## 5. The guarantee we actually offer
 
 > **Exactly-once up to escalation.**
@@ -114,13 +144,47 @@ the availability. On the `opaque` tier it is 60%, and roughly a third of
 those escalations page a human about an effect that never committed. That
 residue is the impossibility in §4 expressed as an on-call burden.
 
+### 5.1 Adjudication, and what it does and does not add
+
+An escalation under I3 names an anchor and stops. `second/` takes that
+record and searches out-of-band evidence for the fact the service would not
+disclose, under I5. Two rungs, mirroring §3.3 and separated for the same
+reason:
+
+| rung | creates | permission |
+|---|---|---|
+| query out-of-band records | nothing | none required |
+| complete, absence having been proved | a new effect | live check, at the instant of use |
+
+Three properties make this safe to bolt onto a contract about money.
+
+1. **It cannot enter the recovery path.** Nothing under `belay/` imports
+   `second/`; `tests/test_second.py` asserts it by parsing the source. A
+   nondeterministic component inside recovery would reintroduce the very
+   failure §3 exists to remove.
+2. **The agent's output surface is pointers, a three-way verdict, and
+   prose.** It cannot name an anchor, an amount or a scope — those are read
+   from the journaled intent. Pointers are fetched deterministically, so a
+   fabricated pointer yields no observation and cannot be cited. Verdicts
+   are checked against the observations actually fetched, so an unsupported
+   verdict becomes an abstention.
+3. **Abstention is a permitted terminal state**, because I3 already made it
+   one. This is what makes the whole arrangement tractable: a wrong
+   resolution is strictly worse than no resolution, so every ambiguity in
+   the pipeline resolves toward silence.
+
+The guarantee is therefore unchanged in form. What changes is that the
+escalation in I3 is a floor rather than an endpoint: some halted anchors are
+closed from evidence, the rest stay halted. FINDINGS.md §8 measures both,
+including what the same agents do when their conclusions are not verified.
+
 ## 6. What is proved, what is measured, what is assumed
 
 | | |
 |---|---|
 | **Proved** | §4, by an indistinguishability argument. |
 | **Measured** | I1–I4 across 960 confirmed SIGKILLs, graded against the ledger rather than against the runtime's own report. Measurement is not proof; these are the invariants holding on the crash points we chose. |
-| **Assumed** | The service never loses a committed effect. The journal's `fsync` is honest. Only one instance of a workflow runs at a time. |
+| **Assumed** | The service never loses a committed effect. The journal's `fsync` is honest. Only one instance of a workflow runs at a time. Out-of-band evidence sources do not lie about their own coverage. |
 
 ## 7. Out of scope
 
@@ -132,7 +196,16 @@ Named so that nobody has to guess what we quietly skipped.
 - **Machine failure.** Our crashes are SIGKILL to a process, so the OS page
   cache survives. Real power loss would test `fsync` in a way we do not.
 - **Byzantine services.** A service that reports a commit it did not make
-  breaks everything downstream of it, including the ladder in §3.3.
+  breaks everything downstream of it, including the ladder in §3.3. The same
+  applies to an evidence source under §5.1 that misstates its own coverage:
+  a report claiming completeness it does not have will produce a confident
+  false absence, and nothing in I5 detects that.
+- **More than one effect slot of the same kind per order, under adjudication.**
+  On the `opaque` tier the service received no caller key, so out-of-band
+  records match on order and amount rather than on anchor. I5 requires the
+  amount to match the journaled intent, which identifies the slot only while
+  there is one refund slot per order. Two would need distinct amounts or a
+  source carrying the client reference.
 - **Compensation.** We classify effects as compensable or irreversible but
   never run a compensating transaction. The refund is irreversible on
   purpose: compensation is the escape hatch that makes these problems look
