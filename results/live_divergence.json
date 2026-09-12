@@ -1,0 +1,127 @@
+{
+  "summary": {
+    "cases": 0,
+    "responses": 0,
+    "by_condition": [
+      {
+        "condition_id": "borderline@1",
+        "prompt": "borderline",
+        "temperature": 1.0,
+        "requested_n": 50,
+        "n": 0,
+        "attempts": 0,
+        "api_errors": 0,
+        "counts": {
+          "full_refund": 0,
+          "split_refund_plus_credit": 0,
+          "unparseable": 0
+        },
+        "divergence": {
+          "n": 0,
+          "pairs": 0,
+          "disagreeing_pairs": 0,
+          "rate": null
+        },
+        "parseable_decision_divergence": {
+          "n": 0,
+          "pairs": 0,
+          "disagreeing_pairs": 0,
+          "rate": null
+        },
+        "unparseable": {
+          "count": 0,
+          "n": 0,
+          "rate": null
+        },
+        "simulator_calibration": {
+          "BELAY_NONDET_P": {
+            "count": 0,
+            "n": 0,
+            "rate": null
+          },
+          "population_disagreement_plugin": {
+            "n": 0,
+            "rate": null
+          },
+          "scope": "conditional on a parseable decision; simulator has no unparseable outcome"
+        },
+        "disjoint_pair_check": {
+          "n_calls_used": 0,
+          "pairs": 0,
+          "disagreements": 0,
+          "rate": null,
+          "zero_events_upper_95_one_sided": null
+        },
+        "returned_models": [],
+        "system_fingerprints": [],
+        "usage": {}
+      }
+    ]
+  },
+  "cases": [],
+  "metadata": {
+    "schema_version": 1,
+    "started_at": "2026-09-12T20:36:31.531791+00:00",
+    "status": "blocked_missing_credentials",
+    "configuration": {
+      "model": "gpt-4o-mini-2024-07-18",
+      "endpoint": "https://api.openai.com/v1/chat/completions",
+      "max_completion_tokens": 128,
+      "reasoning_effort": null,
+      "system_prompt": "You handle customer refund requests for a retailer.\nChoose a fair remedy based on the problem, the customer's preferences,\nand the customer relationship. The order total is 5000 cents. You may use\none of these approved remedies:\n- full_refund: refund 5000 cents to the original payment method, credit 0.\n- split_refund_plus_credit: refund 3000 cents to the original payment\n  method and issue 2000 cents of store credit.\nReturn only a JSON object with exactly one key, \"decision\", whose value\nis one of those two labels. Do not include an explanation.",
+      "prompts": {
+        "borderline": "Order R-1042 cost 5000 cents. It arrived three days late and\nhas a small cosmetic mark, but works as intended. The customer is\ndisappointed and asks for a fair adjustment. They would accept a refund\nor a combination of refund and store credit, and expect to shop with us\nagain next month. Choose the remedy.",
+        "clear_cut": "Order R-1042 cost 5000 cents. It arrived damaged and cannot\nbe used. The damage is verified and the request is within the return\nwindow. The customer explicitly requests all their money back to the\noriginal payment method and does not want store credit because they do\nnot intend to shop with us again. Choose the remedy."
+      },
+      "parser": "strict-label-or-single-key-json-v1"
+    },
+    "script_sha256": "636ed4dbf873030669c1393e428840d5d7e467ca6c17c080684785d19c183386",
+    "conditions": [
+      {
+        "id": "borderline@1",
+        "prompt": "borderline",
+        "temperature": 1.0,
+        "request": {
+          "model": "gpt-4o-mini-2024-07-18",
+          "temperature": 1.0,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You handle customer refund requests for a retailer.\nChoose a fair remedy based on the problem, the customer's preferences,\nand the customer relationship. The order total is 5000 cents. You may use\none of these approved remedies:\n- full_refund: refund 5000 cents to the original payment method, credit 0.\n- split_refund_plus_credit: refund 3000 cents to the original payment\n  method and issue 2000 cents of store credit.\nReturn only a JSON object with exactly one key, \"decision\", whose value\nis one of those two labels. Do not include an explanation."
+            },
+            {
+              "role": "user",
+              "content": "Order R-1042 cost 5000 cents. It arrived three days late and\nhas a small cosmetic mark, but works as intended. The customer is\ndisappointed and asks for a fair adjustment. They would accept a refund\nor a combination of refund and store credit, and expect to shop with us\nagain next month. Choose the remedy."
+            }
+          ],
+          "max_completion_tokens": 128,
+          "n": 1,
+          "stream": false,
+          "store": false
+        },
+        "request_sha256": "ddbd64404a39bdddba24856c9d55b81ed7d1c60b2c8ef2c8be80671169d9a062"
+      }
+    ],
+    "method": {
+      "sampling": "one fresh stateless HTTP request per invocation; byte-identical body within each condition; no fixed seed, retries, history, output cache, or adaptive prompts",
+      "scheduling": "first condition completed first as pilot; remaining conditions interleaved by repetition",
+      "divergence": "1 - sum(c_i*(c_i-1))/(n*(n-1)); all three parse categories; n is model responses, not pairs",
+      "parseable_decision_divergence": "same estimator restricted explicitly to the two valid decisions",
+      "unparseable": "invalid decision format, refusal, or non-stop finish; retained in primary denominator",
+      "api_errors": "retained separately; stop immediately without replacing a failed call",
+      "disjoint_pair_check": "consecutive nonoverlapping response pairs; if zero disagreements in m pairs, exact one-sided 95% binomial upper bound is 1 - 0.05**(1/m)",
+      "simulator": "BELAY_NONDET_P is P(split), not P(disagree); population disagreement = 2*p*(1-p)"
+    },
+    "limitations": [
+      "Synthetic fixed refund cases, not sampled production traffic; labels and option order are fixed.",
+      "Rates apply only to the recorded model, prompt, settings, and observation window.",
+      "IID stationary invocations are assumed, not established; returned model and fingerprint changes are retained.",
+      "Overlapping all-pairs comparisons are not independent trials; zero observed divergence does not prove determinism.",
+      "Unparseable is a single category; two unparseable texts can still differ in content.",
+      "This measures model decisions, not recovery correctness or a production violation rate."
+    ],
+    "updated_at": "2026-09-12T20:36:31.532117+00:00",
+    "requested_reps_per_condition": 50,
+    "stop_reason": "missing OPENAI_API_KEY; no live calls made"
+  }
+}
