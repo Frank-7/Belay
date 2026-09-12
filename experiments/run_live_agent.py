@@ -128,8 +128,9 @@ def summarize(cases: list[dict], conditions: list[dict], reps: int) -> dict:
         valid = n - counts["unparseable"]
         p = counts["split_refund_plus_credit"] / valid if valid else None
         independent_pairs = n // 2
-        different = sum(a["decision"] != b["decision"]
-                        for a, b in zip(responses[::2], responses[1::2]))
+        # An odd final response has no partner in this independent-pair check.
+        different = sum(responses[i]["decision"] != responses[i + 1]["decision"]
+                        for i in range(0, n - 1, 2))
         usage: Counter = Counter()
         for row in responses:
             for key, value in (row.get("usage") or {}).items():
