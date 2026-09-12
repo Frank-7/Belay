@@ -14,7 +14,8 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 
 class Journal:
@@ -83,7 +84,7 @@ class Journal:
         if not os.path.exists(self.path):
             return []
         out: list[dict] = []
-        with open(self.path, "r", encoding="utf-8") as fh:
+        with open(self.path, encoding="utf-8") as fh:
             for line in fh:
                 line = line.strip()
                 if not line:

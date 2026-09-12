@@ -46,7 +46,7 @@ class PermissionStore:
     def _read(self) -> dict:
         if not os.path.exists(self.path):
             return {}
-        with open(self.path, "r", encoding="utf-8") as fh:
+        with open(self.path, encoding="utf-8") as fh:
             return json.load(fh)
 
     def _write(self, state: dict) -> None:
