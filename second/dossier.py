@@ -138,7 +138,7 @@ class Dossier:
         citations: list[dict] | None = None,
         pointers_proposed: int = 0,
         pointers_resolved: int = 0,
-    ) -> "Dossier":
+    ) -> Dossier:
         """The default outcome. Every validation failure routes here."""
         return cls(
             anchor=anchor,

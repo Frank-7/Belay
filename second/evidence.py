@@ -66,7 +66,7 @@ class Pointer:
     selector: str
 
     @classmethod
-    def parse(cls, raw: Any) -> "Pointer | None":
+    def parse(cls, raw: Any) -> Pointer | None:
         """Parse `source:selector`. Returns None on anything malformed.
 
         Returning None rather than raising is deliberate: a malformed
@@ -143,7 +143,7 @@ class Coverage:
     note: str = ""
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Coverage":
+    def from_dict(cls, d: dict) -> Coverage:
         return cls(
             kind=str(d.get("kind", "lossy")),
             cutoff_ts=d.get("cutoff_ts"),
