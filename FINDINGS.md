@@ -249,11 +249,18 @@ one. This is the largest gap.
 intact, so a committed SQLite transaction is durable with certainty. Real
 power loss would test `fsync` in a way we do not.
 
-**The agent is simulated.** Two plans, drawn per process from
+**The agent in these committed experiments is simulated.** Two plans, drawn per process from
 `os.urandom`. This is honest about the *mechanism* — the runtime's response
 to divergence — and says nothing about how often a real model diverges.
 That rate is an input to our experiment, not an output of it. Measuring it
 on a real model is the first thing we would do next.
+
+The optional OpenAI recovery adapter and recorded recovery desk are additional
+ways to exercise `second/`. They do not change the provenance of the published
+numbers. Live-model runs must report their own resolution, abstention, false
+resolution, and request-usage measurements. Dossier revision checks prevent
+sequential duplicate or stale application; concurrent execution remains outside
+the failure model.
 
 **Services are mocks, written to a stated contract.** They are not
 strawmen — each tier implements its semantics including the ones that make

@@ -1,12 +1,15 @@
-.PHONY: help test test-second demo example matrix revocation adjudication \
-        analyze checkdocs viewer all clean
+.PHONY: help test test-second test-recovery demo recovery-demo evaluate-recovery \
+        example matrix revocation adjudication analyze checkdocs viewer all clean reset-results
 
 PY ?= python3
 REPS ?= 8
 
 help:
 	@echo "make test        42 contract assertions under real SIGKILL   (~30s)"
-	@echo "make test-second 37 adjudicator assertions                    (~15s)"
+	@echo "make test-second adjudicator safety and stale recovery checks"
+	@echo "make test-recovery offline model, evaluation and demo checks"
+	@echo "make recovery-demo recorded recovery desk with sandbox payments"
+	@echo "make evaluate-recovery bounded heuristic evaluation (no API key)"
 	@echo "make demo        the divergence mechanism, annotated          (~10s)"
 	@echo "make example     the pattern applied to another workflow      (~2s)"
 	@echo "make all         matrix + revocation + analysis + viewer      (~3m)"
@@ -25,8 +28,20 @@ test:
 test-second:
 	$(PY) tests/test_second.py
 
+test-recovery:
+	$(PY) tests/test_live_agent.py
+	$(PY) tests/test_evaluate_recovery.py
+	$(PY) tests/test_recovery_demo.py
+
 demo:
 	$(PY) experiments/run_divergence.py
+
+recovery-demo:
+	$(PY) experiments/recovery_demo.py
+	$(PY) viewer/build_viewer.py --demo-json tmp-runs/recovery-demo.json
+
+evaluate-recovery:
+	$(PY) experiments/evaluate_recovery.py --out tmp-runs/recovery-evaluation.json
 
 example:
 	@echo "--- clean pass ---"
@@ -54,7 +69,7 @@ checkdocs:
 viewer:
 	$(PY) viewer/build_viewer.py
 
-all: test test-second example matrix revocation adjudication analyze checkdocs viewer
+all: test test-second test-recovery example matrix revocation adjudication analyze checkdocs viewer
 	@echo ""
 	@echo "done. open viewer/trace.html"
 

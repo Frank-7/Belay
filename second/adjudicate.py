@@ -39,6 +39,8 @@ anything else abstains.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 from dataclasses import dataclass
 
@@ -62,6 +64,7 @@ class EscalatedSlot:
     scope: str
     intent_ts: float
     reason: str
+    journal_revision: str | None = None
 
     def view(self, catalog: list[str]) -> dict:
         """What the agent is allowed to see. Deliberately not the ledger,
@@ -88,16 +91,35 @@ def escalated_slots(run_dir: str, order_id: str) -> list[EscalatedSlot]:
     path = os.path.join(run_dir, "journal.jsonl")
     if not os.path.exists(path):
         return []
-    records = Journal(path, "adjudicator-read").read()
+    return project_escalated_slots(Journal(path, "adjudicator-read").read(), order_id)
 
+
+def project_escalated_slots(records: list[dict], order_id: str) -> list[EscalatedSlot]:
+    """Project a supplied journal snapshot, including each slot's revision.
+
+    Bind to all records that can change this slot's identity, intent, attempt
+    window or outcome. Audit records and records for other slots do not
+    invalidate an otherwise current proposal. A timestamp alone is not a
+    revision: two attempts can have the same clock reading.
+    """
+
+    anchors: dict[str, str] = {}
     intents: dict[str, dict] = {}
     halted: dict[str, dict] = {}
     closed: set[str] = set()
     attempted_at: dict[str, float] = {}
+    relevant: dict[str, list[dict]] = {}
     for r in records:
         kind = r.get("kind")
         slot = r.get("slot")
-        if kind == "intent" and slot:
+        if slot and kind in {
+            "anchor", "intent", "escalated", "adjudication_intent",
+            "settled", "resolved", "adjudicated",
+        }:
+            relevant.setdefault(slot, []).append(r)
+        if kind == "anchor" and slot:
+            anchors[slot] = r["anchor"]
+        elif kind == "intent" and slot:
             intents[slot] = r
         elif kind == "escalated" and slot:
             halted[slot] = r
@@ -119,6 +141,10 @@ def escalated_slots(run_dir: str, order_id: str) -> list[EscalatedSlot]:
             # Halted without a durable intent. Nothing external can have
             # been attempted, so there is nothing to adjudicate.
             continue
+        if esc.get("anchor") != intent.get("anchor"):
+            continue
+        if slot in anchors and anchors[slot] != intent.get("anchor"):
+            continue
         out.append(
             EscalatedSlot(
                 anchor=intent["anchor"],
@@ -130,6 +156,10 @@ def escalated_slots(run_dir: str, order_id: str) -> list[EscalatedSlot]:
                 # counting earlier adjudications as well as the workflow.
                 intent_ts=max(float(intent["ts"]), attempted_at.get(slot, 0.0)),
                 reason=str(esc.get("reason", "")),
+                journal_revision=hashlib.sha256(
+                    json.dumps(relevant[slot], sort_keys=True, separators=(",", ":"))
+                    .encode("utf-8")
+                ).hexdigest(),
             )
         )
     return out
@@ -254,6 +284,7 @@ def validate(
                 return Dossier(
                     anchor=esc.anchor,
                     slot=esc.slot,
+                    journal_revision=esc.journal_revision,
                     verdict=Verdict.COMMITTED,
                     # Reporting what already happened creates nothing, so
                     # this rung needs no permission.
@@ -306,6 +337,7 @@ def validate(
         return Dossier(
             anchor=esc.anchor,
             slot=esc.slot,
+            journal_revision=esc.journal_revision,
             verdict=Verdict.ABSENT,
             # Completing it is a *new* external effect. Scope and amount
             # come from the journaled intent, never from the agent.
@@ -374,6 +406,7 @@ def adjudicate_trusting(esc: EscalatedSlot, store: EvidenceStore, agent) -> Doss
     if claim.verdict == Verdict.COMMITTED.value:
         return Dossier(
             anchor=esc.anchor, slot=esc.slot, verdict=Verdict.COMMITTED,
+            journal_revision=esc.journal_revision,
             proposal=Proposal(ProposalKind.QUERY, amount_cents=esc.amount_cents),
             amount_cents=esc.amount_cents, citations=cited,
             reasoning=claim.reasoning,
@@ -382,6 +415,7 @@ def adjudicate_trusting(esc: EscalatedSlot, store: EvidenceStore, agent) -> Doss
     if claim.verdict == Verdict.ABSENT.value:
         return Dossier(
             anchor=esc.anchor, slot=esc.slot, verdict=Verdict.ABSENT,
+            journal_revision=esc.journal_revision,
             proposal=Proposal(
                 ProposalKind.COMPLETION, scope=esc.scope,
                 amount_cents=esc.amount_cents,
