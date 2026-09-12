@@ -16,7 +16,8 @@ from belay.authz import PermissionStore
 from belay.effects import Tier
 from belay.journal import Journal
 from services.ledger import Ledger
-from services.payments import CreditService, NoSuchCapability, build as build_payments
+from services.payments import CreditService, NoSuchCapability
+from services.payments import build as build_payments
 
 
 class Status(str, Enum):

@@ -22,6 +22,10 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
+      - name: Docs agree with the committed results
+        # Check before experiments replace the committed results with a new draw.
+        run: python3 experiments/check_docs.py
+
       - name: Contract invariants under real SIGKILL
         run: python3 tests/test_contract.py
 
@@ -34,11 +38,6 @@ jobs:
           python3 experiments/run_matrix.py --reps 2
           python3 experiments/run_revocation.py --reps 2
           python3 experiments/analyze.py
-
-      - name: Docs agree with the committed results
-        # Only meaningful on a full run; the short CI matrix produces a
-        # different draw, so we check the committed numbers instead.
-        run: git checkout -- results/ && python3 experiments/check_docs.py
 
       - name: Assert zero contract violations for `anchored`
         run: |
