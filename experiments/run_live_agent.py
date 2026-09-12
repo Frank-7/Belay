@@ -76,6 +76,20 @@ def digest(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def redact_secret(value: object, secret: str) -> object:
+    """Remove a provider-echoed credential before persisting or printing it."""
+    if not secret:
+        return value
+    if isinstance(value, str):
+        return value.replace(secret, "[REDACTED_API_KEY]")
+    if isinstance(value, list):
+        return [redact_secret(item, secret) for item in value]
+    if isinstance(value, dict):
+        return {redact_secret(key, secret): redact_secret(item, secret)
+                for key, item in value.items()}
+    return value
+
+
 def unique_object(pairs: list[tuple]) -> dict:
     result = {}
     for key, value in pairs:
@@ -354,11 +368,16 @@ def main() -> int:
         write_result(args.out, result)
 
     key = os.environ.get(args.api_key_env, "").strip()
+    if key and redact_secret(result, key) != result:
+        ap.error("API key appears in public configuration or retained data; refusing to run")
     if not key and any(completed[c["id"]] < args.reps for c in conditions):
         reason = f"missing {args.api_key_env}; no live calls made"
         save("blocked_missing_credentials", reason)
         print(f"{reason}. Result written to {args.out}. Set the key and use --resume.", file=sys.stderr)
         return 2
+    if not cases:
+        metadata["script_sha256"] = digest(Path(__file__).read_bytes())
+        metadata["started_at"] = utc_now()
     save("running")
     remaining = sum(args.reps - completed[c["id"]] for c in conditions)
     print(f"{remaining} calls remaining; model={args.model}; results={args.out}", flush=True)
@@ -369,6 +388,10 @@ def main() -> int:
     try:
         for condition in schedule:
             row = invoke(endpoint, key, encode(condition["request"]), args.timeout)
+            redacted = redact_secret(row, key)
+            if redacted != row:
+                redacted["credential_redacted"] = True
+            row = redacted
             row.update({"condition_id": condition["id"], "attempt": len(cases) + 1,
                         "rep": completed[condition["id"]] + 1,
                         "request_sha256": condition["request_sha256"]})
