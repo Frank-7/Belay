@@ -38,7 +38,7 @@ build-backend = "setuptools.build_meta"
 # `belay` is the importable runtime. `experiments/`, `tests/` and `worker.py`
 # are not packaged: they are meant to be run from a clone, because the
 # harness spawns worker.py by path.
-packages = ["belay", "belay.runtimes", "services"]
+packages = ["belay", "belay.runtimes", "services", "second"]
 
 [tool.ruff]
 line-length = 88

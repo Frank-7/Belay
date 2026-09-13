@@ -129,6 +129,21 @@ The tool built to close the escalation hole turns out to be subject to the
 discipline it was built to serve, which is either pleasing or embarrassing
 depending on how long it took to notice.
 
+**A dossier is bound to the journal state it inspected.** Before applying a
+resolution, `apply_dossier` checks that the same anchor is still halted and its
+relevant journal revision, amount, and scope still match. A completed action or
+a new `adjudication_intent` invalidates an earlier dossier, including an intent
+whose effect call failed with an uncertain outcome. Fresh adjudication must
+inspect the newer attempt and obtain evidence covering it. Audit-only records
+do not invalidate a proposal. This prevents sequential repeat and stale
+application; it does not add a lease or permit concurrent workflow executors.
+
+**Optional live agent.** `second/live_agent.py` implements the same two-method
+interface using OpenAI Structured Outputs. Invalid responses, refusals, and
+transport failures cannot authorize a recovery. The recorded results below use
+the simulator; live-model performance is measured separately with
+`experiments/evaluate_recovery.py`. See [the demo guide](DEMO.md).
+
 ## 6. Results
 
 400 adjudications of anchors that `anchored` really halted on, after a real
@@ -269,12 +284,15 @@ second/
                    query/completion split
   adjudicate.py    the pipeline, the validator, and the trusting control
   apply.py         dossier to durable record; authz at execution time
+  live_agent.py    optional bounded model requests; output remains untrusted
 
 experiments/
   build_evidence.py     materialises evidence artefacts from the ledger
   run_adjudication.py   400 cases: 5 evidence tiers x 5 agent profiles
                         x 2 pipelines
+  recovery_demo.py      recorded crash, evidence, rejection and recovery story
+  evaluate_recovery.py  bounded comparison with a heuristic baseline
 
-tests/test_second.py    37 assertions on the safety properties
+tests/test_second.py    safety, repeated application, and stale dossier checks
 results/adjudication.json
 ```

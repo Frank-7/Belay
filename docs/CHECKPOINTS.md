@@ -1,5 +1,11 @@
 # Checkpoint plan
 
+For the current evidence-recovery extension, use [the demo guide](DEMO.md) and
+the counts from the exact recording or evaluation being presented. The scripts
+below describe earlier milestones; their sample numbers and model limitations
+must be checked against the current artifact. The default demo still uses a
+heuristic, even though an optional live-model adapter is available.
+
 Five scored check-ins plus a final round, all judged on the same four
 categories: Innovation & Creativity 30%, Technical Implementation 25%,
 Business Value & Impact 25%, Presentation & Communication 20%. Check-in

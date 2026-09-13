@@ -48,6 +48,7 @@ import json
 import os
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 # Selector grammar. Kept tiny on purpose: a wide pointer vocabulary would
@@ -186,6 +187,7 @@ class EvidenceStore:
 
     def __init__(self, evidence_dir: str):
         self.dir = evidence_dir
+        self._root = Path(evidence_dir).resolve()
         self._cache: dict[str, dict] = {}
         self.fetch_log: list[dict] = []
 
@@ -194,19 +196,42 @@ class EvidenceStore:
     def catalog(self) -> list[str]:
         """Source names present on disk. The agent is told this much; it is
         not told what the sources contain."""
-        if not os.path.isdir(self.dir):
+        try:
+            names = os.listdir(self._root)
+        except OSError:
             return []
         return sorted(
-            f[:-5] for f in os.listdir(self.dir)
+            f[:-5] for f in names
             if f.endswith(".json") and not f.startswith(".")
+            and self._source_path(f[:-5]) is not None
         )
 
+    def _source_path(self, source: str) -> Path | None:
+        """Resolve a source basename inside the configured evidence root.
+
+        Check both platforms' path syntax, then the actual symlink target.
+        This runs before cache access too: replacing a cached source with an
+        outside symlink must not keep that source available to the agent.
+        """
+        if (
+            not isinstance(source, str) or not source or source in (".", "..")
+            or any(char in source for char in ("/", "\\", ":", "\x00"))
+        ):
+            return None
+        try:
+            path = (self._root / f"{source}.json").resolve()
+            if not path.is_relative_to(self._root) or not path.is_file():
+                return None
+        except (OSError, ValueError, RuntimeError):
+            return None
+        return path
+
     def _load(self, source: str) -> dict | None:
+        path = self._source_path(source)
+        if path is None:
+            return None
         if source in self._cache:
             return self._cache[source]
-        path = os.path.join(self.dir, f"{source}.json")
-        if not os.path.exists(path):
-            return None
         try:
             with open(path, encoding="utf-8") as fh:
                 doc = json.load(fh)
