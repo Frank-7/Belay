@@ -2,6 +2,11 @@
 
 **Durable side effects for nondeterministic agents.**
 
+**[Visit the Belay website](https://frank-7.github.io/Belay/)** for an
+interactive introduction, the recorded Recovery Desk, and inspectable evidence.
+The public site runs on GitHub Pages; the Recovery Lab below runs locally.
+See [website build and deployment](docs/WEBSITE.md) to develop the site.
+
 To belay is to secure the rope before the climber moves. The protection goes
 in ahead of the fall, not after it. The nautical sense is the other half of
 the contract: *belay* also means stop.
