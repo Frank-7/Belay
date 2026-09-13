@@ -17,6 +17,9 @@ are fixed before calls and never adapted to observed divergence. An
 existing result requires --resume, or --new-run to archive it within the
 same JSON file before collecting a different configuration. Use
 --min-interval to pace requests within the provider's quota.
+--output-mode explanation permits a brief explanation before a final
+Decision: <label> line. --max-calls caps new HTTP attempts in this invocation;
+use --resume to continue a capped run. No model is substituted automatically.
 
 The primary rate treats unparseable as a third category. A second rate
 conditions explicitly on parseable decisions. The all-pairs estimator is
@@ -32,6 +35,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import sys
 import tempfile
 import time
@@ -51,6 +55,9 @@ one of these approved remedies:
   method and issue 2000 cents of store credit.
 Return only a JSON object with exactly one key, "decision", whose value
 is one of those two labels. Do not include an explanation."""
+EXPLANATION_SYSTEM_PROMPT = SYSTEM_PROMPT.split("Return only a JSON object", 1)[0] + """Briefly explain your recommendation, then state the chosen remedy on
+the final line in the form Decision: <label>, using one of the two remedy
+labels above. Give one final decision."""
 PROMPTS = {
     "borderline": """Order R-1042 cost 5000 cents. It arrived three days late and
 has a small cosmetic mark, but works as intended. The customer is
@@ -101,7 +108,7 @@ def unique_object(pairs: list[tuple]) -> dict:
     return result
 
 
-def parse_decision(raw: str | None) -> str:
+def parse_decision(raw: str | None, output_mode: str = "json") -> str:
     """Strict, auditable: exact label, JSON string, or {decision: label}.
 
     Whitespace is ignored. Prose, fences, extra keys, conflicting answers,
@@ -110,6 +117,17 @@ def parse_decision(raw: str | None) -> str:
     if not isinstance(raw, str):
         return "unparseable"
     value = raw.strip()
+    if output_mode == "explanation":
+        # Interpret only the explicitly marked final decision, not labels
+        # mentioned while comparing the two remedies in the explanation.
+        lines = value.splitlines()
+        if (len(lines) < 2 or not any(line.strip() for line in lines[:-1])
+                or sum(bool(re.match(r"\s*Decision\s*:", line)) for line in lines) != 1):
+            return "unparseable"
+        match = re.fullmatch(r"Decision: (full_refund|split_refund_plus_credit)", lines[-1])
+        return match.group(1) if match else "unparseable"
+    if output_mode != "json":
+        raise ValueError("unknown output mode")
     if value in LABELS[:2]:
         return value
     try:
@@ -210,7 +228,8 @@ def write_result(path: Path, result: dict) -> None:
             os.unlink(temporary)
 
 
-def invoke(endpoint: str, key: str, payload: bytes, timeout: float) -> dict:
+def invoke(endpoint: str, key: str, payload: bytes, timeout: float,
+           output_mode: str = "json") -> dict:
     # HTTP is confined to this function in the opt-in experiment.
     from urllib.error import HTTPError, URLError
     from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -252,7 +271,7 @@ def invoke(endpoint: str, key: str, payload: bytes, timeout: float) -> dict:
         if not isinstance(message, dict):
             raise ValueError("missing assistant message")
         content = message.get("content")
-        decision = parse_decision(content)
+        decision = parse_decision(content, output_mode)
         if choice.get("finish_reason") != "stop" or message.get("refusal"):
             decision = "unparseable"
         record.update({
@@ -278,6 +297,10 @@ def main() -> int:
     ap.add_argument("--api-key-env", default="OPENAI_API_KEY")
     ap.add_argument("--max-completion-tokens", type=int, default=128)
     ap.add_argument("--reasoning-effort", help="optional model-specific setting, recorded verbatim")
+    ap.add_argument("--output-mode", choices=("json", "explanation"), default="json",
+                    help="fixed system instruction and parser; no API-enforced output schema")
+    ap.add_argument("--max-calls", type=int,
+                    help="cap new HTTP attempts in this invocation; stopped runs can be resumed")
     ap.add_argument("--omit-store", action="store_true",
                     help="omit the OpenAI store field for providers that reject it, such as Gemini")
     ap.add_argument("--timeout", type=float, default=60)
@@ -291,6 +314,8 @@ def main() -> int:
     args = ap.parse_args()
     if args.reps < 2 or args.max_completion_tokens < 1:
         ap.error("--reps must be >= 2 and --max-completion-tokens must be positive")
+    if args.max_calls is not None and args.max_calls < 1:
+        ap.error("--max-calls must be positive")
     if not math.isfinite(args.timeout) or args.timeout <= 0:
         ap.error("--timeout must be positive and finite")
     if not math.isfinite(args.min_interval) or args.min_interval < 0:
@@ -303,16 +328,18 @@ def main() -> int:
             or parsed_url.username or parsed_url.password or parsed_url.query or parsed_url.fragment):
         ap.error("--base-url must be HTTPS, without credentials, query, or fragment")
     endpoint = args.base_url.rstrip("/") + "/chat/completions"
+    system_prompt = SYSTEM_PROMPT if args.output_mode == "json" else EXPLANATION_SYSTEM_PROMPT
     config = {"model": args.model, "endpoint": endpoint,
               "max_completion_tokens": args.max_completion_tokens,
               "reasoning_effort": args.reasoning_effort,
-              "system_prompt": SYSTEM_PROMPT, "prompts": PROMPTS,
-              "parser": "strict-label-or-single-key-json-v1"}
+              "system_prompt": system_prompt, "prompts": PROMPTS,
+              "parser": ("strict-label-or-single-key-json-v1" if args.output_mode == "json"
+                         else "explanation-final-decision-line-v1")}
     conditions = []
     for prompt in dict.fromkeys(args.prompts):
         for temperature in dict.fromkeys(args.temperatures):
             request = {"model": args.model, "temperature": temperature,
-                       "messages": [{"role": "system", "content": SYSTEM_PROMPT},
+                       "messages": [{"role": "system", "content": system_prompt},
                                     {"role": "user", "content": PROMPTS[prompt]}],
                        "max_completion_tokens": args.max_completion_tokens,
                        "n": 1, "stream": False, "store": False}
@@ -337,6 +364,10 @@ def main() -> int:
                 "parseable_decision_divergence": "same estimator restricted explicitly to the two valid decisions",
                 "unparseable": "invalid decision format, refusal, or non-stop finish; retained in primary denominator",
                 "api_errors": "retained separately; stop immediately without replacing a failed call",
+                "output_instruction": args.output_mode,
+                "decoding": "output format is requested in system text only; no response_format, schema, tools, or forced decoding parameters",
+                "explanation_parser": "requires preceding explanation and exactly one Decision: marker at line start; final line must be Decision: followed by one exact label; no prose inference",
+                "model_selection": "exact CLI model string; no fallback; HTTP outcomes and returned model are retained",
                 "disjoint_pair_check": "consecutive nonoverlapping response pairs; if zero disagreements in m pairs, exact one-sided 95% binomial upper bound is 1 - 0.05**(1/m)",
                 "simulator": "BELAY_NONDET_P is P(split), not P(disagree); population disagreement = 2*p*(1-p)",
             },
@@ -399,6 +430,7 @@ def main() -> int:
         metadata["started_at"] = utc_now()
     metadata.setdefault("collection_sessions", []).append({
         "started_at": utc_now(), "min_interval_seconds": args.min_interval,
+        "max_calls": args.max_calls,
         "script_sha256": digest(Path(__file__).read_bytes()),
     })
     save("running")
@@ -410,13 +442,18 @@ def main() -> int:
         schedule.extend(c for c in conditions[1:] if completed[c["id"]] <= rep)
     last_started = None
     try:
-        for condition in schedule:
+        for call_index, condition in enumerate(schedule):
+            if args.max_calls is not None and call_index >= args.max_calls:
+                save("paused_call_budget", f"reached --max-calls={args.max_calls}; responses retained")
+                print("Call budget reached; use --resume to continue.", flush=True)
+                return 3
             if last_started is not None:
                 delay = args.min_interval - (time.monotonic() - last_started)
                 if delay > 0:
                     time.sleep(delay)
             last_started = time.monotonic()
-            row = invoke(endpoint, key, encode(condition["request"]), args.timeout)
+            row = invoke(endpoint, key, encode(condition["request"]), args.timeout,
+                         output_mode=args.output_mode)
             redacted = redact_secret(row, key)
             if redacted != row:
                 redacted["credential_redacted"] = True
