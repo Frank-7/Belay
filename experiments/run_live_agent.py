@@ -14,7 +14,9 @@ Then retain the pilot and sweep temperatures, without repeating its calls:
 Use --model / OPENAI_MODEL and --base-url / OPENAI_BASE_URL to select the
 service; --api-key-env selects a different environment variable. Prompts
 are fixed before calls and never adapted to observed divergence. An
-existing result requires --resume, so raw evidence is not overwritten.
+existing result requires --resume, or --new-run to archive it within the
+same JSON file before collecting a different configuration. Use
+--min-interval to pace requests within the provider's quota.
 
 The primary rate treats unparseable as a third category. A second rate
 conditions explicitly on parseable decisions. The all-pairs estimator is
@@ -276,14 +278,23 @@ def main() -> int:
     ap.add_argument("--api-key-env", default="OPENAI_API_KEY")
     ap.add_argument("--max-completion-tokens", type=int, default=128)
     ap.add_argument("--reasoning-effort", help="optional model-specific setting, recorded verbatim")
+    ap.add_argument("--omit-store", action="store_true",
+                    help="omit the OpenAI store field for providers that reject it, such as Gemini")
     ap.add_argument("--timeout", type=float, default=60)
+    ap.add_argument("--min-interval", type=float, default=0,
+                    help="minimum seconds between request starts in this invocation")
     ap.add_argument("--out", type=Path, default=ROOT / "results" / "live_divergence.json")
-    ap.add_argument("--resume", action="store_true", help="retain raw evidence and fill missing responses")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--resume", action="store_true", help="retain raw evidence and fill missing responses")
+    mode.add_argument("--new-run", action="store_true",
+                      help="archive existing result in previous_runs and start a separate measurement")
     args = ap.parse_args()
     if args.reps < 2 or args.max_completion_tokens < 1:
         ap.error("--reps must be >= 2 and --max-completion-tokens must be positive")
     if not math.isfinite(args.timeout) or args.timeout <= 0:
         ap.error("--timeout must be positive and finite")
+    if not math.isfinite(args.min_interval) or args.min_interval < 0:
+        ap.error("--min-interval must be nonnegative and finite")
     if any(not math.isfinite(t) or not 0 <= t <= 2 for t in args.temperatures):
         ap.error("temperatures must be finite numbers between 0 and 2")
     from urllib.parse import urlsplit
@@ -305,6 +316,8 @@ def main() -> int:
                                     {"role": "user", "content": PROMPTS[prompt]}],
                        "max_completion_tokens": args.max_completion_tokens,
                        "n": 1, "stream": False, "store": False}
+            if args.omit_store:
+                del request["store"]
             if args.reasoning_effort is not None:
                 request["reasoning_effort"] = args.reasoning_effort
             conditions.append({"id": f"{prompt}@{temperature:g}", "prompt": prompt,
@@ -338,13 +351,21 @@ def main() -> int:
         },
     }
     if args.out.exists():
-        if not args.resume:
-            ap.error(f"{args.out} exists; use --resume to preserve and extend it")
+        if not (args.resume or args.new_run):
+            ap.error(f"{args.out} exists; use --resume or --new-run to preserve it")
         with args.out.open(encoding="utf-8") as fh:
-            result = json.load(fh)
+            retained = json.load(fh)
+        if args.new_run:
+            history = retained.pop("previous_runs", [])
+            result["previous_runs"] = history + [retained]
+        else:
+            result = retained
+    elif args.resume:
+        ap.error("--resume requires an existing result")
+    if args.resume:
         metadata = result["metadata"]
         if metadata["schema_version"] != SCHEMA_VERSION or metadata["configuration"] != config:
-            ap.error("resume configuration differs; use a separate output for a different model or protocol")
+            ap.error("resume configuration differs; use --new-run for a different model or protocol")
         previous = {c["id"]: c for c in metadata["conditions"]}
         for condition in conditions:
             if condition["id"] in previous and condition != previous[condition["id"]]:
@@ -353,8 +374,6 @@ def main() -> int:
         conditions = list(previous.values())
         metadata["conditions"] = conditions
         metadata.setdefault("resumed_at", []).append(utc_now())
-    elif args.resume:
-        ap.error("--resume requires an existing result")
     metadata = result["metadata"]
     cases = result["cases"]
     completed = Counter(c["condition_id"] for c in cases if c["status"] == "model_response")
@@ -378,6 +397,10 @@ def main() -> int:
     if not cases:
         metadata["script_sha256"] = digest(Path(__file__).read_bytes())
         metadata["started_at"] = utc_now()
+    metadata.setdefault("collection_sessions", []).append({
+        "started_at": utc_now(), "min_interval_seconds": args.min_interval,
+        "script_sha256": digest(Path(__file__).read_bytes()),
+    })
     save("running")
     remaining = sum(args.reps - completed[c["id"]] for c in conditions)
     print(f"{remaining} calls remaining; model={args.model}; results={args.out}", flush=True)
@@ -385,8 +408,14 @@ def main() -> int:
     schedule = [conditions[0]] * (args.reps - completed[conditions[0]["id"]])
     for rep in range(args.reps):
         schedule.extend(c for c in conditions[1:] if completed[c["id"]] <= rep)
+    last_started = None
     try:
         for condition in schedule:
+            if last_started is not None:
+                delay = args.min_interval - (time.monotonic() - last_started)
+                if delay > 0:
+                    time.sleep(delay)
+            last_started = time.monotonic()
             row = invoke(endpoint, key, encode(condition["request"]), args.timeout)
             redacted = redact_secret(row, key)
             if redacted != row:
