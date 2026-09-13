@@ -1,9 +1,15 @@
 # Findings
 
-Every number here comes from `results/findings.json`, produced by
-`experiments/analyze.py` from the raw trial logs. Reproduce with `make all`.
+The crash-matrix and revocation figures in sections 1–7 come from
+`results/findings.json`, produced by `experiments/analyze.py` from the raw
+trial logs. Section 8 uses `results/adjudication.json`. `make all` reruns
+these synthetic experiments; their random baseline counts may change.
+Section 10 instead uses archived live-model measurements in
+`results/live_divergence.json`, collected by the separate opt-in
+`experiments/run_live_agent.py` harness. `make all` does not make live calls
+or reproduce those measurements.
 
-Setup for all figures below: 960 trials in which the process was confirmed
+Setup for the crash-matrix figures: 960 trials in which the process was confirmed
 killed at the requested instruction (960/960 attempts; no trial is silently
 dropped). Order value is 5000 cents. Grading compares the ledger against
 the runtime's own report, so a runtime cannot pass by being confident.
@@ -258,6 +264,13 @@ divergence. That complicates the premise that divergence is frequent; it
 does not establish that production agents are deterministic. The live
 harness stays outside the runtime and recovery path.
 
+The optional OpenAI recovery adapter and recorded recovery desk are additional
+ways to exercise `second/`. They do not change the provenance of the published
+numbers. Live-model runs must report their own resolution, abstention, false
+resolution, and request-usage measurements. Dossier revision checks prevent
+sequential duplicate or stale application; concurrent execution remains outside
+the failure model.
+
 **Services are mocks, written to a stated contract.** They are not
 strawmen — each tier implements its semantics including the ones that make
 recovery impossible — but a real processor will have behaviours none of
@@ -388,10 +401,12 @@ nothing.
    assumption is the weakest thing in CONTRACT.md.
 3. **Unbounded effect slots.** Whether anchoring survives an agent that
    decides how many actions to take. If it does not, say so.
-4. **A real model in the adjudicator.** Section 8 is parameterised by the
+4. **Measure the live recovery adapter.** Section 8 is parameterised by the
    agent's vices precisely so the safety result does not depend on the
-   model, but the *resolution* rate does, and we have not measured it with
-   a live model. That would be a separate experiment in `second/agent.py`.
+   model, but the *resolution* rate does. The optional adapter already exists
+   in `second/live_agent.py`; use `experiments/evaluate_recovery.py --agent
+   openai` to measure its resolution, abstention, false-resolution and request
+   usage rates. Its live effectiveness has not yet been measured here.
 5. **Reduce the false-alarm third.** The 8-in-24 false escalations are
    irreducible given what an opaque service tells us, but a
    write-ahead-to-a-cooperating-proxy pattern might convert an opaque tier
@@ -448,8 +463,8 @@ JSON requirement. The parser reads that final marker, not labels mentioned
 in the explanation. A fresh N=50 JSON control used the original request
 body; it followed the explanation block rather than being randomly
 interleaved. Both blocks completed on September 13, 2026, between 16:27
-and 16:36 UTC, with at least five seconds between request starts and no retries
-needed. Together with nine larger-model availability attempts, the closeout
+and 16:36 UTC, configured for five-second pacing within each block, with no
+retries needed. Together with nine larger-model availability attempts, the closeout
 used 109 new attempts against a predeclared cap of 129, including failures.
 
 | prompt / output instruction | temperature | N | full / split | unparseable | API failures | pairwise disagreement | P(split), among parseable |

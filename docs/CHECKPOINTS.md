@@ -1,5 +1,11 @@
 # Checkpoint plan
 
+For the current evidence-recovery extension, use [the demo guide](DEMO.md) and
+the counts from the exact recording or evaluation being presented. The scripts
+below describe earlier milestones; their sample numbers and model limitations
+must be checked against the current artifact. The default demo still uses a
+heuristic, even though an optional live-model adapter is available.
+
 Five scored check-ins plus a final round, all judged on the same four
 categories: Innovation & Creativity 30%, Technical Implementation 25%,
 Business Value & Impact 25%, Presentation & Communication 20%. Check-in
@@ -95,7 +101,10 @@ requested JSON output: no observed decision disagreement in each of three
 N=50 cells (`borderline` at temperatures 1 and 0; `clear_cut` at 1). The
 one-sided 95% upper bound is 11.3% per cell, assuming independent stationary
 calls. Say "bounded by 11.3%", not "the model is deterministic" or "below
-11%". The follow-up kept that same model, minimal reasoning, `borderline`
+11%".
+
+**Later update (Sunday 12:27–12:36 ET):** the follow-up kept that same model,
+minimal reasoning, `borderline`
 prompt and temperature 1: N=50 with explanations and N=50 with fresh JSON
 output both again had no observed disagreement, no unparseables and no API
 failures. All 50 explanation texts differed; every final decision was the

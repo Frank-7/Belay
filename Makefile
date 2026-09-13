@@ -1,12 +1,20 @@
-.PHONY: help test test-second demo example matrix revocation adjudication \
-        analyze checkdocs viewer all clean
+.PHONY: help test test-second test-prototype test-recovery test-evidence test-live-experiment prototype \
+        demo recovery-demo evaluate-recovery \
+        example matrix revocation adjudication analyze checkdocs viewer all clean reset-results
 
 PY ?= python3
 REPS ?= 8
 
 help:
 	@echo "make test        42 contract assertions under real SIGKILL   (~30s)"
-	@echo "make test-second 37 adjudicator assertions                    (~15s)"
+	@echo "make test-second adjudicator safety and stale recovery checks"
+	@echo "make test-prototype  portable Recovery Lab tests"
+	@echo "make prototype      start the local Recovery Lab on port 8765"
+	@echo "make test-recovery offline model, evaluation and demo checks"
+	@echo "make test-evidence portable evidence source and order checks"
+	@echo "make test-live-experiment offline decision parser and retry checks"
+	@echo "make recovery-demo recorded recovery desk with sandbox payments"
+	@echo "make evaluate-recovery bounded heuristic evaluation (no API key)"
 	@echo "make demo        the divergence mechanism, annotated          (~10s)"
 	@echo "make example     the pattern applied to another workflow      (~2s)"
 	@echo "make all         matrix + revocation + analysis + viewer      (~3m)"
@@ -14,7 +22,7 @@ help:
 	@echo "make matrix      REPS=$(REPS)  full crash matrix"
 	@echo "make revocation  REPS=$(REPS)  permission revoked mid-flight"
 	@echo "make adjudication             escalated anchors, adjudicated"
-	@echo "make analyze     recompute every number quoted in FINDINGS.md"
+	@echo "make analyze     recompute crash-matrix and revocation findings"
 	@echo "make checkdocs   fail if the doc tables disagree with results/"
 	@echo "make viewer      rebuild viewer/trace.html"
 	@echo "make clean       remove build artifacts (leaves results/ alone)"
@@ -25,8 +33,32 @@ test:
 test-second:
 	$(PY) tests/test_second.py
 
+test-prototype:
+	$(PY) -m unittest discover -s tests -p "test_prototype.py" -v
+
+prototype:
+	$(PY) -m prototype.server --port 8765
+
+test-evidence:
+	$(PY) tests/test_evidence_boundaries.py
+
+test-recovery: test-evidence
+	$(PY) tests/test_live_agent.py
+	$(PY) tests/test_evaluate_recovery.py
+	$(PY) tests/test_recovery_demo.py
+
+test-live-experiment:
+	$(PY) tests/test_run_live_agent.py
+
 demo:
 	$(PY) experiments/run_divergence.py
+
+recovery-demo:
+	$(PY) experiments/recovery_demo.py
+	$(PY) viewer/build_viewer.py --demo-json tmp-runs/recovery-demo.json
+
+evaluate-recovery:
+	$(PY) experiments/evaluate_recovery.py --out tmp-runs/recovery-evaluation.json
 
 example:
 	@echo "--- clean pass ---"
@@ -54,7 +86,7 @@ checkdocs:
 viewer:
 	$(PY) viewer/build_viewer.py
 
-all: test test-second example matrix revocation adjudication analyze checkdocs viewer
+all: test test-second test-prototype test-recovery test-live-experiment example matrix revocation adjudication analyze checkdocs viewer
 	@echo ""
 	@echo "done. open viewer/trace.html"
 

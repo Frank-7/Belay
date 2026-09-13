@@ -8,6 +8,43 @@ the contract: *belay* also means stop.
 
 ---
 
+## Try the initial product prototype
+
+**Project status:** the runnable application below is a local recovery
+simulation. The current product plan is a broader autonomous task app with
+advance delegation. Subscriptions and a limited customer guarantee remain
+proposals; there is no live coverage, bank connection or ticket checkout.
+Start with the [document index](docs/INDEX.md),
+[current architecture](docs/AUTONOMOUS_APP_ARCHITECTURE.md), and
+[next-stage plan](docs/NEXT_STAGE.md).
+The [integration guide](docs/INTEGRATION.md) maps the existing components and
+the interfaces that future agent and guarantee services must respect.
+
+The **Recovery Lab** is a local application for exploring one concrete case:
+an agent intends a $50 partial refund on a $100 order, then crashes around
+the payment request. Its **Activity** view keeps the intent, provider
+receipts and recovery decision together for an operator.
+
+```bash
+python -m prototype.server --port 8765
+# Open http://127.0.0.1:8765
+python -m unittest discover -s tests -p "test_prototype.py" -v
+```
+
+The prototype supports Windows, Linux and macOS with Python 3.10+ and no
+third-party dependencies. It makes real HTTP requests to a **fictional local
+provider**; all money and agent decisions are simulated. Compare Belay,
+the provider's existing stable-key retry, and an unprotected fresh-key retry.
+Try a lost reply, a crash before sending, revoked permission, an opaque
+provider, or a successful request.
+
+This is a separate implementation of the pattern using SQLite, not a
+production wrapper around the research runtime below. See
+[prototype instructions and boundaries](docs/PROTOTYPE.md) and the
+[repository evaluation](docs/REVIEW.md), including two reproduced recovery
+defects in the original runtime and limits of its reported metrics.
+The original SIGKILL experiments still require POSIX.
+
 ## The problem
 
 An agent calls a payment API. The process dies between the call landing and
@@ -62,6 +99,11 @@ anchored:  anchor ──▶ decide ──▶ call under anchor ──▶ 💀 �
 ```
 
 ## Results
+
+These are the original committed synthetic experiment results. They are not
+customer loss rates, production guarantees or inputs sufficient to price
+customer reimbursement. See [the review](docs/REVIEW.md) for reproduced
+runtime defects and limitations of the grader and overhead measurements.
 
 960 trials, each a real SIGKILL at a named instruction boundary, graded
 against an external ledger rather than against the runtime's own report.
@@ -149,7 +191,7 @@ Stated up front so nobody has to go looking.
 | Python | 3.10 or newer (tested on 3.10 and 3.12) |
 | OS | Linux, macOS, or WSL |
 | Dependencies | none — standard library only |
-| Network | not used |
+| Network | Simulations use local data; the Recovery Lab uses loopback HTTP; optional recovery and decision models use external APIs |
 
 > **Linux, macOS or WSL only.** The experiments send a real `SIGKILL`, and
 > Windows has no such signal. A catchable exception would let `finally`
@@ -162,11 +204,11 @@ Clone or download this repository, then:
 ```bash
 cd belay
 make test          # 42 contract assertions under real SIGKILL   (~30s)
-make test-second   # 37 adjudicator assertions                   (~15s)
+make test-second   # adjudicator safety and stale recovery checks
 ```
 
-There is nothing to install. If those print `42 passed, 0 failed` and
-`37 passed, 0 failed`, you are set up.
+There is nothing to install. If the contract suite prints `42 passed, 0 failed`
+and the adjudicator suite also reports `0 failed`, you are set up.
 
 Optionally, for linting only:
 
@@ -200,7 +242,8 @@ python3 viewer/build_viewer.py
 
 `make all` rewrites `results/*.json` and `viewer/trace.html`. Baseline
 numbers will differ slightly from the committed run; see FINDINGS.md §1 on
-variance. `make clean` puts it back.
+variance. `make clean` preserves these results; update the published tables
+if you intend to commit a new experimental draw.
 
 ### Poking at it directly
 
@@ -347,6 +390,32 @@ viewer/build_viewer.py    generates a self-contained forensic readout
 results/                  raw trial logs and findings.json  (committed on purpose)
 ```
 
+## The recovery desk
+
+The viewer now includes an evidence-guided recovery desk alongside the original
+crash traces. Follow a halted refund through a rejected stale report, a covering
+settlement report, and an actual resumed sandbox workflow. A separate case shows
+permission being revoked after a recovery was proposed.
+
+```bash
+make recovery-demo
+# Or, without make:
+python3 experiments/recovery_demo.py
+python3 viewer/build_viewer.py --demo-json tmp-runs/recovery-demo.json
+```
+
+Open `viewer/trace.html`, or serve the `viewer` directory with
+`python3 -m http.server 8000 --bind 127.0.0.1 --directory viewer`.
+The page is an interactive recording of real local crash experiments with
+sandbox payments. Browsing a recording issues no payments or model requests.
+Its default agent is a deterministic heuristic; an optional OpenAI adapter can
+generate a recording with a real model. The model only proposes evidence and a
+claim, and every claim still passes through the deterministic validator.
+
+See **[the demo guide](docs/DEMO.md)** for live-model setup, the bounded evaluation,
+a 60-second presentation script, and downloadable CI artifacts. No live-model
+performance or production savings are implied by the recorded simulator results.
+
 ## The trace viewer
 
 `make viewer` writes a single self-contained HTML file — no build step, no
@@ -372,11 +441,13 @@ screen recording without narration.
 
 ## Why you should care
 
-Every company shipping agents that take actions is about to meet this. The
-actions are the product — refunds, emails, orders, provisioning — and they
-are irreversible in exactly the way a chat completion is not. The current
-answer is to wrap the agent in a durable-execution framework built on an
-assumption the agent violates, and the resulting failures are rare, silent,
-and financial.
+Teams operating agents that issue refunds, orders, or provisioning requests
+must handle uncertain external outcomes. Persisting model decisions and using
+stable action identifiers is a sound approach with a cooperative service;
+durable workflow systems support that discipline. Belay explores enforcing
+effect identity, current authorization, and evidence requirements explicitly,
+including when a service cannot resolve an ambiguous outcome.
 
-The smallest version of the fix is two fsyncs in the right order.
+The benchmark compares the recovery semantics implemented in this repository.
+It is not a measurement of Temporal, LangGraph, or another deployed framework,
+and simulated loss rates are not estimates of production loss rates.

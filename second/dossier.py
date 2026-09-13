@@ -24,7 +24,7 @@ model in the loop, so the two rungs are separate members of an enum here and
 `requires_authz` is derived from the kind rather than set by a caller.
 
   QUERY       reports what out-of-band records already show. Creates
-              nothing. Needs no permission. Always safe to apply.
+              nothing. Needs no permission. Requires current journal state.
   COMPLETION  issues the effect because the evidence proved it never
               landed. A new external effect. Needs a live permission check
               at the instant of execution, exactly as a first attempt would
@@ -107,6 +107,9 @@ class Dossier:
     validator_notes: list[str] = field(default_factory=list)
     pointers_proposed: int = 0
     pointers_resolved: int = 0
+    # A freshness binding supplied by the journal projection, never by the
+    # agent. Unbound dossiers can be inspected but cannot resolve a slot.
+    journal_revision: str | None = None
 
     @property
     def resolved(self) -> bool:
@@ -125,6 +128,7 @@ class Dossier:
             "validator_notes": list(self.validator_notes),
             "pointers_proposed": self.pointers_proposed,
             "pointers_resolved": self.pointers_resolved,
+            "journal_revision": self.journal_revision,
         }
 
     @classmethod

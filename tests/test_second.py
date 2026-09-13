@@ -19,6 +19,7 @@ import re
 import shutil
 import sys
 import tempfile
+from dataclasses import replace
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -26,7 +27,12 @@ sys.path.insert(0, ROOT)
 from belay.authz import PermissionStore  # noqa: E402
 from belay.journal import Journal  # noqa: E402
 from second import apply as second_apply  # noqa: E402
-from second.adjudicate import EscalatedSlot, escalated_slots, validate  # noqa: E402
+from second.adjudicate import (  # noqa: E402
+    EscalatedSlot,
+    adjudicate_trusting,
+    escalated_slots,
+    validate,
+)
 from second.dossier import Claim, ProposalKind, Verdict  # noqa: E402
 from second.evidence import EvidenceStore, Pointer  # noqa: E402
 
@@ -265,6 +271,11 @@ def test_commitment_needs_a_matching_record(base: str) -> None:
 def _wire(base: str, *, revoke: str | None = None):
     d = tempfile.mkdtemp(prefix="apply-", dir=base)
     journal = Journal(os.path.join(d, "journal.jsonl"), "test")
+    journal.append("anchor", slot="refund", anchor="a" * 32, ts=INTENT_TS - 1)
+    journal.append("intent", slot="refund", anchor="a" * 32, amount=AMOUNT,
+                   scope="payments:refund", effect="payments.refund", ts=INTENT_TS)
+    journal.append("escalated", slot="refund", anchor="a" * 32,
+                   reason="opaque tier offers no post-hoc lookup", ts=INTENT_TS + 1)
     perms = PermissionStore(os.path.join(d, "perms.json"))
     perms.grant_all(["payments:refund", "credits:issue"])
     if revoke:
@@ -282,9 +293,6 @@ def test_completion_needs_a_live_permission(base: str) -> None:
     print("\ninvariant 2 holds through the adjudicator")
     store = _evidence(base, "settlement", COMPLETE, [])
     obs = _fetch_all(store, "settlement")
-    dossier = validate(
-        _slot(), Claim(verdict="absent", citations=[o.digest for o in obs]), obs
-    )
 
     issued: list[int] = []
 
@@ -293,6 +301,10 @@ def test_completion_needs_a_live_permission(base: str) -> None:
         return _Receipt(amount)
 
     _d, journal, perms = _wire(base, revoke="payments:refund")
+    dossier = validate(
+        escalated_slots(_d, ORDER)[0],
+        Claim(verdict="absent", citations=[o.digest for o in obs]), obs,
+    )
     applied = second_apply.apply_dossier(
         dossier, journal=journal, perms=perms, issue_effect=issue
     )
@@ -304,6 +316,10 @@ def test_completion_needs_a_live_permission(base: str) -> None:
           f"kinds={kinds}")
 
     _d, journal, perms = _wire(base)
+    dossier = validate(
+        escalated_slots(_d, ORDER)[0],
+        Claim(verdict="absent", citations=[o.digest for o in obs]), obs,
+    )
     applied = second_apply.apply_dossier(
         dossier, journal=journal, perms=perms, issue_effect=issue
     )
@@ -316,10 +332,11 @@ def test_completion_anchors_before_it_acts(base: str) -> None:
     print("\nthe adjudicator anchors its own effect before issuing it")
     store = _evidence(base, "settlement", COMPLETE, [])
     obs = _fetch_all(store, "settlement")
-    dossier = validate(
-        _slot(), Claim(verdict="absent", citations=[o.digest for o in obs]), obs
-    )
     _d, journal, perms = _wire(base)
+    dossier = validate(
+        escalated_slots(_d, ORDER)[0],
+        Claim(verdict="absent", citations=[o.digest for o in obs]), obs,
+    )
     order: list[str] = []
 
     def issue(amount: int):
@@ -358,9 +375,6 @@ def test_query_rung_issues_nothing(base: str) -> None:
     print("\nthe query rung creates nothing and needs no permission")
     store = _evidence(base, "settlement", COMPLETE, [_refund_record()])
     obs = _fetch_all(store, "settlement")
-    dossier = validate(
-        _slot(), Claim(verdict="committed", citations=[o.digest for o in obs]), obs
-    )
 
     def issue(_amount: int):
         raise AssertionError("the query rung must not issue an effect")
@@ -368,6 +382,10 @@ def test_query_rung_issues_nothing(base: str) -> None:
     # Every scope revoked. Reporting what already happened still works,
     # because it creates nothing.
     _d, journal, perms = _wire(base, revoke="payments:refund")
+    dossier = validate(
+        escalated_slots(_d, ORDER)[0],
+        Claim(verdict="committed", citations=[o.digest for o in obs]), obs,
+    )
     applied = second_apply.apply_dossier(
         dossier, journal=journal, perms=perms, issue_effect=issue
     )
@@ -399,6 +417,229 @@ def test_abstention_is_inert(base: str) -> None:
     kinds = [r["kind"] for r in journal.read()]
     check("an audit record is written", "adjudication_abstained" in kinds, f"{kinds}")
     check("but the anchor is not adjudicated", "adjudicated" not in kinds, f"{kinds}")
+
+
+def _absence_dossier(base: str, run_dir: str):
+    store = _evidence(base, "settlement", COMPLETE, [])
+    obs = _fetch_all(store, "settlement")
+    return validate(
+        escalated_slots(run_dir, ORDER)[0],
+        Claim(verdict="absent", citations=[o.digest for o in obs]), obs,
+    )
+
+
+def test_dossier_must_match_live_intent(base: str) -> None:
+    print("\na resolving dossier must be bound to the live halted intent")
+    run_dir, journal, perms = _wire(base)
+    dossier = _absence_dossier(base, run_dir)
+
+    def issue(_amount: int):
+        raise AssertionError("a mismatched dossier must not issue an effect")
+
+    bad = {
+        "unbound dossier": replace(dossier, journal_revision=None),
+        "wrong anchor": replace(dossier, anchor="b" * 32),
+        "wrong slot": replace(dossier, slot="credit"),
+        "wrong dossier amount": replace(dossier, amount_cents=AMOUNT + 1),
+        "wrong proposal amount": replace(
+            dossier, proposal=replace(dossier.proposal, amount_cents=AMOUNT + 1),
+        ),
+        "wrong proposal scope": replace(
+            dossier, proposal=replace(dossier.proposal, scope="credits:issue"),
+        ),
+    }
+    before = journal.read()
+    for name, candidate in bad.items():
+        result = second_apply.apply_dossier(
+            candidate, journal=journal, perms=perms, issue_effect=issue,
+        )
+        check(f"refuses {name}", result.action == second_apply.INCONSISTENT, result.note)
+    check("mismatches leave durable state unchanged", journal.read() == before)
+
+    empty = Journal(os.path.join(base, "empty-journal.jsonl"), "empty")
+    result = second_apply.apply_dossier(
+        dossier, journal=empty, perms=perms, issue_effect=issue,
+    )
+    check("refuses a journal with no halted slot",
+          result.action == second_apply.INCONSISTENT, result.note)
+
+    journal.append("escalated", slot="refund", anchor="b" * 32, reason="mismatched")
+    check("an escalation with a different anchor is not adjudicable",
+          not escalated_slots(run_dir, ORDER))
+
+
+def test_repeat_and_stale_dossiers_are_inert(base: str) -> None:
+    print("\nrepeated and stale dossiers cannot create another effect")
+    run_dir, journal, perms = _wire(base)
+    dossier = _absence_dossier(base, run_dir)
+    issued: list[int] = []
+
+    def issue(amount: int):
+        issued.append(amount)
+        return _Receipt(amount)
+
+    # Neither a failed permission check nor unrelated workflow/audit events
+    # change what could have happened to the refund slot.
+    perms.revoke("payments:refund")
+    denied = second_apply.apply_dossier(
+        dossier, journal=journal, perms=perms, issue_effect=issue,
+    )
+    check("permission denial still leaves a current dossier",
+          denied.action == second_apply.REFUSED
+          and escalated_slots(run_dir, ORDER)[0].journal_revision == dossier.journal_revision)
+    perms.grant_all(["payments:refund"])
+    journal.append("adjudication_abstained", slot="refund", anchor=dossier.anchor)
+    journal.append("attempt_start", runtime="anchored", replaying=True)
+    journal.append("intent", slot="credit", anchor="c" * 32, amount=100,
+                   scope="credits:issue")
+    first = second_apply.apply_dossier(
+        dossier, journal=journal, perms=perms, issue_effect=issue,
+    )
+    check("audit and unrelated records preserve a fresh completion",
+          first.action == second_apply.COMPLETED, first.note)
+    before = journal.read()
+    again = second_apply.apply_dossier(
+        dossier, journal=journal, perms=perms, issue_effect=issue,
+    )
+    check("repeating a completed dossier is refused",
+          again.action == second_apply.INCONSISTENT, again.note)
+    check("repeat created no effect or resolution record",
+          issued == [AMOUNT] and journal.read() == before, f"issued={issued}")
+
+    for kind in ("intent", "adjudication_intent", "settled", "resolved", "adjudicated"):
+        run_dir, journal, perms = _wire(base)
+        dossier = _absence_dossier(base, run_dir)
+        journal.append(kind, slot="refund", anchor=dossier.anchor, amount=AMOUNT,
+                       scope="payments:refund", ts=INTENT_TS)
+        before = journal.read()
+        count = len(issued)
+        result = second_apply.apply_dossier(
+            dossier, journal=journal, perms=perms, issue_effect=issue,
+        )
+        check(f"a newer {kind} invalidates an old dossier even at the same timestamp",
+              result.action == second_apply.INCONSISTENT
+              and len(issued) == count and journal.read() == before, result.note)
+
+
+def test_query_dossier_cannot_overwrite_new_state(base: str) -> None:
+    print("\na stale query cannot rewrite a slot's resolution")
+    run_dir, journal, perms = _wire(base)
+    store = _evidence(base, "settlement", COMPLETE, [_refund_record()])
+    obs = _fetch_all(store, "settlement")
+    dossier = validate(
+        escalated_slots(run_dir, ORDER)[0],
+        Claim(verdict="committed", citations=[o.digest for o in obs]), obs,
+    )
+    first = second_apply.apply_dossier(dossier, journal=journal, perms=perms)
+    before = journal.read()
+    again = second_apply.apply_dossier(dossier, journal=journal, perms=perms)
+    check("query closes once and its repeat leaves the resolution unchanged",
+          first.action == second_apply.CLOSED_FROM_EVIDENCE
+          and again.action == second_apply.INCONSISTENT and journal.read() == before)
+
+    run_dir, journal, perms = _wire(base)
+    dossier = validate(
+        escalated_slots(run_dir, ORDER)[0],
+        Claim(verdict="committed", citations=[o.digest for o in obs]), obs,
+    )
+    journal.append("adjudication_intent", slot="refund", anchor=dossier.anchor,
+                   amount=AMOUNT, scope="payments:refund", ts=INTENT_TS)
+    result = second_apply.apply_dossier(dossier, journal=journal, perms=perms)
+    check("a query prepared before a new attempt is refused",
+          result.action == second_apply.INCONSISTENT, result.note)
+
+
+def test_failed_completion_needs_fresh_evidence(base: str) -> None:
+    print("\nan ambiguous completion cannot reuse its old absence evidence")
+    for landed in (False, True):
+        run_dir, journal, perms = _wire(base)
+        dossier = _absence_dossier(base, run_dir)
+        issued: list[int] = []
+
+        def fails(amount: int, *, effect_landed=landed, effects=issued):
+            if effect_landed:
+                effects.append(amount)
+            raise ConnectionError("lost acknowledgement")
+
+        try:
+            second_apply.apply_dossier(
+                dossier, journal=journal, perms=perms, issue_effect=fails,
+            )
+        except ConnectionError:
+            pass
+        else:
+            check("the injected effect failure occurred", False)
+
+        # Reopen the journal, as a new process would after a crash. It knows
+        # an attempt was possible, but the effect's outcome is still unknown.
+        journal = Journal(journal.path, "restarted")
+
+        def succeeds(amount: int, *, effects=issued):
+            effects.append(amount)
+            return _Receipt(amount)
+
+        before = journal.read()
+        replay = second_apply.apply_dossier(
+            dossier, journal=journal, perms=perms, issue_effect=succeeds,
+        )
+        check(f"failed attempt (landed={landed}) refuses its old dossier on restart",
+              replay.action == second_apply.INCONSISTENT and journal.read() == before,
+              replay.note)
+        fresh_slot = escalated_slots(run_dir, ORDER)[0]
+        old_evidence = _absence_dossier(base, run_dir)
+        check(f"failed attempt (landed={landed}) makes the old report insufficient",
+              old_evidence.verdict is Verdict.ABSTAIN
+              and fresh_slot.intent_ts > INTENT_TS)
+
+        records = [_refund_record(ts=fresh_slot.intent_ts + 0.5)] if landed else []
+        coverage = {"kind": "complete_until", "cutoff_ts": fresh_slot.intent_ts + 100}
+        store = _evidence(base, "settlement", coverage, records)
+        obs = _fetch_all(store, "settlement")
+        fresh = validate(
+            fresh_slot,
+            Claim(verdict="committed" if landed else "absent",
+                  citations=[o.digest for o in obs]), obs,
+        )
+        result = second_apply.apply_dossier(
+            fresh, journal=journal, perms=perms, issue_effect=succeeds,
+        )
+        expected = second_apply.CLOSED_FROM_EVIDENCE if landed else second_apply.COMPLETED
+        check(f"fresh evidence (landed={landed}) safely resolves the new uncertainty",
+              result.action == expected and issued == [AMOUNT],
+              f"{result.note}; issued={issued}")
+
+
+def test_trusting_control_keeps_the_same_state_guard(base: str) -> None:
+    print("\nthe trusting control has state safety but still lacks evidence validation")
+    run_dir, journal, perms = _wire(base)
+    store = _evidence(base, "webhook", LOSSY, [])
+
+    class UnsupportedAbsence:
+        def propose_pointers(self, _view):
+            return []
+
+        def conclude(self, _view, _observations):
+            return Claim(verdict="absent", reasoning=["unsupported guess"])
+
+    dossier = adjudicate_trusting(
+        escalated_slots(run_dir, ORDER)[0], store, UnsupportedAbsence(),
+    )
+    issued: list[int] = []
+
+    def issue(amount: int):
+        issued.append(amount)
+        return _Receipt(amount)
+
+    first = second_apply.apply_dossier(
+        dossier, journal=journal, perms=perms, issue_effect=issue,
+    )
+    again = second_apply.apply_dossier(
+        dossier, journal=journal, perms=perms, issue_effect=issue,
+    )
+    check("the trusting baseline still acts on unsupported absence",
+          first.action == second_apply.COMPLETED and not dossier.citations, first.note)
+    check("but the same state guard prevents repeating its dossier",
+          again.action == second_apply.INCONSISTENT and issued == [AMOUNT], again.note)
 
 
 # --------------------------------------------------------------------------
@@ -462,6 +703,11 @@ def main() -> int:
         test_completion_anchors_before_it_acts(base)
         test_query_rung_issues_nothing(base)
         test_abstention_is_inert(base)
+        test_dossier_must_match_live_intent(base)
+        test_repeat_and_stale_dossiers_are_inert(base)
+        test_query_dossier_cannot_overwrite_new_state(base)
+        test_failed_completion_needs_fresh_evidence(base)
+        test_trusting_control_keeps_the_same_state_guard(base)
         test_end_to_end(base)
     finally:
         shutil.rmtree(base, ignore_errors=True)

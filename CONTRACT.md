@@ -173,6 +173,12 @@ Three properties make this safe to bolt onto a contract about money.
    resolution is strictly worse than no resolution, so every ambiguity in
    the pipeline resolves toward silence.
 
+Dossiers are scoped to the halted slot's relevant journal revision. Application
+rejects a changed slot, an already closed anchor, or a proposal that predates a
+new adjudication attempt. After an uncertain completion, fresh evidence must
+cover that newer attempt. These are sequential-use checks under the existing
+single-instance assumption; they do not coordinate concurrent executors.
+
 The guarantee is therefore unchanged in form. What changes is that the
 escalation in I3 is a floor rather than an endpoint: some halted anchors are
 closed from evidence, the rest stay halted. FINDINGS.md §8 measures both,
