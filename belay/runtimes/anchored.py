@@ -165,6 +165,25 @@ def recover(ctx: Ctx) -> Outcome:
             notes=[f"escalated slots awaiting a human: {sorted(st.escalated)}"],
         )
 
+    missing = [slot for slot in SLOTS if slot not in st.anchors]
+    unanchored_effects = [slot for slot in missing
+                         if slot in st.intents or slot in st.settled]
+    if unanchored_effects:
+        j.append("escalated", reason="effect record without a journaled anchor",
+                 slots=unanchored_effects)
+        return Outcome(Status.ESCALATED, notes=["journal inconsistent; halted"])
+
+    # An anchor is an identity, not an effect. In a valid journal, a slot
+    # without an anchor cannot have an intent: intents carry the previously
+    # allocated anchor and precede every external call. Thus no effect can
+    # exist against the identity minted here. Reject inconsistent evidence
+    # above, then finish interrupted allocation before any forward progress.
+    # Existing anchors are never re-minted, including after another crash.
+    for slot in missing:
+        anchor = uuid.uuid4().hex
+        j.append("anchor", slot=slot, anchor=anchor, allocation_recovered=True)
+        st.anchors[slot] = anchor
+
     # Rule 2, first half: reconcile everything in flight before moving.
     for slot in st.ambiguous_slots():
         intent = st.intents[slot]
