@@ -77,6 +77,12 @@ a dossier also requires its bound journal state to remain current.
 
 ## Boundary for the proposed autonomous app
 
+[INTERNAL_PAYMENT_PROTOCOL.md](INTERNAL_PAYMENT_PROTOCOL.md) develops this
+boundary into proposed API, record, interlock and adapter contracts. Its
+`/internal/v1` routes and conditional-payment modes are not implemented by
+the existing lab or simulator. They require the production integrations and
+merchant agreements described there.
+
 The future app should expose one controlled action submission boundary. The
 planner supplies a proposal; the authority service validates it and the
 executor records and performs the permitted operation. This is an extension

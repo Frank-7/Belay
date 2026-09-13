@@ -16,6 +16,11 @@ This supersedes the earlier blueprint's per-purchase approval default. The
 architecture requires neither a custom smart contract nor a service that
 holds customer funds pending delivery.
 
+The [internal payment protocol](INTERNAL_PAYMENT_PROTOCOL.md) specifies API
+boundaries, funds control, reservation interlocks and failure handling.
+Ordinary merchant checkout is the initial path; conditional capture or seller
+transfers require a participating merchant and a supported payment arrangement.
+
 ## System responsibilities
 
 ```mermaid

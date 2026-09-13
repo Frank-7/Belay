@@ -6,6 +6,7 @@ Read these in order. Product plans describe proposed work, not live capabilities
 |---|---|---|
 | [Public website](WEBSITE.md) | GitHub Pages site | Preview, build and publish the product introduction and recorded demo |
 | [Autonomous app architecture](AUTONOMOUS_APP_ARCHITECTURE.md) | Current product direction | Advance delegation, protected execution and connected services |
+| [Internal payment protocol](INTERNAL_PAYMENT_PROTOCOL.md) | Proposed implementation contract | API and wallet roles, funds control, atomic reservations, conditional release and failure scenarios |
 | [Integration guide](INTEGRATION.md) | Repository boundaries and extension contract | How the existing runtime, adjudicator, lab and proposed services fit |
 | [Subscription and guarantee proposal](SUBSCRIPTION_GUARANTEE.md) | Internal proposal only | Customer offer, potential remedies, loss prevention and economics |
 | [Recovery and guarantee decision](RECOVERY_AND_GUARANTEE_DECISION.md) | Selected architecture | Refunds, blockchain limits and who should carry losses |
