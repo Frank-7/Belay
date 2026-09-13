@@ -147,6 +147,7 @@ and report separate from the video.
 
 A live OpenAI run needs explicitly configured credentials, model and quota.
 A real test-network run needs faucet tokens, a compatible browser wallet and a
-person's signature. Do not substitute a mock and label it live. No real-money
-purchase is needed to demonstrate either path. If either dependency is
+person's signature. Do not substitute a mock and label it live. The test-wallet
+path requires no real-money purchase; live model requests use the configured
+provider's credits or quota. If either dependency is
 unavailable, use the working offline path and state the remaining limitation.

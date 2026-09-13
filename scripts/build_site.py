@@ -250,6 +250,11 @@ def bind_evidence(html: str, evidence: dict) -> str:
 
 def check_local_links(output: Path) -> None:
     """Catch missing assets and root-relative URLs before publishing a project site."""
+    # Resolve both sides of the containment check. Windows temporary paths may
+    # use an 8.3 alias (RUNNER~1) while target.resolve() expands its long name;
+    # comparing that target with the unresolved root falsely reports an escape.
+    output = output.resolve()
+
     class Links(HTMLParser):
         def __init__(self):
             super().__init__()

@@ -1,6 +1,7 @@
 """The public operator walkthrough cannot silently become a live executor."""
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -32,6 +33,41 @@ class OperatorExportTests(unittest.TestCase):
             self.assertIn('src="recorded.js"', (path / "index.html").read_text(encoding="utf-8"))
             self.assertFalse((path / "wallet.js").exists())
             check_local_links(path)
+
+    def test_unresolved_build_root_preserves_link_containment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            output = root / "published"
+            (output / "detour").mkdir(parents=True)
+            (output / "app.js").write_text("// public asset", encoding="utf-8")
+            index = output / "index.html"
+            index.write_text('<script src="app.js"></script>', encoding="utf-8")
+            check_local_links(output / "detour" / "..")
+            (root / "private.js").write_text("// outside the output", encoding="utf-8")
+            index.write_text('<script src="../private.js"></script>', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "escapes the build output"):
+                check_local_links(output / "detour" / "..")
+
+    def test_aliased_build_root_does_not_reject_its_own_assets(self):
+        with tempfile.TemporaryDirectory(prefix="belay-export-path-") as directory:
+            root = Path(directory).resolve()
+            output = root / "published-operator-recording"
+            output.mkdir()
+            (output / "app.js").write_text("// public asset", encoding="utf-8")
+            (output / "index.html").write_text('<script src="app.js"></script>', encoding="utf-8")
+            if os.name == "nt":
+                import ctypes
+
+                buffer = ctypes.create_unicode_buffer(32768)
+                size = ctypes.windll.kernel32.GetShortPathNameW(str(output), buffer, len(buffer))
+                if not size or Path(buffer.value) == output:
+                    self.skipTest("8.3 short path aliases are unavailable on this volume")
+                alias = Path(buffer.value)
+            else:
+                alias = root / "published-alias"
+                alias.symlink_to(output, target_is_directory=True)
+            self.assertNotEqual(alias, alias.resolve())
+            check_local_links(alias)
 
 
 if __name__ == "__main__":
