@@ -19,6 +19,12 @@ account is needed. The server listens on loopback only. Use a single server
 process per data directory. This source-tree application is not included in
 the existing Python distribution, matching the Recovery Lab packaging boundary.
 
+On Windows, you can double-click `Start-Belay-Simulator.cmd` in the repository
+folder. Leave its terminal window open while using the app. The launcher uses
+the installed Codex Python runtime when available, otherwise `py -3` or
+`python`, and stores demo runs in `.belay-purchase-simulator/demo-v1/`.
+This is a local app: the browser URL works only while its server is running.
+
 The application stores its state under `.belay-purchase-simulator/`, separate
 from the Recovery Lab and research evidence. To use another isolated data
 directory, pass `--data-dir PATH`. Reloading the browser resumes its most
