@@ -1,0 +1,85 @@
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "scripts/build_site.py"
+      - "tests/test_build_site.py"
+      - "tests/test_site_ui.mjs"
+      - "viewer/**"
+      - "belay/**"
+      - "second/**"
+      - "services/**"
+      - "experiments/**"
+      - "worker.py"
+      - "results/**"
+      - "CONTRACT.md"
+      - "FINDINGS.md"
+      - "docs/WEBSITE.md"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "site/**"
+      - "scripts/build_site.py"
+      - "tests/test_build_site.py"
+      - "tests/test_site_ui.mjs"
+      - "viewer/**"
+      - "belay/**"
+      - "second/**"
+      - "services/**"
+      - "experiments/**"
+      - "worker.py"
+      - "results/**"
+      - "CONTRACT.md"
+      - "FINDINGS.md"
+      - "docs/WEBSITE.md"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify publication boundaries and evidence
+        run: python3 tests/test_build_site.py
+      - name: Verify the interactive walkthrough (offline)
+        run: node --test tests/test_site_ui.mjs
+      - name: Build the site and recorded sandbox Recovery Desk
+        run: python3 scripts/build_site.py --out _site
+      - name: Upload the static site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Deploy the built artifact
+        id: deployment
+        uses: actions/deploy-pages@v4

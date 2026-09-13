@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f5f0" />
+    <meta
+      name="description"
+      content="Give your agents a safety line. Explore Belay's open-source research into durable intent, evidence-based recovery, and permission-aware actions."
+    />
+    <meta
+      property="og:title"
+      content="Belay — Give your agents a safety line."
+    />
+    <meta
+      property="og:description"
+      content="Preserve the intent. Understand the outcome. Recover with evidence. Explore the open-source research preview."
+    />
+    <meta property="og:type" content="website" />
+    <title>Belay — Give your agents a safety line.</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="assets/fonts/manrope.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="assets/site.css" />
+    <script src="assets/site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="wordmark" href="#" aria-label="Belay home"
+        ><svg class="brand-icon" viewBox="0 0 36 40" aria-hidden="true">
+          <path
+            d="M12 5v29h8c12 0 12-15 0-15H12m0 0h7c11 0 11-14 0-14h-7"
+          /></svg
+        >belay<span class="wordmark-period">.</span></a
+      >
+      <button
+        class="menu-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="main-nav"
+      >
+        <span>Menu</span
+        ><svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M3 6h14M3 14h14" />
+        </svg>
+      </button>
+      <nav id="main-nav" class="main-nav" aria-label="Main navigation">
+        <a href="#how-it-works">How it works</a
+        ><a href="#evidence">The evidence</a><a href="#build">Build with us</a>
+      </nav>
+      <a class="header-cta" href="https://github.com/Frank-7/Belay"
+        >Explore GitHub <span aria-hidden="true">↗</span></a
+      >
+    </header>
+
+    <main id="main">
+      <section class="hero section-shell" aria-labelledby="hero-title">
+        <div class="eyebrow hero-eyebrow">
+          <span class="status-dot"></span> OPEN-SOURCE RESEARCH PREVIEW
+        </div>
+        <h1 id="hero-title">
+          Give your agents<br />a
+          <span class="hero-emphasis">safety line.</span>
+        </h1>
+        <p class="hero-description">
+          Agents take action. Things go wrong.<br />Belay saves the original
+          intent, checks what happened,<br class="desktop-break" />
+          and knows when to stop.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-dark" href="#demo"
+            >See recovery in action <span aria-hidden="true">↓</span></a
+          ><a class="text-link" href="https://github.com/Frank-7/Belay"
+            >Explore the project <span aria-hidden="true">↗</span></a
+          >
+        </div>
+
+        <div
+          class="hero-art"
+          role="img"
+          aria-label="A luminous safety line connects three concepts: intent saved, outcome uncertain, and recovery grounded in evidence."
+        >
+          <div class="art-caption">
+            <span class="micro-label">THE IDEA BEHIND BELAY</span>
+            <p>Room to act.<br />A way back.</p>
+          </div>
+          <svg
+            class="rope-art"
+            viewBox="0 0 1200 470"
+            fill="none"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient
+                id="rope-gradient"
+                x1="330"
+                y1="100"
+                x2="870"
+                y2="440"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stop-color="#f1ffb8" />
+                <stop offset=".27" stop-color="#d9ff73" />
+                <stop offset=".59" stop-color="#b5d940" />
+                <stop offset="1" stop-color="#e9ff91" />
+              </linearGradient>
+              <linearGradient id="rope-highlight" x1="0" y1="0" x2="0" y2="1">
+                <stop stop-color="#fff" stop-opacity=".5" />
+                <stop offset="1" stop-color="#fff" stop-opacity="0" />
+              </linearGradient>
+              <filter
+                id="rope-shadow"
+                x="-40%"
+                y="-40%"
+                width="200%"
+                height="200%"
+              >
+                <feGaussianBlur stdDeviation="16" />
+              </filter>
+              <pattern
+                id="art-dots"
+                width="24"
+                height="24"
+                patternUnits="userSpaceOnUse"
+              >
+                <circle cx="1" cy="1" r=".7" fill="#eaffc1" opacity=".18" />
+              </pattern>
+            </defs>
+            <rect width="1200" height="470" fill="url(#art-dots)" />
+            <path
+              d="M294 372C145 295 296 104 448 145C634 195 838 192 828 326C819 449 538 417 572 256C594 150 674 40 847 100"
+              stroke="#041e12"
+              stroke-width="82"
+              stroke-linecap="round"
+              filter="url(#rope-shadow)"
+              transform="translate(20 28)"
+              opacity=".45"
+            />
+            <path
+              d="M294 372C145 295 296 104 448 145C634 195 838 192 828 326C819 449 538 417 572 256C594 150 674 40 847 100"
+              stroke="url(#rope-gradient)"
+              stroke-width="65"
+              stroke-linecap="round"
+            />
+            <path
+              d="M294 350C185 290 304 111 448 124C634 174 838 172 808 324C799 405 559 387 595 257C615 161 685 64 847 81"
+              stroke="#f4ffc6"
+              stroke-opacity=".34"
+              stroke-width="4"
+              stroke-linecap="round"
+            />
+            <path
+              d="M884 337h167m-89-151h114M156 415h143"
+              stroke="#d2e7b4"
+              stroke-opacity=".23"
+              stroke-dasharray="3 7"
+            />
+            <circle cx="1051" cy="337" r="4" fill="#dfff94" />
+            <circle cx="156" cy="415" r="4" fill="#dfff94" />
+          </svg>
+          <div class="art-note note-intent">
+            <span class="note-symbol" aria-hidden="true">↗</span>
+            <div>
+              <span class="micro-label">01 / INTENT SAVED</span
+              ><strong>Refund $50.00</strong>
+            </div>
+            <span class="tiny-check" aria-hidden="true">✓</span>
+          </div>
+          <div class="art-note note-uncertain">
+            <span class="note-symbol" aria-hidden="true">?</span>
+            <div>
+              <span class="micro-label">02 / RECEIPT MISSING</span
+              ><strong>What actually happened?</strong>
+            </div>
+          </div>
+          <div class="art-note note-recovered">
+            <span class="note-symbol" aria-hidden="true">✓</span>
+            <div>
+              <span class="micro-label">03 / VERIFY BEFORE RETRY</span
+              ><strong>Same intent. Better evidence.</strong>
+            </div>
+          </div>
+          <div class="art-footer">
+            <span>Anchor first. Recover with evidence.</span
+            ><span>FIG. 001 <span aria-hidden="true">↗</span></span>
+          </div>
+        </div>
+        <div class="hero-footnote">
+          <span>Built in the open. Tested under interruption.</span
+          ><a href="#evidence"
+            >Inspect the evidence <span aria-hidden="true">↗</span></a
+          >
+        </div>
+      </section>
+
+      <section
+        class="intro section-shell"
+        id="how-it-works"
+        aria-labelledby="intro-title"
+      >
+        <div class="section-kicker">
+          <span class="section-number">01</span> THE MOMENT THAT MATTERS
+        </div>
+        <div class="intro-grid">
+          <h2 id="intro-title">
+            The request went out.<br />The answer didn’t<br />make it back.
+          </h2>
+          <div class="intro-copy">
+            <p class="lead">
+              Did the action fail?<br />Or did just the reply fail?
+            </p>
+            <p>
+              For an agent moving money or changing a system, that distinction
+              matters. A retry can create a second action. A changed decision
+              can lose the original intent.
+            </p>
+            <p>
+              Belay explores a different discipline: give the action a durable
+              identity before the decision, then recover against that same
+              identity.
+            </p>
+            <a
+              class="text-link"
+              href="https://github.com/Frank-7/Belay/blob/main/CONTRACT.md"
+              >Read the execution contract <span aria-hidden="true">↗</span></a
+            >
+          </div>
+        </div>
+        <div class="principles">
+          <article>
+            <div class="principle-icon" aria-hidden="true">⌁</div>
+            <span class="micro-label">BEFORE THE ACTION</span>
+            <h3>Anchor the intent.</h3>
+            <p>
+              Give an effect its identity before the agent decides. A restart
+              shouldn’t invent a new action.
+            </p>
+          </article>
+          <article>
+            <div class="principle-icon" aria-hidden="true">⌕</div>
+            <span class="micro-label">AFTER AN INTERRUPTION</span>
+            <h3>Follow the evidence.</h3>
+            <p>
+              Look for what happened to the original operation. A model’s
+              conclusion still needs verification.
+            </p>
+          </article>
+          <article>
+            <div class="principle-icon" aria-hidden="true">⏸</div>
+            <span class="micro-label">AT THE NEXT STEP</span>
+            <h3>Know when to stop.</h3>
+            <p>
+              Recheck permission before a new effect. If the outcome cannot be
+              established, keep it unknown.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="demo-section" id="demo" aria-labelledby="demo-title">
+        <div class="section-shell">
+          <div class="section-kicker">
+            <span class="section-number">02</span> PUT RECOVERY TO THE TEST
+          </div>
+          <div class="section-heading">
+            <h2 id="demo-title">
+              A small refund.<br />A revealing interruption.
+            </h2>
+            <p>
+              Walk through a $50 refund on a $100 order.<br />See what happens
+              when certainty disappears.
+            </p>
+          </div>
+          <div class="demo-workbench">
+            <div class="demo-toolbar">
+              <div class="demo-label">
+                <span class="status-dot"></span> RECOVERY WALKTHROUGH
+              </div>
+              <span class="simulation-label"
+                >Browser simulation · fictional money</span
+              >
+            </div>
+            <fieldset class="scenario-control">
+              <legend>Choose an interruption</legend>
+              <label
+                ><input
+                  type="radio"
+                  name="scenario"
+                  value="lost"
+                  checked
+                /><span
+                  >Lost receipt <span aria-hidden="true">↗</span></span
+                ></label
+              ><label
+                ><input type="radio" name="scenario" value="revoked" /><span
+                  >Permission revoked <span aria-hidden="true">↗</span></span
+                ></label
+              ><label
+                ><input type="radio" name="scenario" value="opaque" /><span
+                  >No provider evidence <span aria-hidden="true">↗</span></span
+                ></label
+              >
+            </fieldset>
+            <div class="demo-body">
+              <div class="demo-story">
+                <div class="demo-step-label micro-label" id="step-label">
+                  STEP 01 / THE ORIGINAL INTENT
+                </div>
+                <h3 id="demo-headline">One order.<br />One $50 refund.</h3>
+                <p id="demo-explanation">
+                  The agent’s original intent is saved under a stable identity.
+                  No refund has been sent yet.
+                </p>
+                <div class="intent-ticket">
+                  <div><span>ORIGINAL INTENT</span><strong>$50.00</strong></div>
+                  <div class="ticket-anchor">
+                    <span>OPERATION ID</span><code>refund_8f2a</code
+                    ><span class="ticket-lock" aria-label="Identity saved"
+                      >↳ saved before action</span
+                    >
+                  </div>
+                </div>
+                <div class="demo-buttons">
+                  <button
+                    id="demo-next"
+                    class="button button-dark"
+                    type="button"
+                  >
+                    Show the interruption
+                    <span aria-hidden="true">→</span></button
+                  ><button
+                    id="demo-reset"
+                    class="reset-button"
+                    type="button"
+                    aria-label="Restart the walkthrough"
+                  >
+                    ↺ <span>Restart</span>
+                  </button>
+                </div>
+                <p class="demo-caveat">
+                  Scripted examples, not a live payment system. The provider
+                  behavior is deliberately simplified.
+                </p>
+              </div>
+              <div class="demo-comparison" aria-label="Recovery strategies">
+                <article class="strategy strategy-belay">
+                  <div class="strategy-top">
+                    <span class="strategy-name"
+                      ><svg viewBox="0 0 36 40" aria-hidden="true">
+                        <path
+                          d="M12 5v29h8c12 0 12-15 0-15H12m0 0h7c11 0 11-14 0-14h-7"
+                        /></svg
+                      >With Belay</span
+                    ><span class="strategy-badge" data-status="belay"
+                      >Ready</span
+                    >
+                  </div>
+                  <div class="strategy-value">
+                    <span data-total="belay">$0</span
+                    ><span>observer ledger total</span>
+                  </div>
+                  <p data-detail="belay">
+                    Original identity and intent are saved.
+                  </p>
+                </article>
+                <article class="strategy">
+                  <div class="strategy-top">
+                    <span class="strategy-name">Fresh-key retry</span
+                    ><span class="strategy-badge" data-status="naive"
+                      >Ready</span
+                    >
+                  </div>
+                  <div class="strategy-value">
+                    <span data-total="naive">$0</span
+                    ><span>observer ledger total</span>
+                  </div>
+                  <p data-detail="naive">
+                    This baseline makes a new decision on retry.
+                  </p>
+                </article>
+                <article class="strategy">
+                  <div class="strategy-top">
+                    <span class="strategy-name">Stable provider key</span
+                    ><span class="strategy-badge" data-status="stable"
+                      >Ready</span
+                    >
+                  </div>
+                  <div class="strategy-value">
+                    <span data-total="stable">$0</span
+                    ><span>observer ledger total</span>
+                  </div>
+                  <p data-detail="stable">
+                    The original request and key are retained.
+                  </p>
+                </article>
+              </div>
+            </div>
+            <div class="demo-bottom">
+              <span id="demo-evidence"
+                >A durable identity keeps the original operation in view.</span
+              ><span class="step-dots" aria-hidden="true"
+                ><i class="active"></i><i></i><i></i
+              ></span>
+            </div>
+            <p
+              id="demo-announcement"
+              class="sr-only"
+              aria-live="polite"
+              aria-atomic="true"
+            ></p>
+          </div>
+          <div class="demo-afterword">
+            <p>
+              Want the underlying experiment? Inspect a recording from real
+              process crashes and synthetic payments.
+            </p>
+            <a class="text-link" href="recovery-desk.html"
+              >Open the recorded Recovery Desk
+              <span aria-hidden="true">↗</span></a
+            >
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="evidence-section section-shell"
+        id="evidence"
+        aria-labelledby="evidence-title"
+      >
+        <div class="section-kicker">
+          <span class="section-number">03</span> SHOW THE WORK
+        </div>
+        <div class="section-heading">
+          <h2 id="evidence-title">
+            Trust should come<br />with a paper trail.
+          </h2>
+          <p>
+            Inspectable code. Retained results.<br />Clear boundaries around
+            every claim.
+          </p>
+        </div>
+        <div class="evidence-grid">
+          <article class="metric">
+            <span class="micro-label">CRASH-MATRIX EXPERIMENT</span>
+            <div class="metric-value" id="metric-crashes">960</div>
+            <h3>Confirmed process crashes.</h3>
+            <p>
+              Real SIGKILL interruptions across four research runtimes, using
+              synthetic services.
+            </p>
+            <a
+              href="https://github.com/Frank-7/Belay/blob/main/results/matrix.json"
+              data-source="matrix"
+              >Inspect the trial log <span aria-hidden="true">↗</span></a
+            >
+          </article>
+          <article class="metric">
+            <span class="micro-label">ANCHORED RUNTIME</span>
+            <div class="metric-value">
+              <span id="metric-violations">0</span
+              ><span class="metric-denominator">
+                / <span id="metric-trials">240</span></span
+              >
+            </div>
+            <h3>Observed contract violations.</h3>
+            <p>
+              In the committed synthetic crash matrix. A measured result under a
+              defined contract.
+            </p>
+            <a
+              href="https://github.com/Frank-7/Belay/blob/main/FINDINGS.md"
+              data-source="writeup"
+              >Read the findings <span aria-hidden="true">↗</span></a
+            >
+          </article>
+          <article class="metric">
+            <span class="micro-label">VALIDATED ADJUDICATION</span>
+            <div class="metric-value">
+              <span id="metric-resolved">90</span
+              ><span class="metric-denominator">
+                / <span id="metric-adjudications">200</span></span
+              >
+            </div>
+            <h3>Cases resolved from evidence.</h3>
+            <p>
+              <span id="metric-false">0</span> false resolutions in this
+              recorded set. Another <span id="metric-abstained">110</span> cases
+              stayed unresolved.
+            </p>
+            <a
+              href="https://github.com/Frank-7/Belay/blob/main/results/adjudication.json"
+              data-source="adjudication"
+              >Examine the evidence <span aria-hidden="true">↗</span></a
+            >
+          </article>
+        </div>
+        <div class="evidence-note">
+          <span class="note-cross" aria-hidden="true">+</span>
+          <p>
+            Research results, not customer loss rates or production guarantees.
+            Single-instance execution, mock-provider contracts, and known
+            limitations apply.
+            <a href="https://github.com/Frank-7/Belay/blob/main/docs/REVIEW.md"
+              >Read the limitations.</a
+            >
+          </p>
+        </div>
+        <div class="research-update">
+          <span class="micro-label">A RESULT WORTH SAYING OUT LOUD</span>
+          <div>
+            <h3>The model didn’t change its decision.</h3>
+            <p>
+              Five separately measured 50-response samples found no
+              within-sample decision disagreement. We kept the null result.
+              Measuring how often decisions vary is a different question from
+              recovering an uncertain action.
+            </p>
+          </div>
+          <a
+            class="round-link"
+            href="https://github.com/Frank-7/Belay/blob/main/FINDINGS.md#10-live-decision-divergence"
+            aria-label="Read the live decision-divergence study"
+            >↗</a
+          >
+        </div>
+      </section>
+
+      <section class="build-section" id="build" aria-labelledby="build-title">
+        <div class="section-shell">
+          <div class="section-kicker">
+            <span class="section-number">04</span> THE NEXT CLIMB
+          </div>
+          <div class="section-heading">
+            <h2 id="build-title">
+              Build what comes next.<br />Bring a safety line.
+            </h2>
+            <p>
+              Start with the open-source research.<br />Help shape the path to a
+              real integration.
+            </p>
+          </div>
+          <div class="build-grid">
+            <article class="build-card build-developer">
+              <span class="card-index">FOR BUILDERS</span>
+              <h3>Get your hands<br />on the pattern.</h3>
+              <p>
+                Run the local Recovery Lab. Explore the code. Bring a provider
+                or a workflow that challenges the assumptions.
+              </p>
+              <div class="code-block">
+                <div class="code-top">
+                  <span>PYTHON 3.10+ · LOCAL DEMO</span
+                  ><button
+                    id="copy-command"
+                    type="button"
+                    aria-label="Copy local setup commands"
+                  >
+                    Copy <span aria-hidden="true">⧉</span>
+                  </button>
+                </div>
+                <pre><code id="setup-command">git clone https://github.com/Frank-7/Belay.git
+cd Belay
+python -m prototype.server --port 8765</code></pre>
+                <a
+                  href="https://github.com/Frank-7/Belay/blob/main/docs/PROTOTYPE.md"
+                  >Then open 127.0.0.1:8765
+                  <span aria-hidden="true">↗</span></a
+                >
+              </div>
+              <a class="text-link" href="https://github.com/Frank-7/Belay"
+                >Explore the repository <span aria-hidden="true">↗</span></a
+              >
+              <p id="copy-status" class="sr-only" aria-live="polite"></p>
+            </article>
+            <article class="build-card build-partner">
+              <span class="card-index">FOR OPERATORS & PARTNERS</span>
+              <h3>Bring the moment<br />you can’t afford<br />to get wrong.</h3>
+              <p>
+                A refund with a missing receipt. A permission that changes
+                mid-flight. An action whose outcome nobody can establish. Help
+                us find the right first integration.
+              </p>
+              <a
+                class="button button-dark"
+                data-contact="pilot"
+                href="https://github.com/Frank-7/Belay/issues/new?title=Discuss%20a%20Belay%20pilot&amp;body=I%27d%20like%20to%20discuss%20a%20workflow%20where%20recovery%20matters.%0A%0AWorkflow%3A%0AProvider%3A%0AWhat%20happens%20when%20the%20outcome%20is%20uncertain%3A"
+                >Discuss a pilot <span aria-hidden="true">↗</span></a
+              ><span class="contact-note">Start a conversation on GitHub.</span>
+            </article>
+          </div>
+          <div class="roadmap">
+            <div>
+              <span class="micro-label">AVAILABLE NOW</span>
+              <p>
+                Local Recovery Lab<br />Recorded evidence desk<br />Open
+                experiment results
+              </p>
+            </div>
+            <div>
+              <span class="micro-label">THE NEXT MILESTONE</span>
+              <p>
+                One provider integration<br />A controlled action boundary<br />Recovery
+                under realistic uncertainty
+              </p>
+            </div>
+            <div class="roadmap-investor">
+              <span class="micro-label">FOR THE LONG VIEW</span>
+              <p>
+                Interested in the infrastructure<br />behind reliable agent
+                actions?
+              </p>
+              <a
+                class="text-link"
+                data-contact="investor"
+                href="https://github.com/Frank-7/Belay/issues/new?title=Belay%20partnership%20or%20investment%20conversation&amp;body=I%27d%20like%20to%20learn%20more%20about%20Belay%27s%20direction.%0A%0AArea%20of%20interest%3A"
+                >Let’s talk about what’s next
+                <span aria-hidden="true">↗</span></a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="closing section-shell" aria-labelledby="closing-title">
+        <svg class="closing-mark" viewBox="0 0 36 40" aria-hidden="true">
+          <path d="M12 5v29h8c12 0 12-15 0-15H12m0 0h7c11 0 11-14 0-14h-7" />
+        </svg>
+        <p class="micro-label">MORE CAPABLE AGENTS. MORE DELIBERATE ACTIONS.</p>
+        <h2 id="closing-title">The next step<br />deserves a safety line.</h2>
+        <a class="button button-dark" href="#demo"
+          >Take Belay for a climb <span aria-hidden="true">↑</span></a
+        >
+      </section>
+    </main>
+    <footer class="site-footer section-shell">
+      <div>
+        <a class="wordmark" href="#" aria-label="Belay home"
+          >belay<span class="wordmark-period">.</span></a
+        >
+        <p>Anchor first. Recover with evidence.</p>
+      </div>
+      <nav aria-label="Footer navigation">
+        <a href="https://github.com/Frank-7/Belay">GitHub ↗</a
+        ><a href="https://github.com/Frank-7/Belay/blob/main/docs/INDEX.md"
+          >Documentation ↗</a
+        ><a href="https://github.com/Frank-7/Belay/blob/main/LICENSE"
+          >MIT license ↗</a
+        >
+      </nav>
+      <span class="footer-status"
+        ><span class="status-dot"></span> Built in the open · Research
+        preview</span
+      >
+    </footer>
+  </body>
+</html>
