@@ -20,6 +20,10 @@ same JSON file before collecting a different configuration. Use
 --output-mode explanation permits a brief explanation before a final
 Decision: <label> line. --max-calls caps new HTTP attempts in this invocation;
 use --resume to continue a capped run. No model is substituted automatically.
+HTTP 503s use bounded exponential backoff (--retries-503, --retry-backoff).
+Every failed attempt is saved and counts toward --max-calls. Other errors,
+including quota errors, stop immediately. JSON mode accepts a single outer
+Markdown JSON fence; archived parses are not changed retrospectively.
 
 The primary rate treats unparseable as a third category. A second rate
 conditions explicitly on parseable decisions. The all-pairs estimator is
@@ -109,9 +113,9 @@ def unique_object(pairs: list[tuple]) -> dict:
 
 
 def parse_decision(raw: str | None, output_mode: str = "json") -> str:
-    """Strict, auditable: exact label, JSON string, or {decision: label}.
+    """Exact label, JSON string, or {decision: label}, optionally JSON-fenced.
 
-    Whitespace is ignored. Prose, fences, extra keys, conflicting answers,
+    Whitespace is ignored. Prose, extra keys, conflicting answers,
     duplicate keys, nonstrings and unknown labels are unparseable.
     """
     if not isinstance(raw, str):
@@ -130,6 +134,10 @@ def parse_decision(raw: str | None, output_mode: str = "json") -> str:
         raise ValueError("unknown output mode")
     if value in LABELS[:2]:
         return value
+    fence = re.fullmatch(r"```(?:json)?[ \t]*\r?\n(.*?)\r?\n```", value,
+                         re.DOTALL | re.IGNORECASE)
+    if fence:
+        value = fence.group(1)
     try:
         value = json.loads(value, object_pairs_hook=unique_object)
     except (ValueError, TypeError):
@@ -301,6 +309,10 @@ def main() -> int:
                     help="fixed system instruction and parser; no API-enforced output schema")
     ap.add_argument("--max-calls", type=int,
                     help="cap new HTTP attempts in this invocation; stopped runs can be resumed")
+    ap.add_argument("--retries-503", type=int, default=3,
+                    help="maximum additional attempts after consecutive HTTP 503s (0-10)")
+    ap.add_argument("--retry-backoff", type=float, default=15,
+                    help="initial 503 retry delay in seconds; doubles up to 60 seconds")
     ap.add_argument("--omit-store", action="store_true",
                     help="omit the OpenAI store field for providers that reject it, such as Gemini")
     ap.add_argument("--timeout", type=float, default=60)
@@ -316,6 +328,10 @@ def main() -> int:
         ap.error("--reps must be >= 2 and --max-completion-tokens must be positive")
     if args.max_calls is not None and args.max_calls < 1:
         ap.error("--max-calls must be positive")
+    if not 0 <= args.retries_503 <= 10:
+        ap.error("--retries-503 must be between 0 and 10")
+    if not math.isfinite(args.retry_backoff) or not 0 < args.retry_backoff <= 60:
+        ap.error("--retry-backoff must be positive, finite, and at most 60 seconds")
     if not math.isfinite(args.timeout) or args.timeout <= 0:
         ap.error("--timeout must be positive and finite")
     if not math.isfinite(args.min_interval) or args.min_interval < 0:
@@ -333,7 +349,7 @@ def main() -> int:
               "max_completion_tokens": args.max_completion_tokens,
               "reasoning_effort": args.reasoning_effort,
               "system_prompt": system_prompt, "prompts": PROMPTS,
-              "parser": ("strict-label-or-single-key-json-v1" if args.output_mode == "json"
+              "parser": ("label-or-single-key-json-with-fences-v2" if args.output_mode == "json"
                          else "explanation-final-decision-line-v1")}
     conditions = []
     for prompt in dict.fromkeys(args.prompts):
@@ -358,12 +374,13 @@ def main() -> int:
             "script_sha256": digest(Path(__file__).read_bytes()),
             "conditions": conditions,
             "method": {
-                "sampling": "one fresh stateless HTTP request per invocation; byte-identical body within each condition; no fixed seed, retries, history, output cache, or adaptive prompts",
+                "sampling": "fresh stateless HTTP requests; byte-identical body within each condition, including 503 retries; no fixed seed, history, output cache, or adaptive prompts",
                 "scheduling": "first condition completed first as pilot; remaining conditions interleaved by repetition",
                 "divergence": "1 - sum(c_i*(c_i-1))/(n*(n-1)); all three parse categories; n is model responses, not pairs",
                 "parseable_decision_divergence": "same estimator restricted explicitly to the two valid decisions",
                 "unparseable": "invalid decision format, refusal, or non-stop finish; retained in primary denominator",
-                "api_errors": "retained separately; stop immediately without replacing a failed call",
+                "api_errors": "every failed attempt retained separately; bounded backoff retries only for HTTP 503; all attempts count toward the invocation call cap; other errors stop immediately",
+                "json_parser": "exact label, JSON string, or single-key decision object; a single outer Markdown fence with json or no language tag is accepted; extra keys and duplicate keys remain invalid",
                 "output_instruction": args.output_mode,
                 "decoding": "output format is requested in system text only; no response_format, schema, tools, or forced decoding parameters",
                 "explanation_parser": "requires preceding explanation and exactly one Decision: marker at line start; final line must be Decision: followed by one exact label; no prose inference",
@@ -378,6 +395,7 @@ def main() -> int:
                 "Overlapping all-pairs comparisons are not independent trials; zero observed divergence does not prove determinism.",
                 "Unparseable is a single category; two unparseable texts can still differ in content.",
                 "This measures model decisions, not recovery correctness or a production violation rate.",
+                "Retries target captured model responses; estimates are conditional on successful API responses. Service failures and changing availability can undermine IID assumptions.",
             ],
         },
     }
@@ -431,6 +449,7 @@ def main() -> int:
     metadata.setdefault("collection_sessions", []).append({
         "started_at": utc_now(), "min_interval_seconds": args.min_interval,
         "max_calls": args.max_calls,
+        "retries_503": args.retries_503, "retry_backoff_seconds": args.retry_backoff,
         "script_sha256": digest(Path(__file__).read_bytes()),
     })
     save("running")
@@ -441,34 +460,49 @@ def main() -> int:
     for rep in range(args.reps):
         schedule.extend(c for c in conditions[1:] if completed[c["id"]] <= rep)
     last_started = None
+    session_attempts = 0
     try:
-        for call_index, condition in enumerate(schedule):
-            if args.max_calls is not None and call_index >= args.max_calls:
-                save("paused_call_budget", f"reached --max-calls={args.max_calls}; responses retained")
-                print("Call budget reached; use --resume to continue.", flush=True)
-                return 3
-            if last_started is not None:
-                delay = args.min_interval - (time.monotonic() - last_started)
-                if delay > 0:
-                    time.sleep(delay)
-            last_started = time.monotonic()
-            row = invoke(endpoint, key, encode(condition["request"]), args.timeout,
-                         output_mode=args.output_mode)
-            redacted = redact_secret(row, key)
-            if redacted != row:
-                redacted["credential_redacted"] = True
-            row = redacted
-            row.update({"condition_id": condition["id"], "attempt": len(cases) + 1,
-                        "rep": completed[condition["id"]] + 1,
-                        "request_sha256": condition["request_sha256"]})
-            cases.append(row)
-            if row["status"] == "api_error":
-                save("stopped_api_error", row["error"])
-                print(f"Stopped: {row['error']}. Raw evidence saved to {args.out}.", file=sys.stderr)
-                return 1
-            completed[condition["id"]] += 1
-            save("running")
-            print(f"{condition['id']} {completed[condition['id']]}/{args.reps}: {row['decision']}", flush=True)
+        for condition in schedule:
+            retry_index = 0
+            while True:
+                if args.max_calls is not None and session_attempts >= args.max_calls:
+                    save("paused_call_budget", f"reached --max-calls={args.max_calls}; responses retained")
+                    print("Call budget reached; use --resume to continue.", flush=True)
+                    return 3
+                if last_started is not None:
+                    delay = args.min_interval - (time.monotonic() - last_started)
+                    if delay > 0:
+                        time.sleep(delay)
+                last_started = time.monotonic()
+                row = invoke(endpoint, key, encode(condition["request"]), args.timeout,
+                             output_mode=args.output_mode)
+                session_attempts += 1
+                redacted = redact_secret(row, key)
+                if redacted != row:
+                    redacted["credential_redacted"] = True
+                row = redacted
+                row.update({"condition_id": condition["id"], "attempt": len(cases) + 1,
+                            "rep": completed[condition["id"]] + 1,
+                            "retry_index": retry_index,
+                            "request_sha256": condition["request_sha256"]})
+                cases.append(row)
+                if row["status"] == "api_error":
+                    if (row.get("http_status") == 503 and retry_index < args.retries_503
+                            and (args.max_calls is None or session_attempts < args.max_calls)):
+                        delay = min(60, args.retry_backoff * 2 ** retry_index)
+                        row["retry_scheduled_seconds"] = delay
+                        save("retrying_503", row["error"])
+                        print(f"HTTP 503 saved; retry {retry_index + 1}/{args.retries_503} after {delay:g}s.", flush=True)
+                        time.sleep(delay)
+                        retry_index += 1
+                        continue
+                    save("stopped_api_error", row["error"])
+                    print(f"Stopped: {row['error']}. Raw evidence saved to {args.out}.", file=sys.stderr)
+                    return 1
+                completed[condition["id"]] += 1
+                save("running")
+                print(f"{condition['id']} {completed[condition['id']]}/{args.reps}: {row['decision']}", flush=True)
+                break
     except KeyboardInterrupt:
         save("interrupted", "interrupted; an in-flight call may have no captured response")
         print("Interrupted; completed responses retained.", file=sys.stderr)
