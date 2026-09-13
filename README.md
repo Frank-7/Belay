@@ -10,6 +10,21 @@ the contract: *belay* also means stop.
 
 ## Try the initial product prototype
 
+The **Purchase Simulator** shows the customer experience beside the backend
+execution of a fictional concert-ticket purchase. Authorize one bounded mission,
+then step through checkout, scoped credentials, payment and delivery. Inspect
+the demo API keys and every request/response, or simulate a lost reply, an
+over-budget offer, bank verification or a declined payment.
+
+```bash
+python -m purchase_simulator.server --port 8777
+# Open http://127.0.0.1:8777
+```
+
+See [purchase simulator instructions](docs/PURCHASE_SIMULATOR.md).
+The browser talks to a real local server; merchant and payment services are
+mock functions with fictional credentials. No external APIs are contacted.
+
 **Project status:** the runnable application below is a local recovery
 simulation. The current product plan is a broader autonomous task app with
 advance delegation. Subscriptions and a limited customer guarantee remain

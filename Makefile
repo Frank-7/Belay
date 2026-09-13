@@ -1,4 +1,4 @@
-.PHONY: help test test-second test-prototype test-recovery test-evidence test-live-experiment prototype \
+.PHONY: help test test-second test-prototype test-purchase-simulator test-recovery test-evidence test-live-experiment prototype purchase-simulator \
         demo recovery-demo evaluate-recovery \
         example matrix revocation adjudication analyze checkdocs viewer all clean reset-results
 
@@ -10,6 +10,8 @@ help:
 	@echo "make test-second adjudicator safety and stale recovery checks"
 	@echo "make test-prototype  portable Recovery Lab tests"
 	@echo "make prototype      start the local Recovery Lab on port 8765"
+	@echo "make purchase-simulator customer and backend purchase demo on port 8777"
+	@echo "make test-purchase-simulator portable purchase and payment recovery tests"
 	@echo "make test-recovery offline model, evaluation and demo checks"
 	@echo "make test-evidence portable evidence source and order checks"
 	@echo "make test-live-experiment offline decision parser and retry checks"
@@ -38,6 +40,12 @@ test-prototype:
 
 prototype:
 	$(PY) -m prototype.server --port 8765
+
+purchase-simulator:
+	$(PY) -m purchase_simulator.server --port 8777
+
+test-purchase-simulator:
+	$(PY) -m unittest discover -s tests -p "test_purchase_simulator.py" -v
 
 test-evidence:
 	$(PY) tests/test_evidence_boundaries.py
@@ -86,7 +94,7 @@ checkdocs:
 viewer:
 	$(PY) viewer/build_viewer.py
 
-all: test test-second test-prototype test-recovery test-live-experiment example matrix revocation adjudication analyze checkdocs viewer
+all: test test-second test-prototype test-purchase-simulator test-recovery test-live-experiment example matrix revocation adjudication analyze checkdocs viewer
 	@echo ""
 	@echo "done. open viewer/trace.html"
 

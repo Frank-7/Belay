@@ -10,6 +10,7 @@ Read these in order. Product plans describe proposed work, not live capabilities
 | [Recovery and guarantee decision](RECOVERY_AND_GUARANTEE_DECISION.md) | Selected architecture | Refunds, blockchain limits and who should carry losses |
 | [Next stage](NEXT_STAGE.md) | Build and validation plan | Deliverables, dependencies and acceptance criteria |
 | [Recovery Lab](PROTOTYPE.md) | Implemented local simulation | Run the existing demonstration and understand its limits |
+| [Purchase Simulator](PURCHASE_SIMULATOR.md) | Implemented local simulation | Customer experience and backend trace for bounded ticket purchases, payment and uncertain-outcome recovery |
 | [Recovery Desk and evaluation](DEMO.md) | Implemented recorded demo; optional model adapter | Inspect evidence-backed recovery and compare bounded recovery agents |
 | [Repository review](REVIEW.md) | Known engineering findings | Unresolved research-runtime defects and evidence limits |
 | [Evidence adjudicator](SECOND.md) | Existing research code on main | Validates evidence for ambiguous research actions; not a guarantee claims service |

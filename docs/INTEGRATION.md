@@ -16,12 +16,21 @@ the research runtime.
 | Optional recovery model | `second/live_agent.py` | OpenAI proposes evidence pointers and claims; deterministic validation and the guarded executor retain control |
 | Live decision experiment | `experiments/run_live_agent.py` | Optional API-backed measurement and committed results; not the lab's decision engine |
 | Recovery Lab | `python -m prototype.server` | Separate SQLite application/provider stores and loopback HTTP; scripted decisions and fictional money |
+| Purchase Simulator | `python -m purchase_simulator.server` | Separate local application/provider records; interactive ticket purchase, permission checks, mock credentials and exact-operation recovery |
 | Autonomous app and guarantee | Architecture and proposal documents | Future services; no live purchases, subscriptions, coverage or reimbursements |
 
 Keep lab data under `.belay-prototype/` or another isolated directory. Do not
 point it at research evidence or treat its database as the JSONL research
 journal. Preserve committed `results/` when validating documentation; they
 are research evidence rather than application state.
+
+The Purchase Simulator uses `.belay-purchase-simulator/` and port 8777, with
+no imports from the research or Recovery Lab execution engines. It demonstrates
+the proposed purchase boundary without changing those engines or their stores.
+Its internal mock-service calls are displayed as fictional API traces; only
+browser-to-loopback requests are actual HTTP. The records are deliberately
+simplified and are not AP2 schema implementations. See
+[PURCHASE_SIMULATOR.md](PURCHASE_SIMULATOR.md) for scenarios and limitations.
 
 ## Run and test
 

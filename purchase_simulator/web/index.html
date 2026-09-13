@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Belay · Purchase Simulator</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Belay simulator home"><span class="brand-mark">b</span>belay<span class="brand-section">/ purchase simulator</span></a>
+    <div class="top-actions"><span class="demo-badge"><span></span>LOCAL SIMULATION</span><button id="keys-toggle" class="button subtle" type="button" aria-expanded="false" aria-controls="credentials">Demo credentials</button></div>
+  </header>
+  <main>
+    <section class="intro">
+      <div><div class="eyebrow">ONE PURCHASE. BOTH SIDES.</div><h1>Watch an agent buy your tickets.</h1><p>You set the limits. Follow the purchase from the conversation to the payment records.</p></div>
+      <div class="simulation-note">Fictional concert, money &amp; credentials.<br>Requests stay on this computer.</div>
+    </section>
+    <section id="credentials" class="credentials" hidden aria-label="Fictional credentials">
+      <div class="section-label">DEMO CREDENTIALS · THESE CANNOT MAKE REAL PAYMENTS</div>
+      <div id="credential-list"></div>
+      <p>These are inspection fixtures. A real deployment would keep secrets in a vault and use provider-approved signing and payment integrations.</p>
+    </section>
+    <form id="mission-form" class="controls">
+      <label class="scenario-field">Try a scenario<select id="scenario" name="scenario"><option value="success">Successful purchase</option><option value="lost_reply">Merchant reply is lost</option><option value="price_change">Offer exceeds your budget</option><option value="bank_verification">Bank asks for verification</option></select></label>
+      <label class="budget-field">Your total limit <span class="input-money"><span>$</span><input id="budget" name="budget" type="number" value="300" min="1" max="10000" step="1" required inputmode="numeric" aria-label="Total spending limit in US dollars"></span></label>
+      <div class="mission-action"><button id="start" class="button primary" type="submit">Authorize mission <span aria-hidden="true">→</span></button><span id="scenario-description">Two adjacent seats. All fees included.</span></div>
+    </form>
+    <div id="error" class="error" role="alert" hidden></div>
+    <section class="playback" aria-label="Simulation playback">
+      <div class="playback-title"><span id="live-dot" class="live-dot"></span><strong id="current-stage">Ready when you are</strong><span id="step-count">0 / 11</span></div>
+      <div class="playback-actions"><button id="play" type="button" class="button" disabled>Play through</button><button id="next" type="button" class="button primary" disabled>Next step →</button><button id="reset" type="button" class="button subtle" disabled>New simulation</button></div>
+    </section>
+    <div id="step-track" class="step-track" aria-label="Workflow progress"></div>
+    <div class="split">
+      <section class="customer panel" aria-labelledby="customer-title">
+        <div class="panel-heading"><div><span class="panel-number">01</span><h2 id="customer-title">What you experience</h2></div><span class="panel-subtitle">CUSTOMER VIEW</span></div>
+        <div class="customer-content">
+          <div class="chat-label">YOU</div>
+          <div id="mission-bubble" class="user-bubble">Find two adjacent tickets for The Midnight Signals at Harbor Hall on October 24. Stay under <strong>$300 total</strong>, including fees.</div>
+          <div id="consent" class="consent"><span class="checkmark">✓</span><div><strong id="consent-heading">Your mission, your boundaries</strong><span id="consent-description">Northstar Tickets only · 2 adjacent seats · this event only · valid for 30 minutes</span></div></div>
+          <div class="agent-label"><span class="mini-mark">b</span><strong>Belay</strong><span id="agent-status">Ready to help</span></div>
+          <div id="agent-message" class="agent-message" aria-live="polite">Authorize the mission above. I can then buy tickets that meet your rules without asking you to approve each checkout.</div>
+          <article id="offer" class="offer" hidden>
+            <div class="event-art"><div class="event-caption">THE MIDNIGHT<br><strong>SIGNALS</strong></div><div class="event-date">OCT<br><strong>24</strong><span>2026</span></div><div class="soundbars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="fictional-label">FICTIONAL EVENT</span></div>
+            <div class="offer-body"><div class="offer-top"><div><h3>The Midnight Signals</h3><p>Harbor Hall · Boston<br>Oct 24, 2026 · 8:00 PM</p></div><span id="offer-tag" class="tag">Offer found</span></div><div class="offer-seats">2 adjacent seats <span>Section 102 · Row H · 12–13</span></div><div class="price-row"><span>Total, including fees</span><strong id="offer-price">$280.00</strong></div><div class="seller-line">Sold by Northstar Tickets · fictional merchant</div></div>
+          </article>
+          <div id="bank-challenge" class="bank-challenge" hidden><strong>Your bank needs verification</strong><p>This is an exception to the normal automatic flow. The purchase waits until verification succeeds.</p><button id="verify" class="button primary" type="button">Complete simulated bank verification</button></div>
+          <div id="tickets" class="tickets" hidden></div>
+          <div class="customer-footer"><span id="customer-outcome">No purchase started</span><span>Demo account · Alex Morgan</span></div>
+        </div>
+      </section>
+      <section class="backend panel" aria-labelledby="backend-title">
+        <div class="panel-heading"><div><span class="panel-number">02</span><h2 id="backend-title">What happens behind it</h2></div><span class="panel-subtitle">BACKEND VIEW</span></div>
+        <div class="backend-content">
+          <div class="state-strip"><div><span>Payment</span><strong id="payment-state">Not started</strong></div><div><span>Order</span><strong id="order-state">Not started</strong></div><div><span>Tickets</span><strong id="delivery-state">Not delivered</strong></div></div>
+          <div class="ledger"><div><span>Budget reserved</span><strong id="reserved">$0.00</strong></div><div><span>Confirmed spent</span><strong id="spent">$0.00</strong></div><div><span>Provider captures <abbr title="Observer view of the simulated provider, which may know more than Belay after a lost reply.">ⓘ</abbr></span><strong id="charge-count">0</strong></div></div>
+          <div class="trace-heading"><span class="section-label">EXECUTION TRACE</span><span id="event-count">No events yet</span></div>
+          <div id="trace-empty" class="trace-empty"><span class="terminal-icon">&gt;_</span><strong>Every action leaves a record.</strong><span>Start the mission to see the permissions, tokens, API payloads, and payment outcome.</span></div>
+          <div id="trace-content" hidden>
+            <div class="trace-selector"><label for="event-select">Inspect a step</label><select id="event-select"></select><button id="latest" class="button subtle" type="button">Latest</button></div>
+            <div class="request-detail"><div class="request-title"><span id="request-number" class="request-number">0</span><strong id="request-title"></strong><span id="request-status"></span></div><div id="request-route" class="request-route"></div><div class="endpoint"><span id="request-method"></span><code id="request-url"></code></div><p id="request-explanation"></p><div class="code-tabs" role="tablist" aria-label="API payload"><button type="button" id="request-tab" role="tab" aria-selected="true" aria-controls="payload" class="active">Request</button><button type="button" id="response-tab" role="tab" aria-selected="false" aria-controls="payload">Response</button></div><pre id="payload" role="tabpanel" aria-labelledby="request-tab"></pre></div>
+          </div>
+          <details class="operation-details"><summary>Purchase identity &amp; execution boundary</summary><dl><dt>Stable operation ID</dt><dd><code id="operation-id">Allocated when you authorize</code></dd><dt>Where these calls run</dt><dd>The browser calls this local Python server. The service calls shown above execute as mock provider functions inside the simulator; the displayed .invalid URLs are never contacted.</dd><dt>Who can spend</dt><dd>One controlled executor. The shopping planner does not receive raw card data or signing keys.</dd></dl></details>
+        </div>
+      </section>
+    </div>
+    <footer class="page-footer"><span>Belay purchase simulator · Proposed architecture</span><span>Scripted agent · Fictional signatures · Simplified mandate records · No live AP2 or bank integration</span></footer>
+  </main>
+</body>
+</html>
