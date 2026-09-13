@@ -298,6 +298,14 @@ def build_site(root: Path, requested: Path, repository: str) -> Path:
         viewer = staging / "recovery-desk.html"
         if not viewer.is_file() or viewer.stat().st_size == 0:
             raise ValueError("Recovery Desk generation did not produce an HTML file")
+        recording = viewer.read_text(encoding="utf-8")
+        if "</head>" not in recording:
+            raise ValueError("Recovery Desk generation did not produce an HTML head")
+        # The standalone viewer has no site assets; add this only to its Pages copy.
+        viewer.write_text(recording.replace(
+            "</head>", '<link rel="icon" href="assets/favicon.svg" '
+            'type="image/svg+xml">\n</head>', 1,
+        ), encoding="utf-8")
         (staging / "evidence.json").write_text(
             json.dumps(evidence, indent=2) + "\n", encoding="utf-8",
         )
