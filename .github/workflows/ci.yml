@@ -16,7 +16,34 @@ jobs:
         with:
           node-version: "22"
       - name: History refresh ordering and error handling
-        run: node --test tests/test_prototype_ui.mjs
+        run: node --test tests/test_prototype_ui.mjs tests/test_recovery_app_ui.mjs tests/test_wallet_ui.mjs
+
+  recovery-app:
+    name: Recovery Desk (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Operator workflow (offline)
+        run: python tests/test_recovery_app.py
+      - name: Testnet evidence (offline)
+        run: python tests/test_arc.py
+      - name: Frozen boundary regression tests
+        run: python tests/test_recovery_holdout.py
+      - name: Recorded operator export
+        run: python tests/test_operator_export.py
+      - name: Frozen boundary evaluation
+        run: python experiments/recovery_holdout.py --out tmp-runs/recovery-holdout.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recovery-boundaries-${{ matrix.os }}
+          path: tmp-runs/recovery-holdout.json
 
   prototype:
     name: portable prototype (${{ matrix.os }} / py${{ matrix.python }})

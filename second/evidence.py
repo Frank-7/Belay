@@ -32,10 +32,11 @@ alongside the silence.
       nothing at all, ever, at any drop rate above zero. A source like this
       can confirm but can never exonerate.
 
-Note the asymmetry that falls out: any source can prove an effect
-*happened*. Only a source that claims completeness over the relevant window
-can prove one *did not*. Half the abstentions in the experiment come from
-exactly that gap, and they are correct abstentions.
+Note the asymmetry: a matching record can establish that an effect happened
+under the source's trust assumptions. Only a source that claims completeness
+over the relevant window can establish absence. The adjudicator additionally
+rejects conclusions when the bounded available context is contradictory.
+Those checks do not identify which conflicting source is true.
 
 Artefacts are JSON files on disk, written by `experiments/build_evidence.py`
 (grader side, allowed to read the ledger). Nothing here reads the ledger.
@@ -45,6 +46,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import time
 from dataclasses import dataclass, field
@@ -57,6 +59,20 @@ from typing import Any
 SEL_MANIFEST = "manifest"
 SEL_ORDER = "order"          # order:<order_id>
 SEL_ANCHOR = "anchor"        # anchor:<hex>  -- unsupported by opaque sources
+
+# Shared by every recovery agent. A source outside these bounds is unreadable,
+# never evidence of absence. The adjudicator refuses an incomplete context scan.
+MAX_SOURCE_BYTES = 1_048_576
+MAX_SOURCE_RECORDS = 1000
+MAX_CONTEXT_SOURCES = 8
+MAX_AGENT_POINTERS = 16
+EVIDENCE_BUDGET = {
+    "agent_pointers": MAX_AGENT_POINTERS,
+    "context_sources": MAX_CONTEXT_SOURCES,
+    "context_pointers": MAX_CONTEXT_SOURCES * 2,
+    "source_bytes": MAX_SOURCE_BYTES,
+    "source_records": MAX_SOURCE_RECORDS,
+}
 
 
 @dataclass(frozen=True)
@@ -145,6 +161,8 @@ class Coverage:
 
     @classmethod
     def from_dict(cls, d: dict) -> Coverage:
+        if not isinstance(d, dict):
+            return cls(kind="invalid")
         return cls(
             kind=str(d.get("kind", "lossy")),
             cutoff_ts=d.get("cutoff_ts"),
@@ -161,7 +179,12 @@ class Coverage:
         """
         if self.kind != "complete_until":
             return False
-        return self.cutoff_ts is not None and ts <= self.cutoff_ts
+        return (
+            type(self.cutoff_ts) in (int, float)
+            and type(ts) in (int, float)
+            and math.isfinite(self.cutoff_ts) and math.isfinite(ts)
+            and ts <= self.cutoff_ts
+        )
 
     def as_dict(self) -> dict:
         return {
@@ -233,11 +256,48 @@ class EvidenceStore:
         if source in self._cache:
             return self._cache[source]
         try:
+            if path.stat().st_size > MAX_SOURCE_BYTES:
+                return None
             with open(path, encoding="utf-8") as fh:
-                doc = json.load(fh)
-        except (OSError, json.JSONDecodeError):
+                raw = fh.read(MAX_SOURCE_BYTES + 1)
+            if len(raw.encode("utf-8")) > MAX_SOURCE_BYTES:
+                return None
+            doc = json.loads(raw)
+        except (OSError, ValueError, UnicodeError, RecursionError):
             return None
-        if not isinstance(doc, dict):
+        if not isinstance(doc, dict) or doc.get("source", source) != source:
+            return None
+        records = doc.get("records")
+        if not isinstance(records, list) or len(records) > MAX_SOURCE_RECORDS:
+            return None
+        if not isinstance(doc.get("coverage"), dict):
+            return None
+        coverage = doc["coverage"]
+        if coverage.get("kind") not in ("complete_until", "lossy"):
+            return None
+        if coverage["kind"] == "complete_until" and (
+            type(coverage.get("cutoff_ts")) not in (int, float)
+            or not math.isfinite(coverage["cutoff_ts"])
+        ):
+            return None
+        if coverage["kind"] == "lossy" and coverage.get("drop_rate") is not None and (
+            type(coverage["drop_rate"]) not in (int, float)
+            or not 0 <= coverage["drop_rate"] <= 1
+        ):
+            return None
+        for record in records:
+            if not isinstance(record, dict) or not isinstance(record.get("order_id"), str):
+                return None
+            if record.get("kind") in (None, "refund") and (
+                type(record.get("amount_cents")) is not int
+                or record["amount_cents"] < 0
+            ):
+                return None
+        # Reject non-finite JSON numbers rather than relying on language-specific
+        # comparisons (Python's JSON decoder otherwise accepts NaN/Infinity).
+        try:
+            json.dumps(doc, allow_nan=False)
+        except (TypeError, ValueError, RecursionError):
             return None
         self._cache[source] = doc
         return doc
@@ -269,7 +329,7 @@ class EvidenceStore:
             cov = Coverage.from_dict(doc.get("coverage", {}))
             path = os.path.join(self.dir, f"{pointer.source}.json")
 
-            if pointer.kind == SEL_MANIFEST:
+            if pointer.selector == SEL_MANIFEST:
                 ok = True
                 return Observation(
                     pointer=pointer,
@@ -281,7 +341,7 @@ class EvidenceStore:
                     provenance=f"{path}#coverage",
                 )
 
-            if pointer.kind == SEL_ORDER:
+            if pointer.kind == SEL_ORDER and pointer.arg:
                 ok = True
                 hits = [r for r in records if r.get("order_id") == pointer.arg]
                 return Observation(
@@ -315,6 +375,9 @@ class EvidenceStore:
                     provenance=f"{path}#anchor={pointer.arg}",
                 )
 
+            return None
+        except (AttributeError, TypeError, ValueError, OverflowError, RecursionError):
+            # Malformed local evidence must never turn a failed read into silence.
             return None
         finally:
             self.fetch_log.append(

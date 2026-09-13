@@ -1,25 +1,31 @@
 # Belay project documents
 
-Read these in order. Product plans describe proposed work, not live capabilities.
+Belay's current AI Apps direction is an operator application for recovering
+uncertain agent actions. Start with the local Recovery Desk and distinguish
+implemented behavior from recorded demonstrations and future proposals.
 
 | Document | Status | Purpose |
 |---|---|---|
-| [Public website](WEBSITE.md) | GitHub Pages site | Preview, build and publish the product introduction and recorded demo |
-| [Autonomous app architecture](AUTONOMOUS_APP_ARCHITECTURE.md) | Current product direction | Advance delegation, protected execution and connected services |
-| [Integration guide](INTEGRATION.md) | Repository boundaries and extension contract | How the existing runtime, adjudicator, lab and proposed services fit |
-| [Subscription and guarantee proposal](SUBSCRIPTION_GUARANTEE.md) | Internal proposal only | Customer offer, potential remedies, loss prevention and economics |
-| [Recovery and guarantee decision](RECOVERY_AND_GUARANTEE_DECISION.md) | Selected architecture | Refunds, blockchain limits and who should carry losses |
-| [Next stage](NEXT_STAGE.md) | Build and validation plan | Deliverables, dependencies and acceptance criteria |
-| [Recovery Lab](PROTOTYPE.md) | Implemented local simulation | Run the existing demonstration and understand its limits |
-| [Recovery Desk and evaluation](DEMO.md) | Implemented recorded demo; optional model adapter | Inspect evidence-backed recovery and compare bounded recovery agents |
-| [Repository review](REVIEW.md) | Known engineering findings | Unresolved research-runtime defects and evidence limits |
-| [Evidence adjudicator](SECOND.md) | Existing research code on main | Validates evidence for ambiguous research actions; not a guarantee claims service |
-| [Concert blueprint](CONCERT_APP_BLUEPRINT.md) | Earlier design | Ticketing research; its per-purchase approval policy is superseded |
-| [AP2 learnings](AP2_PODCAST_LEARNINGS.md) | Research notes | Protocol roles, signing and adoption boundaries |
-| [Stripe learnings](STRIPE_COMMERCE_LEARNINGS.md) | Research notes | Payment options and integration constraints |
+| [Integration guide](INTEGRATION.md) | Current implementation boundaries | Run the live local Recovery Desk; understand its journal, evidence and test-wallet paths. |
+| [Test-wallet setup](TEST_WALLET.md) | Human-signed test-network demo | Configure the wallet, obtain test tokens and understand receipt verification. |
+| [Next stage](NEXT_STAGE.md) | Current AI Apps execution plan | Finish one useful operator journey, demonstrate it and measure the model's contribution. |
+| [Final presentation](FINAL_PRESENTATION.md) | Prepared script and questions | 60-second pitch, judge Q&A and three buyer questions; not a claim that outreach occurred. |
+| [Checkpoints](CHECKPOINTS.md) | Remaining submission plan | Conservative deadlines, recording buffers and evidence discipline. |
+| [Repository review](REVIEW.md) | Updated findings | PR #7 fixes, new evidence checks and remaining research/production limitations. |
+| [Public website](WEBSITE.md) | GitHub Pages | Build and publish the static introduction and recordings; not a hosted Python backend. |
+| [Recovery Desk and evaluation](DEMO.md) | Recorded demo and bounded comparison | Inspect research crash recordings and run the optional model evaluation. |
+| [Evidence adjudicator](SECOND.md) | Research foundation | Original adjudication experiment; current contradiction checks are described in the integration guide. |
+| [Recovery Lab](PROTOTYPE.md) | Legacy local simulation | Earlier separate SQLite prototype retained for its baseline comparison. |
+| [Autonomous app architecture](AUTONOMOUS_APP_ARCHITECTURE.md) | Future architecture | Advance delegation and protected purchasing; not the immediate build plan. |
+| [Subscription and guarantee proposal](SUBSCRIPTION_GUARANTEE.md) | Future internal proposal | Potential terms and remedies; no active subscription or funded guarantee. |
+| [Recovery and guarantee decision](RECOVERY_AND_GUARANTEE_DECISION.md) | Earlier architecture decision | Payment rails, recovery and possible future loss protection. |
+| [Concert blueprint](CONCERT_APP_BLUEPRINT.md) | Deferred design | Ticketing research; not the hackathon's first implementation increment. |
+| [AP2 learnings](AP2_PODCAST_LEARNINGS.md) | Research notes | Protocol roles, signing and adoption boundaries. |
+| [Stripe learnings](STRIPE_COMMERCE_LEARNINGS.md) | Research notes | Payment options and integration constraints. |
 
-The runnable code does not yet include subscriptions, claims, reimbursements,
-live ticket booking, bank connectivity, AP2 integration or a real purchasing planner.
-The optional model in the Recovery Desk proposes evidence and claims only.
-No guarantee is offered by this repository. Its original experiment results
-are synthetic research results, not customer loss rates or guarantee pricing data.
+The current wallet path is a human-signed Arc Testnet demonstration. Belay
+stores no private key, holds no customer funds, and cannot autonomously send
+a wallet transfer. The optional model proposes evidence interpretations.
+The repository offers no guarantee, insurance, reimbursement, bank connection,
+live ticket booking or purchasing planner. Research outcomes are controlled
+measurements, not customer loss rates.

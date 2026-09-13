@@ -34,7 +34,8 @@ from second.apply import (  # noqa: E402
     REFUSED,
     apply_dossier,
 )
-from second.evidence import EvidenceStore  # noqa: E402
+from second.dossier import Claim  # noqa: E402
+from second.evidence import EVIDENCE_BUDGET, EvidenceStore  # noqa: E402
 from services.ledger import Ledger  # noqa: E402
 
 # (name, actual intended refund exists, evidence visibility, special record)
@@ -104,10 +105,11 @@ def _fixture(path: Path, index: int) -> dict:
             json.dumps({"coverage": coverage, "records": records}, sort_keys=True), encoding="utf-8",
         )
     return {"case_id": f"{name}-{amount}", "scenario": name, "order_id": order,
-            "amount_cents": amount, "truth_committed": committed, "permission_revoked": special == "revoked"}
+            "amount_cents": amount, "truth_committed": committed, "permission_revoked": special == "revoked",
+            "expected_unknown": visibility not in ("complete", "lossy_hit") or special == "wrong_amount"}
 
 
-def _run_case(path: Path, fixture: dict, agent) -> dict:
+def _run_case(path: Path, fixture: dict, agent, *, audit_unvalidated: bool = False) -> dict:
     order = fixture["order_id"]
     esc = escalated_slots(str(path), order)[0]
     store = EvidenceStore(str(path / "evidence"))
@@ -116,7 +118,20 @@ def _run_case(path: Path, fixture: dict, agent) -> dict:
     for source in sorted((path / "evidence").glob("*.json")):
         input_hash.update(source.read_bytes())
     started = time.perf_counter()
-    dossier = adjudicate(esc, store, agent)
+    proposed_claim = None
+
+    class CapturedAgent:
+        # A read-only raw-claim audit, using exactly the same model calls and
+        # evidence. This object cannot apply a claim or access ledger truth.
+        def propose_pointers(self, view):
+            return agent.propose_pointers(view)
+
+        def conclude(self, view, observations):
+            nonlocal proposed_claim
+            proposed_claim = agent.conclude(view, observations)
+            return proposed_claim
+
+    dossier = adjudicate(esc, store, CapturedAgent())
     elapsed_ms = (time.perf_counter() - started) * 1000
     ledger = Ledger(str(path / "ledger.db"))
     try:
@@ -154,15 +169,30 @@ def _run_case(path: Path, fixture: dict, agent) -> dict:
         "input_tokens": 0, "output_tokens": 0, "usage_responses": 0,
         "estimated_cost_usd": None, "errors": {},
     }
-    return {
+    row = {
         **fixture, "fixture_digest": input_hash.hexdigest(), "grade": grade,
         "verdict": dossier.verdict.value, "action": applied.action,
         "latency_ms": round(elapsed_ms, 3), "metrics": metrics,
         "pointers_proposed": dossier.pointers_proposed,
         "pointers_resolved": dossier.pointers_resolved,
+        "evidence_fetch_attempts": len(store.fetch_log),
         "ledger_before_cents": before, "ledger_after_cents": after,
         "validator_notes": dossier.validator_notes,
     }
+    if audit_unvalidated:
+        verdict = proposed_claim.verdict if isinstance(proposed_claim, Claim) else "abstain"
+        # Classification only. Never construct/apply an unvalidated dossier.
+        # Factual correctness and evidence support are separate metrics: a
+        # lucky guess about a hidden ledger remains an unsupported conclusion.
+        answered = verdict in ("committed", "absent")
+        correct = answered and (verdict == "committed") == fixture["truth_committed"]
+        row["unvalidated_shadow"] = {
+            "verdict": verdict, "answered": answered, "factually_correct": correct,
+            "factually_false": answered and not correct,
+            "answered_without_sufficient_evidence": answered and fixture["expected_unknown"],
+            "executed": False,
+        }
+    return row
 
 
 def evaluate(
@@ -171,6 +201,7 @@ def evaluate(
     repeats: int = 1,
     cases: int = 24,
     progress: Callable[[str], None] | None = None,
+    audit_unvalidated: bool = False,
 ) -> dict:
     """Evaluate fresh agents on copied fixtures; no truth is exposed to them."""
     if type(repeats) is not int or not 1 <= repeats <= 5:
@@ -194,7 +225,7 @@ def evaluate(
                     shutil.copytree(source, work)
                     if progress:
                         progress(f"{label}: {fixture['case_id']} (repeat {repeat + 1}/{repeats})")
-                    row = _run_case(work, fixture, factory())
+                    row = _run_case(work, fixture, factory(), audit_unvalidated=audit_unvalidated)
                     row.update(agent=label, repeat=repeat + 1)
                     rows.append(row)
                     shutil.rmtree(work)
@@ -206,14 +237,27 @@ def evaluate(
         for row in samples:
             errors.update(row["metrics"].get("errors", {}))
         costs = [row["metrics"].get("estimated_cost_usd") for row in samples]
+        unknown = [row for row in samples if row["expected_unknown"]]
+        answered = counts["resolved"] + counts["false_resolution"]
+        answerable = [row for row in samples if not row["expected_unknown"]]
+        latencies = sorted(row["latency_ms"] for row in samples)
         by_agent[label] = {
             "samples": len(samples),
             "resolved": counts["resolved"], "false_resolutions": counts["false_resolution"],
             "abstained": counts["abstained"], "refused": counts["refused"],
             "resolution_rate": counts["resolved"] / len(samples),
+            "resolution_precision": counts["resolved"] / answered if answered else None,
+            "useful_resolution_coverage": counts["resolved"] / len(samples),
+            "refusal_rate": counts["refused"] / len(samples),
+            "expected_unknown_cases": len(unknown),
+            "unknown_abstention_rate": sum(row["grade"] == "abstained" for row in unknown) / len(unknown) if unknown else None,
+            "answerable_cases": len(answerable),
+            "answerable_resolution_rate": sum(row["grade"] == "resolved" for row in answerable) / len(answerable) if answerable else None,
             "false_resolution_rate": counts["false_resolution"] / len(samples),
             "abstention_rate": counts["abstained"] / len(samples),
             "mean_latency_ms": round(sum(row["latency_ms"] for row in samples) / len(samples), 3),
+            "p95_latency_ms": latencies[max(0, (95 * len(latencies) + 99) // 100 - 1)],
+            "evidence_fetch_attempts": sum(row["evidence_fetch_attempts"] for row in samples),
             "requests": sum(row["metrics"]["requests"] for row in samples),
             "input_tokens": sum(row["metrics"]["input_tokens"] for row in samples),
             "output_tokens": sum(row["metrics"]["output_tokens"] for row in samples),
@@ -221,14 +265,27 @@ def evaluate(
             "estimated_cost_usd": sum(costs) if all(cost is not None for cost in costs) else None,
             "provider_errors": dict(errors),
         }
+        if audit_unvalidated:
+            shadows = [row["unvalidated_shadow"] for row in samples]
+            by_agent[label]["unvalidated_shadow"] = {
+                "answered": sum(row["answered"] for row in shadows),
+                "factually_false": sum(row["factually_false"] for row in shadows),
+                "answered_without_sufficient_evidence": sum(row["answered_without_sufficient_evidence"] for row in shadows),
+                "executed": False,
+            }
     return {
-        "schema_version": 1, "execution": "synthetic_sandbox",
+        "schema_version": 2, "execution": "synthetic_sandbox",
+        "shared_evidence_budget": dict(EVIDENCE_BUDGET),
+        "model_budget": {"requests_per_sample": 2, "retries": 0, "default_output_tokens_per_request": 1200},
+        "unvalidated_shadow_enabled": audit_unvalidated,
         "live_model_requests": sum(row["metrics"]["requests"] for row in rows if row["metrics"]["transport"] == "live"),
         "limitations": [
             "Constructed post-crash states and local simulated payments; no OS crash injection or external payment integration.",
             "Small structured-evidence benchmark; repeated fixtures are not independent production incidents.",
             "Observed safety includes deterministic validation and application checks; it does not measure unaided model correctness.",
             "Token prices are unset unless supplied; optional cost is an estimate using caller-supplied uncached rates.",
+            "Heuristic and model receive identical fixtures and evidence limits; heuristic uses no model tokens. This does not claim an equal-compute comparison.",
+            "Optional unvalidated shadow compares raw classification only; it never executes an unvalidated claim or measures downstream payment behavior.",
         ],
         "summary": {"unique_cases": cases, "repeats": repeats, "by_agent": by_agent},
         "cases": rows,
@@ -244,6 +301,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cases", type=int, default=24, choices=range(1, 25), help="first N fixed fixtures")
     parser.add_argument("--input-price-per-million", type=float)
     parser.add_argument("--output-price-per-million", type=float)
+    parser.add_argument("--audit-unvalidated", action="store_true",
+                        help="offline raw-claim classification comparison; never execute an unvalidated claim")
     parser.add_argument("--out", default=str(ROOT / "tmp-runs" / "recovery-evaluation.json"))
     args = parser.parse_args(argv)
     factories = {"heuristic": heuristic_agent}
@@ -266,7 +325,8 @@ def main(argv: list[str] | None = None) -> int:
     elif args.model or args.input_price_per_million is not None or args.output_price_per_million is not None:
         parser.error("model and price options require --agent openai")
     result = evaluate(factories, repeats=args.repeats, cases=args.cases,
-                      progress=lambda message: print(message, flush=True))
+                      progress=lambda message: print(message, flush=True),
+                      audit_unvalidated=args.audit_unvalidated)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
