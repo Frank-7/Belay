@@ -88,18 +88,32 @@ teams will show a scaffold and a plan.
 
 ## Checkpoint 2 — Sunday 10:00
 
-**Build:** FINDINGS.md §9 item 1. Replace the simulated agent with a live
-model call and measure the real divergence rate — how often the same prompt
-yields a different decision — split by temperature and task ambiguity.
+**Build:** the standalone live harness and FINDINGS.md §10. Measure how often
+identical requests produce different decisions, separately by model,
+temperature, reasoning setting and fixed scenario. Keep live calls outside
+the runtime and recovery path. Preserve raw responses and earlier runs.
 
-This is the novelty checkpoint. It converts an assumed parameter into a
-measured one, and it is the thing a sceptical judge will ask about first.
+This tests an assumed parameter, and it is the thing a sceptical judge will
+ask about first. It does not promise that the measured rate will be non-zero.
 
-**Script beats:** the divergence rate, as one number. Then: our whole result
-is conditional on that rate being non-zero, so here is what it actually is.
-State whether the rate held up or surprised you — a lower-than-expected rate
-is still a finding and saying so buys credibility you cannot buy any other
-way.
+**Script beats:** the original `gemini-3.1-flash-lite` run, minimal reasoning,
+requested JSON output: no observed decision disagreement in each of three
+N=50 cells (`borderline` at temperatures 1 and 0; `clear_cut` at 1). The
+one-sided 95% upper bound is 11.3% per cell, assuming independent stationary
+calls. Say "bounded by 11.3%", not "the model is deterministic" or "below
+11%".
+
+**Later update (Sunday 12:27–12:36 ET):** the follow-up kept that same model,
+minimal reasoning, `borderline`
+prompt and temperature 1: N=50 with explanations and N=50 with fresh JSON
+output both again had no observed disagreement, no unparseables and no API
+failures. All 50 explanation texts differed; every final decision was the
+split refund. Each cell still has an 11.3% one-sided 95% upper bound. Larger
+models remain quota-limited; their tiny checks are not findings. Do not pool
+conditions into a production rate. State parse failures and API errors
+separately. This did not confirm frequent divergence in the tested cases.
+The frequency determines how often divergence causes trouble; anchoring's
+identity guarantee under the stated contract does not depend on that rate.
 
 ---
 

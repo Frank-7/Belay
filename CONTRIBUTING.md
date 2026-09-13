@@ -9,6 +9,7 @@ make test        # must print: 42 passed, 0 failed
 make test-second # evidence adjudicator assertions
 make test-prototype # portable Recovery Lab tests
 make test-recovery # evidence boundaries, model adapter, evaluation and demo
+make test-live-experiment # decision experiment parser/retries; no API calls
 make checkdocs   # committed results and documentation agree
 ruff check .
 ```
@@ -16,7 +17,8 @@ ruff check .
 The contract and end-to-end adjudicator suites require POSIX. On Windows,
 run `python -m unittest discover -s tests -p "test_prototype.py" -v`,
 `python tests/test_evidence_boundaries.py`, `python tests/test_live_agent.py`,
-`python tests/test_evaluate_recovery.py` and `python experiments/check_docs.py`,
+`python tests/test_evaluate_recovery.py`, `python tests/test_run_live_agent.py`
+and `python experiments/check_docs.py`,
 then verify the POSIX jobs in GitHub CI.
 See [the integration guide](docs/INTEGRATION.md) for the separate runtime,
 adjudicator and prototype boundaries.

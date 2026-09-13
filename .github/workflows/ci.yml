@@ -35,6 +35,8 @@ jobs:
         run: python -m unittest discover -s tests -p "test_prototype.py" -v
       - name: Evidence source and order boundaries (offline)
         run: python tests/test_evidence_boundaries.py
+      - name: Live decision experiment parser and retry regressions (offline)
+        run: python tests/test_run_live_agent.py
 
   contract:
     name: contract invariants (${{ matrix.os }} / py${{ matrix.python }})

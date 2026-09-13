@@ -1,4 +1,4 @@
-.PHONY: help test test-second test-prototype test-recovery test-evidence prototype \
+.PHONY: help test test-second test-prototype test-recovery test-evidence test-live-experiment prototype \
         demo recovery-demo evaluate-recovery \
         example matrix revocation adjudication analyze checkdocs viewer all clean reset-results
 
@@ -12,6 +12,7 @@ help:
 	@echo "make prototype      start the local Recovery Lab on port 8765"
 	@echo "make test-recovery offline model, evaluation and demo checks"
 	@echo "make test-evidence portable evidence source and order checks"
+	@echo "make test-live-experiment offline decision parser and retry checks"
 	@echo "make recovery-demo recorded recovery desk with sandbox payments"
 	@echo "make evaluate-recovery bounded heuristic evaluation (no API key)"
 	@echo "make demo        the divergence mechanism, annotated          (~10s)"
@@ -21,7 +22,7 @@ help:
 	@echo "make matrix      REPS=$(REPS)  full crash matrix"
 	@echo "make revocation  REPS=$(REPS)  permission revoked mid-flight"
 	@echo "make adjudication             escalated anchors, adjudicated"
-	@echo "make analyze     recompute every number quoted in FINDINGS.md"
+	@echo "make analyze     recompute crash-matrix and revocation findings"
 	@echo "make checkdocs   fail if the doc tables disagree with results/"
 	@echo "make viewer      rebuild viewer/trace.html"
 	@echo "make clean       remove build artifacts (leaves results/ alone)"
@@ -45,6 +46,9 @@ test-recovery: test-evidence
 	$(PY) tests/test_live_agent.py
 	$(PY) tests/test_evaluate_recovery.py
 	$(PY) tests/test_recovery_demo.py
+
+test-live-experiment:
+	$(PY) tests/test_run_live_agent.py
 
 demo:
 	$(PY) experiments/run_divergence.py
@@ -82,7 +86,7 @@ checkdocs:
 viewer:
 	$(PY) viewer/build_viewer.py
 
-all: test test-second test-prototype test-recovery example matrix revocation adjudication analyze checkdocs viewer
+all: test test-second test-prototype test-recovery test-live-experiment example matrix revocation adjudication analyze checkdocs viewer
 	@echo ""
 	@echo "done. open viewer/trace.html"
 
