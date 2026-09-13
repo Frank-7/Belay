@@ -17,6 +17,8 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
+from test_runtime_recovery import run_regressions  # noqa: E402
+
 from belay.chaos import CRASH_POINTS  # noqa: E402
 from belay.runtimes import ORDER  # noqa: E402
 from experiments.harness import FAILURES, run_trial  # noqa: E402
@@ -153,7 +155,8 @@ def main() -> int:
     print(f"\n{_passed} passed, {len(_failed)} failed")
     for f in _failed:
         print(f"  {f}")
-    return 1 if _failed else 0
+    regressions_passed = run_regressions()
+    return 1 if _failed or not regressions_passed else 0
 
 
 if __name__ == "__main__":
