@@ -1091,6 +1091,7 @@
       let mode = "belay",
         current = null,
         cases = [],
+        historyRequest = 0,
         busy = false;
       function setMode(value) {
         mode = value;
@@ -1294,9 +1295,17 @@
           $("history-start").addEventListener("click", () => showView("lab"));
       }
       async function refresh() {
-        const result = await api("/api/cases");
-        cases = Array.isArray(result) ? result : result.cases;
-        renderHistory();
+        const request = ++historyRequest;
+        try {
+          const result = await api("/api/cases");
+          // Activity navigation and completed actions can overlap refreshes.
+          // Only the latest request may update the list or report an error.
+          if (request !== historyRequest) return;
+          cases = Array.isArray(result) ? result : result.cases;
+          renderHistory();
+        } catch (error) {
+          if (request === historyRequest) throw error;
+        }
       }
       async function openCase(id) {
         if (busy) return;

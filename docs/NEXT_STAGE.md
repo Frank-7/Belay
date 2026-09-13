@@ -81,9 +81,11 @@ being ready.
 ## Recent repository work to preserve
 
 The main branch now includes a separate Gemini decision-stability experiment
-and an evidence adjudicator under `second/`. The committed Gemini sample has
-150 responses and reports no decision divergence in its tested groups. This
-does not establish a production error rate or replace the proposed app planner.
+and an evidence adjudicator under `second/`. The Gemini results preserve
+separate archived and partial runs, including the earlier 150-response sample.
+Inspect each run's configuration and completion counts before quoting its
+results. These measurements do not establish a production error rate or
+replace the proposed app planner.
 The adjudicator evaluates evidence for research recovery; it is not a claims
 operation or a funded reimbursement service. Preserve these additions when
 integrating the Recovery Lab and current product documents.

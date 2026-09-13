@@ -21,6 +21,13 @@ then verify the POSIX jobs in GitHub CI.
 See [the integration guide](docs/INTEGRATION.md) for the separate runtime,
 adjudicator and prototype boundaries.
 
+For changes to the Recovery Lab frontend, also run its history regression
+tests with Node.js 22 or newer (no dependencies to install):
+
+```bash
+node --test tests/test_prototype_ui.mjs
+```
+
 If you change anything under `belay/` or `services/`, also run:
 
 ```bash

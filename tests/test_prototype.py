@@ -7,6 +7,7 @@ import unittest
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 
 from prototype.engine import DemoError, Engine, connect
 from prototype.server import make_server
@@ -20,6 +21,104 @@ class PrototypeTests(unittest.TestCase):
     def tearDown(self):
         self.engine.close()
         self.tmp.cleanup()
+
+    def _restart(self):
+        self.engine.close()
+        self.engine = Engine(self.tmp.name)
+
+    def _unstarted_opaque(self, mode, boundary="_request"):
+        existing = {case["id"] for case in self.engine.list_cases()}
+        # Preserve a reachable commit boundary without mutating persisted state.
+        with patch.object(self.engine, boundary, side_effect=RuntimeError("interrupted")):
+            with self.assertRaisesRegex(RuntimeError, "interrupted"):
+                self.engine.create("opaque", mode)
+        created = [case for case in self.engine.list_cases() if case["id"] not in existing]
+        self.assertEqual(len(created), 1)
+        self.assertEqual(created[0]["refunds"], [])
+        return created[0]
+
+    def test_unstarted_opaque_recovers_before_or_after_saved_intent(self):
+        for mode in ("belay", "idempotent"):
+            for boundary in ("_request", "_run_worker"):
+                with self.subTest(mode=mode, boundary=boundary):
+                    case = self._unstarted_opaque(mode, boundary)
+                    self.assertEqual(case["amount_cents"], None if boundary == "_request" else 5000)
+                    self._restart()
+                    with patch.object(self.engine.provider, "lookup", side_effect=AssertionError("Opaque lookup")):
+                        result = self.engine.recover(case["id"])
+                        repeated = self.engine.recover(case["id"])
+                    self.assertEqual(result["status"], "completed")
+                    self.assertEqual(result["total_refunded_cents"], 5000)
+                    self.assertEqual(len(result["refunds"]), 1)
+                    self.assertEqual(result["refunds"][0]["reference"], case["anchor"])
+                    self.assertEqual(repeated["refunds"], result["refunds"])
+
+    def test_unstarted_opaque_remains_recoverable_after_another_interruption(self):
+        for mode in ("belay", "idempotent"):
+            with self.subTest(mode=mode):
+                case = self._unstarted_opaque(mode)
+                self._restart()
+                # Recovery saves intent, then stops before it can dispatch.
+                with patch.object(self.engine, "_request", side_effect=RuntimeError("interrupted again")):
+                    with self.assertRaisesRegex(RuntimeError, "interrupted again"):
+                        self.engine.recover(case["id"])
+                self.assertEqual(self.engine.get(case["id"])["amount_cents"], 5000)
+                self._restart()
+                result = self.engine.recover(case["id"])
+                self.assertEqual(result["status"], "completed")
+                self.assertEqual(result["total_refunded_cents"], 5000)
+                self.assertEqual(len(result["refunds"]), 1)
+                self.assertEqual(result["refunds"][0]["reference"], case["anchor"])
+
+    def test_unstarted_opaque_checks_revoked_permission_before_first_send(self):
+        for mode in ("belay", "idempotent"):
+            with self.subTest(mode=mode):
+                case = self._unstarted_opaque(mode, "_run_worker")
+                with connect(self.engine.path) as db:
+                    db.execute("UPDATE cases SET authorized=0 WHERE id=?", (case["id"],))
+                self._restart()
+                with patch.object(self.engine, "_run_worker", side_effect=AssertionError("Unauthorized dispatch")):
+                    result = self.engine.recover(case["id"])
+                self.assertEqual(result["status"], "permission_denied")
+                self.assertEqual(result["refunds"], [])
+
+    def test_dispatched_opaque_without_payment_still_blocks_recovery(self):
+        for mode in ("belay", "idempotent"):
+            with self.subTest(mode=mode):
+                existing = {case["id"] for case in self.engine.list_cases()}
+                # The dispatch marker is durable, but this worker never starts.
+                with patch("prototype.engine.subprocess.run", side_effect=RuntimeError("spawn interrupted")):
+                    with self.assertRaisesRegex(RuntimeError, "spawn interrupted"):
+                        self.engine.create("opaque", mode)
+                case, = [case for case in self.engine.list_cases() if case["id"] not in existing]
+                self.assertEqual(case["refunds"], [])
+                self._restart()
+                with patch.object(self.engine, "_run_worker", side_effect=AssertionError("Ambiguous retry")):
+                    result = self.engine.recover(case["id"])
+                self.assertEqual(result["status"], "blocked")
+                self.assertEqual(result["refunds"], [])
+
+    def test_upgrade_reopens_only_previously_blocked_unstarted_opaque_cases(self):
+        for mode in ("belay", "idempotent"):
+            with self.subTest(mode=mode):
+                unsent = self._unstarted_opaque(mode, "_run_worker")
+                # Historical state produced by recovery before this fix.
+                with connect(self.engine.path) as db:
+                    db.execute("UPDATE cases SET status='blocked' WHERE id=?", (unsent["id"],))
+                sent = self.engine.create("opaque", mode)
+                self.assertEqual(self.engine.recover(sent["id"])["status"], "blocked")
+                self._restart()
+                reopened = self.engine.get(unsent["id"])
+                self.assertEqual(reopened["status"], "pending")
+                self.assertEqual(reopened["refunds"], [])  # Startup never sends.
+                self.assertEqual(self.engine.get(sent["id"])["status"], "blocked")
+                self.assertEqual(self.engine.get(sent["id"])["total_refunded_cents"], 5000)
+                recovered = self.engine.recover(unsent["id"])
+                self.assertEqual(recovered["status"], "completed")
+                self.assertEqual(recovered["total_refunded_cents"], 5000)
+                self.assertEqual(recovered["refunds"][0]["reference"], unsent["anchor"])
+                self._restart()
+                self.assertEqual(self.engine.get(unsent["id"])["status"], "completed")
 
     def test_lost_ack_recovers_exactly_one_original_refund(self):
         case = self.engine.create("lost_ack", "belay")

@@ -87,6 +87,19 @@ repeated clicks safe in the local demonstration; it is not a distributed
 lease or a multi-instance deployment design. Use one server per data
 directory. This development server is intended for local use only.
 
+A dispatch event is committed before every worker launch. If the application
+stops before that event exists, the protected modes can make the first
+submission using the saved intent after checking current permission, even
+for an opaque provider. This proof survives restarts before or after intent
+is saved. Once a dispatch is recorded, opaque recovery stays blocked when
+the receipt is missing; an empty teaching ledger cannot authorize a retry.
+Keep the runtime event history with the case data because recovery relies
+on it, not just the current intent and receipt.
+
+On startup, cases that an older version incorrectly blocked without any
+dispatch are reopened as pending. Startup issues no refund; an operator
+must still request recovery. Previously dispatched opaque cases stay blocked.
+
 ## Provider assumptions and unfinished work
 
 The fictional provider commits synchronously, is honest, retains keys
@@ -119,3 +132,8 @@ ruff check .
 The portable suite is separate from `tests/test_contract.py`. Run the
 original contract suite on Linux, macOS or WSL; a Windows prototype pass
 does not establish a POSIX SIGKILL contract pass.
+
+Frontend contributors can run `node --test tests/test_prototype_ui.mjs`
+with Node.js 22 or newer to check out-of-order history responses and errors.
+Node.js is only needed for these tests; running the app still requires
+Python alone.

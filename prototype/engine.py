@@ -197,6 +197,17 @@ class Engine:
             db.execute("""CREATE TABLE IF NOT EXISTS events (
                 seq INTEGER PRIMARY KEY AUTOINCREMENT,case_id TEXT NOT NULL,
                 kind TEXT NOT NULL,title TEXT NOT NULL,detail TEXT NOT NULL)""")
+            # Older versions blocked even opaque cases that never dispatched.
+            # Reopen only those provably unstarted cases; startup never sends.
+            unstarted = db.execute("""SELECT id FROM cases
+                WHERE status='blocked' AND scenario='opaque'
+                AND mode IN ('belay', 'idempotent') AND receipt_json IS NULL
+                AND NOT EXISTS (SELECT 1 FROM events
+                    WHERE events.case_id=cases.id AND kind='dispatch')""").fetchall()
+            for row in unstarted:
+                db.execute("UPDATE cases SET status='pending' WHERE id=?", (row["id"],))
+                event(db, row["id"], "unstarted", "Unsent refund reopened for recovery",
+                      "An earlier version blocked this case without a worker dispatch. Recovery must check permission before its first submission.")
         self.provider = Provider(self.data_dir / "provider.sqlite3")
 
     def close(self):
@@ -256,6 +267,8 @@ class Engine:
     def _run_worker(self, case_id, request, crash):
         payload = {"db": str(self.path), "case_id": case_id, "request": request,
                    "token": self.provider.token, "crash": crash}
+        # This durable marker must precede every worker launch. Recovery uses
+        # its absence to prove that an opaque operation was never dispatched.
         with connect(self.path) as db:
             event(db, case_id, "dispatch", "Worker started",
                   "A separate OS process will call the HTTP mock provider." if crash != "before_send"
@@ -286,7 +299,20 @@ class Engine:
                     event(db, case_id, "intent", "Unstarted decision resumed",
                           "No durable intent existed; no external request could have been made.")
                 row = self._row(case_id)
-            if row["mode"] == "belay":
+            unstarted_opaque = False
+            if row["scenario"] == "opaque" and row["mode"] in ("belay", "idempotent"):
+                with connect(self.path) as db:
+                    unstarted_opaque = db.execute(
+                        "SELECT 1 FROM events WHERE case_id=? AND kind='dispatch' LIMIT 1",
+                        (case_id,)).fetchone() is None
+            if unstarted_opaque:
+                # Unlike missing intent alone, this proof survives a second
+                # interruption after recovery saves intent but before dispatch.
+                amount, reference = row["amount_cents"], row["anchor"]
+                with connect(self.path) as db:
+                    event(db, case_id, "unstarted", "First refund can resume",
+                          "No worker was dispatched. The saved intent still requires a fresh permission check before submission.")
+            elif row["mode"] == "belay":
                 if row["scenario"] == "opaque":
                     with connect(self.path) as db:
                         db.execute("UPDATE cases SET status='blocked' WHERE id=?", (case_id,))
