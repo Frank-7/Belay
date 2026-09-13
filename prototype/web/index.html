@@ -1,0 +1,1359 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Belay — Recovery Lab</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #101719;
+        --panel: #182124;
+        --panel2: #1d292c;
+        --line: #304043;
+        --text: #ecf1e9;
+        --muted: #a2b1af;
+        --green: #b8e7b1;
+        --orange: #ffba88;
+        --red: #ffa7a1;
+        --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter,
+          Segoe UI,
+          Arial,
+          sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      button,
+      select {
+        font: inherit;
+      }
+      button,
+      a,
+      select {
+        -webkit-tap-highlight-color: transparent;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.45;
+      }
+      button:focus-visible,
+      a:focus-visible,
+      select:focus-visible {
+        outline: 3px solid var(--orange);
+        outline-offset: 4px;
+      }
+      a {
+        color: var(--green);
+      }
+      button {
+        transition: background 0.15s ease;
+      }
+      header {
+        border-bottom: 1px solid var(--line);
+        height: 76px;
+        display: flex;
+        align-items: center;
+        padding: 0 40px;
+        gap: 48px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 24px;
+        font-weight: 650;
+        letter-spacing: -1px;
+      }
+      .brand svg {
+        width: 30px;
+        height: 30px;
+      }
+      nav {
+        height: 100%;
+        display: flex;
+        gap: 28px;
+      }
+      nav button {
+        padding: 0;
+        background: none;
+        border: 0;
+        color: var(--muted);
+        border-bottom: 2px solid transparent;
+      }
+      nav button[aria-selected="true"] {
+        color: var(--text);
+        border-bottom-color: var(--green);
+      }
+      .local {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .dot {
+        display: inline-block;
+        background: var(--green);
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+      }
+      main {
+        max-width: 1440px;
+        padding: 42px 40px 30px;
+        margin: auto;
+      }
+      .eyebrow {
+        color: var(--green);
+        font: 11px var(--mono);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+      .intro {
+        display: flex;
+        align-items: end;
+        gap: 24px;
+        justify-content: space-between;
+        margin-bottom: 32px;
+      }
+      h1 {
+        font-size: clamp(30px, 3.4vw, 48px);
+        letter-spacing: -1.6px;
+        font-weight: 500;
+        line-height: 1.1;
+        margin: 12px 0 14px;
+      }
+      h2 {
+        font-size: 19px;
+        font-weight: 500;
+        letter-spacing: -0.4px;
+        margin: 0;
+      }
+      h3 {
+        font-size: 14px;
+        margin: 0;
+        font-weight: 550;
+      }
+      p {
+        margin: 8px 0;
+        color: var(--muted);
+      }
+      .intro p {
+        max-width: 660px;
+        font-size: 15px;
+      }
+      .tag {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        border: 1px solid var(--line);
+        padding: 6px 10px;
+        color: var(--muted);
+        border-radius: 5px;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr);
+        gap: 24px;
+      }
+      .controls {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+        padding: 24px;
+        align-self: start;
+      }
+      .section-label {
+        display: block;
+        font: 10px var(--mono);
+        letter-spacing: 1.7px;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+      .control-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 26px;
+      }
+      .small-number {
+        color: var(--green);
+        font: 11px var(--mono);
+      }
+      label {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        margin: 0 0 8px;
+      }
+      select {
+        width: 100%;
+        color: var(--text);
+        background: var(--bg);
+        border: 1px solid var(--line);
+        padding: 12px 9px;
+        border-radius: 6px;
+      }
+      .scenario-note {
+        min-height: 74px;
+        font-size: 12px;
+        margin: 10px 0 22px;
+      }
+      .mode-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 22px;
+      }
+      .mode {
+        background: transparent;
+        text-align: left;
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 12px;
+      }
+      .mode[aria-pressed="true"] {
+        background: #24372b;
+        border-color: #91b58b;
+      }
+      .mode b {
+        font-weight: 550;
+        font-size: 13px;
+      }
+      .mode span {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .primary {
+        color: #122315;
+        border: 0;
+        background: var(--green);
+        border-radius: 6px;
+        padding: 12px 16px;
+        font-weight: 600;
+      }
+      .primary:hover:not(:disabled) {
+        background: #d1f3cb;
+      }
+      .wide {
+        width: 100%;
+      }
+      .quiet {
+        background: none;
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px 16px;
+      }
+      .quiet:hover:not(:disabled) {
+        background: var(--panel2);
+      }
+      .facts {
+        border-top: 1px solid var(--line);
+        padding-top: 20px;
+        margin-top: 22px;
+        display: grid;
+        gap: 10px;
+        font-size: 12px;
+      }
+      .facts div {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+      }
+      .facts strong {
+        color: var(--text);
+        font-weight: 400;
+      }
+      .fine {
+        font-size: 11px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+      .stage {
+        min-width: 0;
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: 1fr 26px 1fr 26px 1fr;
+        align-items: center;
+        margin: 0 0 22px;
+      }
+      .actor {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 17px;
+        border-radius: 9px;
+        min-height: 98px;
+      }
+      .actor .num {
+        font: 10px var(--mono);
+        color: var(--green);
+        margin-right: 5px;
+      }
+      .actor p {
+        font-size: 11px;
+        margin: 6px 0 0;
+      }
+      .arrow {
+        text-align: center;
+        color: #718984;
+      }
+      .case-card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+      .case-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        padding: 21px 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      .case-header p {
+        font: 11px var(--mono);
+        margin: 5px 0 0;
+      }
+      .badge {
+        font-size: 10px;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        background: #24352c;
+        color: var(--green);
+        border: 1px solid #456047;
+        border-radius: 4px;
+        padding: 6px 9px;
+        white-space: nowrap;
+      }
+      .badge.warn {
+        color: var(--orange);
+        background: #392d25;
+        border-color: #6c503b;
+      }
+      .badge.danger {
+        color: var(--red);
+        background: #3b2827;
+        border-color: #714b48;
+      }
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border-bottom: 1px solid var(--line);
+      }
+      .metric {
+        padding: 22px 24px;
+      }
+      .metric + .metric {
+        border-left: 1px solid var(--line);
+      }
+      .metric span {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 5px;
+      }
+      .metric strong {
+        font-size: 28px;
+        letter-spacing: -1px;
+        font-weight: 450;
+      }
+      .metric small {
+        display: block;
+        font-size: 10px;
+        color: var(--muted);
+        margin-top: 5px;
+      }
+      .metric .warning {
+        color: var(--orange);
+      }
+      .result {
+        padding: 24px;
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        background: #1b2b23;
+      }
+      .result.warn {
+        background: #302820;
+      }
+      .result.danger {
+        background: #312423;
+      }
+      .result-copy {
+        flex: 1;
+      }
+      .result p {
+        font-size: 12px;
+        max-width: 580px;
+      }
+      .result .primary {
+        white-space: nowrap;
+      }
+      .evidence {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border-top: 1px solid var(--line);
+      }
+      .evidence > section {
+        padding: 24px;
+        min-width: 0;
+      }
+      .evidence > section + section {
+        border-left: 1px solid var(--line);
+      }
+      .event {
+        display: flex;
+        gap: 12px;
+        position: relative;
+        padding-bottom: 19px;
+      }
+      .event:last-child {
+        padding-bottom: 0;
+      }
+      .event-mark {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #739080;
+        flex: none;
+        margin-top: 6px;
+      }
+      .event:not(:last-child) .event-mark:after {
+        content: "";
+        position: absolute;
+        width: 1px;
+        background: var(--line);
+        top: 18px;
+        bottom: 1px;
+        left: 3px;
+      }
+      .event p {
+        font-size: 11px;
+        margin: 4px 0 0;
+      }
+      .event h3 {
+        font-size: 12px;
+      }
+      .event.crash .event-mark {
+        background: var(--orange);
+      }
+      .event.crash h3 {
+        color: var(--orange);
+      }
+      .receipt {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+        padding: 12px 0;
+        gap: 8px;
+      }
+      .receipt code {
+        font: 10px var(--mono);
+        color: var(--muted);
+        display: block;
+        margin-top: 3px;
+        overflow-wrap: anywhere;
+      }
+      .receipt strong {
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .receipt small {
+        color: var(--green);
+        font-size: 10px;
+      }
+      .empty {
+        font-size: 12px;
+        color: var(--muted);
+        padding: 12px 0;
+      }
+      .anchor {
+        padding: 14px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        margin-top: 20px;
+      }
+      .anchor code {
+        font: 11px var(--mono);
+        color: var(--green);
+        word-break: break-all;
+      }
+      .anchor .section-label {
+        font-size: 9px;
+        margin-bottom: 7px;
+      }
+      details {
+        border-top: 1px solid var(--line);
+        padding: 16px 24px;
+      }
+      summary {
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      pre {
+        font: 11px/1.7 var(--mono);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        background: var(--bg);
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: #cadacb;
+        margin: 15px 0 0;
+      }
+      .footnote {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        border-top: 1px solid var(--line);
+        padding-top: 22px;
+        margin-top: 30px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .footnote p {
+        margin: 0;
+        max-width: 840px;
+      }
+      .blank {
+        padding: 45px 35px;
+        text-align: center;
+      }
+      .blank h2 {
+        font-size: 23px;
+      }
+      .blank p {
+        max-width: 470px;
+        margin: 12px auto 25px;
+      }
+      .blank .route {
+        font: 11px var(--mono);
+        color: var(--green);
+        padding: 16px;
+        line-height: 2;
+      }
+      .error {
+        padding: 14px 18px;
+        color: var(--red);
+        background: #332426;
+        border: 1px solid #714b48;
+        border-radius: 7px;
+        margin-bottom: 20px;
+      }
+      .history-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 120px 150px 100px;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      .history-row p {
+        font-size: 11px;
+        margin: 4px 0 0;
+      }
+      .history-row strong {
+        font-weight: 500;
+      }
+      .history-row .quiet {
+        padding: 7px 10px;
+        font-size: 12px;
+      }
+      .history-head {
+        font: 10px var(--mono);
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .how {
+        margin-top: 28px;
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+      .how-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 24px;
+        margin-top: 18px;
+      }
+      .how-grid p {
+        font-size: 12px;
+      }
+      .how-grid span {
+        color: var(--green);
+        font: 11px var(--mono);
+        display: block;
+        margin-bottom: 9px;
+      }
+      .hidden,
+      [hidden] {
+        display: none !important;
+      }
+      .loading {
+        opacity: 0.7;
+      }
+      @media (max-width: 1100px) {
+        main {
+          padding: 28px 24px;
+        }
+        header {
+          padding: 0 24px;
+        }
+        .layout {
+          grid-template-columns: 260px minmax(0, 1fr);
+          gap: 18px;
+        }
+        .controls {
+          padding: 20px;
+        }
+        .evidence {
+          grid-template-columns: 1fr;
+        }
+        .evidence > section + section {
+          border-left: 0;
+          border-top: 1px solid var(--line);
+        }
+        .metric {
+          padding: 18px;
+        }
+        .metric strong {
+          font-size: 25px;
+        }
+        .result {
+          align-items: stretch;
+          flex-direction: column;
+        }
+        .result .primary {
+          align-self: flex-start;
+        }
+        .actor {
+          padding: 12px;
+        }
+      }
+      @media (max-width: 760px) {
+        header {
+          padding: 0 18px;
+          gap: 24px;
+          height: 64px;
+        }
+        .brand {
+          font-size: 21px;
+        }
+        nav {
+          gap: 18px;
+        }
+        .local {
+          display: none;
+        }
+        main {
+          padding: 28px 18px;
+        }
+        .intro {
+          display: block;
+          margin-bottom: 24px;
+        }
+        .intro > .tag {
+          margin-top: 12px;
+        }
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        .scenario-note {
+          min-height: 0;
+        }
+        .mode-group {
+          flex-direction: column;
+        }
+        .mode {
+          width: 100%;
+        }
+        .controls .facts {
+          display: none;
+        }
+        .controls .fine {
+          margin-bottom: 0;
+        }
+        .control-heading {
+          margin-bottom: 16px;
+        }
+        .flow {
+          gap: 0;
+          grid-template-columns: 1fr 18px 1fr 18px 1fr;
+        }
+        .actor {
+          min-height: 112px;
+          padding: 10px;
+        }
+        .actor h3 {
+          font-size: 12px;
+        }
+        .actor p {
+          font-size: 10px;
+        }
+        .actor .num {
+          display: block;
+          margin-bottom: 5px;
+        }
+        .case-header {
+          padding: 18px;
+        }
+        .summary .metric {
+          padding: 16px 12px;
+        }
+        .metric strong {
+          font-size: 24px;
+        }
+        .metric small {
+          font-size: 9px;
+        }
+        .result,
+        .evidence > section {
+          padding: 20px;
+        }
+        .footnote {
+          flex-direction: column;
+        }
+        .how-grid {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+        .history-row {
+          grid-template-columns: 1fr 90px;
+          padding: 18px;
+        }
+        .history-row > div:nth-child(2),
+        .history-row > div:nth-child(3),
+        .history-head {
+          display: none;
+        }
+        .history-row .badge {
+          justify-self: start;
+        }
+        .history-row .quiet {
+          grid-column: 2;
+          grid-row: auto;
+        }
+        .intro p {
+          font-size: 14px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path
+            d="M9 24V9a6 6 0 0 1 12 0v14a4 4 0 0 1-8 0V11"
+            fill="none"
+            stroke="#b8e7b1"
+            stroke-width="3"
+            stroke-linecap="round"
+          />
+          <path d="M6 19h20" stroke="#b8e7b1" stroke-width="2" /></svg
+        >belay
+      </div>
+      <nav aria-label="Workspace">
+        <button id="lab-tab" aria-selected="true">Recovery lab</button
+        ><button id="activity-tab" aria-selected="false">
+          Activity <span id="count"></span>
+        </button>
+      </nav>
+      <div class="local">
+        <span class="dot"></span> Local prototype · simulated money
+      </div>
+    </header>
+    <main>
+      <div id="error" class="error" role="alert" hidden></div>
+      <section id="lab-view">
+        <div class="intro">
+          <div>
+            <span class="eyebrow"
+              >01 / See the failure. Recover with evidence.</span
+            >
+            <h1>Did the refund happen?</h1>
+            <p>
+              Your agent sends a $50 refund. Then it stops responding. See what
+              happens when it tries again—and what Belay checks first.
+            </p>
+          </div>
+          <span class="tag"
+            >Real local API requests · fictional payment provider</span
+          >
+        </div>
+        <div class="layout">
+          <aside class="controls">
+            <div class="control-heading">
+              <h2>Set the experiment</h2>
+              <span class="small-number">01 → 02</span>
+            </div>
+            <label for="scenario">What goes wrong?</label>
+            <select id="scenario">
+              <option value="lost_ack">Payment sent. Receipt not saved.</option>
+              <option value="before_send">Crash before payment</option>
+              <option value="revoked">Permission withdrawn</option>
+              <option value="opaque">Provider cannot confirm</option>
+              <option value="clean">Everything works</option>
+            </select>
+            <p id="scenario-note" class="scenario-note"></p>
+            <label>How should the agent recover?</label>
+            <div class="mode-group">
+              <button class="mode" id="mode-belay" aria-pressed="true">
+                <b>With Belay</b
+                ><span>Keep the intent. Check what happened.</span></button
+              ><button class="mode" id="mode-idempotent" aria-pressed="false">
+                <b>Provider’s safe retry</b
+                ><span>Existing idempotency: same key and intent.</span></button
+              ><button class="mode" id="mode-naive" aria-pressed="false">
+                <b>Unprotected retry</b
+                ><span>Make a new decision and send again.</span>
+              </button>
+            </div>
+            <button id="run" class="primary wide">
+              1. Run experiment <span aria-hidden="true">↗</span>
+            </button>
+            <div class="facts">
+              <div>Original order<strong>$100.00</strong></div>
+              <div>Intended refund<strong>$50.00</strong></div>
+              <div>Decision on naive retry<strong>$30.00</strong></div>
+            </div>
+            <p class="fine">
+              Decisions are scripted so the failure is repeatable. This does not
+              call an AI model or move real money.
+            </p>
+          </aside>
+          <div class="stage">
+            <div class="flow" aria-label="Request route">
+              <div class="actor">
+                <h3><span class="num">01</span>Your agent</h3>
+                <p>Chooses the refund and calls a tool.</p>
+              </div>
+              <div class="arrow" aria-hidden="true">→</div>
+              <div class="actor">
+                <h3><span class="num">02</span>Belay</h3>
+                <p>Records the intent before sending.</p>
+              </div>
+              <div class="arrow" aria-hidden="true">→</div>
+              <div class="actor">
+                <h3><span class="num">03</span>Payment API</h3>
+                <p>Records the refund independently.</p>
+              </div>
+            </div>
+            <div id="blank" class="case-card blank">
+              <span class="eyebrow"
+                >A receipt can get lost. A payment can still happen.</span
+              >
+              <h2 style="margin-top: 18px">
+                One request. Two different records.
+              </h2>
+              <p>
+                The provider can know it paid while your agent knows only that
+                it crashed. Start an experiment to open both records.
+              </p>
+              <div class="route">
+                Agent: “I have no receipt.”<br />Provider: “I already sent $50.”
+              </div>
+              <p class="fine">
+                Try “Payment sent. Receipt not saved.” with Belay, then with
+                unprotected retry.
+              </p>
+            </div>
+            <article id="case" class="case-card" hidden aria-live="polite">
+              <div class="case-header">
+                <div>
+                  <h2 id="case-title"></h2>
+                  <p id="case-id"></p>
+                </div>
+                <span class="badge" id="case-status"></span>
+              </div>
+              <div class="summary">
+                <div class="metric">
+                  <span>Intended refund</span
+                  ><strong id="intended">$50.00</strong
+                  ><small>For one $100 order</small>
+                </div>
+                <div class="metric">
+                  <span>Provider actually paid</span
+                  ><strong id="paid">$0.00</strong
+                  ><small id="payments-count">No committed refunds</small>
+                </div>
+                <div class="metric">
+                  <span>Difference from intent</span
+                  ><strong id="extra">$0.00</strong
+                  ><small id="difference-note"
+                    >Independent provider evidence</small
+                  >
+                </div>
+              </div>
+              <div class="result" id="result">
+                <div class="result-copy">
+                  <h3 id="outcome-title"></h3>
+                  <p id="outcome-detail"></p>
+                </div>
+                <button id="recover" class="primary">
+                  2. Recover this case →
+                </button>
+              </div>
+              <div class="evidence">
+                <section>
+                  <span class="section-label">Agent & recovery record</span>
+                  <div id="events"></div>
+                </section>
+                <section>
+                  <span class="section-label"
+                    >Provider ledger · independent evidence</span
+                  >
+                  <p class="fine" id="ledger-note">
+                    These are the fictional provider’s committed refunds.
+                  </p>
+                  <div id="receipts"></div>
+                  <div class="anchor">
+                    <span class="section-label">Original effect identity</span
+                    ><code id="anchor"></code>
+                  </div>
+                  <p class="fine" id="permission"></p>
+                </section>
+              </div>
+              <details>
+                <summary>Inspect the API request</summary>
+                <p class="fine">
+                  This is a local mock API. The persisted effect identity is
+                  sent with the refund request.
+                </p>
+                <pre id="request"></pre>
+              </details>
+              <details>
+                <summary>
+                  What this experiment proves—and what it leaves open
+                </summary>
+                <p class="fine">
+                  The client process can stop after the provider commits, then a
+                  new process can recover from stored intent and provider
+                  evidence. A repeat of the original operation can reuse its
+                  identity. Unknown outcomes stop for review.
+                </p>
+                <p class="fine">
+                  This single-machine prototype uses a synchronous, honest
+                  provider with permanent keys and authoritative lookup. Real
+                  providers have retention limits, pending requests, delayed
+                  status, permissions, and different recovery APIs. There is no
+                  fraud detection, insurance, real-model evaluation, or
+                  distributed lease here.
+                </p>
+              </details>
+            </article>
+          </div>
+        </div>
+        <section class="how">
+          <span class="section-label">The product in three steps</span>
+          <div class="how-grid">
+            <div>
+              <span>01 / RECORD</span>
+              <h3>Give the action a lasting identity.</h3>
+              <p>
+                Save the refund’s amount and identity before sending it. A new
+                model decision must not silently replace that intent.
+              </p>
+            </div>
+            <div>
+              <span>02 / RECONCILE</span>
+              <h3>Ask the provider what happened.</h3>
+              <p>
+                Recover an existing receipt. Send the original request only when
+                the provider’s contract makes that safe and permission still
+                exists.
+              </p>
+            </div>
+            <div>
+              <span>03 / STOP WHEN UNKNOWN</span>
+              <h3>Make uncertainty visible.</h3>
+              <p>
+                If the provider cannot establish an outcome, keep the case
+                unresolved. Do not label it successful or retry blindly.
+              </p>
+            </div>
+          </div>
+        </section>
+      </section>
+      <section id="activity-view" hidden>
+        <div class="intro">
+          <div>
+            <span class="eyebrow">02 / The operator’s view</span>
+            <h1>Every attempt has a record.</h1>
+            <p>
+              Open a case to inspect its intent, provider receipts, and recovery
+              decision. Cases persist when the local server restarts with the
+              same data directory.
+            </p>
+          </div>
+          <button class="quiet" id="refresh">Refresh cases</button>
+        </div>
+        <div class="case-card">
+          <div class="history-row history-head">
+            <div>Case</div>
+            <div>Experiment</div>
+            <div>Provider paid</div>
+            <div>Outcome</div>
+            <div></div>
+          </div>
+          <div id="history"></div>
+        </div>
+      </section>
+      <footer class="footnote">
+        <p>
+          <strong>Prototype boundary:</strong> Belay coordinates recovery around
+          a payment API. The provider executes the payment. Correct workflow
+          design and provider idempotency already solve parts of this problem;
+          the opportunity is making that discipline easier to enforce and
+          operate.
+        </p>
+        <span>Belay / local recovery lab</span>
+      </footer>
+    </main>
+    <script>
+      "use strict";
+      const $ = (id) => document.getElementById(id);
+      const money = (n) =>
+        new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+        }).format((Number(n) || 0) / 100);
+      const escapeHTML = (s) =>
+        String(s ?? "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      const scenarios = {
+        lost_ack: {
+          title: "Payment sent. Receipt not saved.",
+          note: "The provider records $50. The client process exits before it saves a receipt. Its next move matters.",
+        },
+        before_send: {
+          title: "Crash before payment",
+          note: "The intent is saved, but the client stops before calling the provider. Recovery has to establish whether it is safe to send.",
+        },
+        revoked: {
+          title: "Permission withdrawn",
+          note: "The agent stops before sending. Its refund permission is then revoked. Recovery must check permission again.",
+        },
+        opaque: {
+          title: "Provider cannot confirm",
+          note: "The provider records a refund, but offers neither a safe retry nor a lookup. Belay must leave the outcome unresolved.",
+        },
+        clean: {
+          title: "Everything works",
+          note: "The refund is sent and the receipt is saved. There is no failure to recover from.",
+        },
+      };
+      const modeNames = {
+        belay: "With Belay",
+        idempotent: "Provider’s safe retry",
+        naive: "Unprotected retry",
+      };
+      let mode = "belay",
+        current = null,
+        cases = [],
+        busy = false;
+      function setMode(value) {
+        mode = value;
+        for (const m of ["belay", "idempotent", "naive"])
+          $("mode-" + m).setAttribute("aria-pressed", m === mode);
+        document.querySelectorAll(".actor")[1].innerHTML =
+          mode === "belay"
+            ? '<h3><span class="num">02</span>Belay</h3><p>Records the intent before sending.</p>'
+            : mode === "idempotent"
+              ? '<h3><span class="num">02</span>Safe retry</h3><p>Reuses the saved key and exact request.</p>'
+              : '<h3><span class="num">02</span>Retry logic</h3><p>Starts a new request after failure.</p>';
+      }
+      function updateScenario() {
+        $("scenario-note").textContent = scenarios[$("scenario").value].note;
+      }
+      function setBusy(value) {
+        busy = value;
+        for (const id of [
+          "run",
+          "recover",
+          "refresh",
+          "scenario",
+          "mode-belay",
+          "mode-idempotent",
+          "mode-naive",
+        ])
+          $(id).disabled = value;
+        $("run").textContent = value ? "Working…" : "1. Run experiment ↗";
+        if (!value && current) updateRecover();
+      }
+      function showError(e) {
+        $("error").hidden = false;
+        $("error").textContent = e.message || String(e);
+      }
+      function clearError() {
+        $("error").hidden = true;
+      }
+      async function api(path, body) {
+        const opts = { headers: { Accept: "application/json" } };
+        if (body !== undefined) {
+          opts.method = "POST";
+          opts.headers["Content-Type"] = "application/json";
+          opts.headers["X-Belay-Local"] = "1";
+          opts.body = JSON.stringify(body);
+        }
+        const response = await fetch(path, opts);
+        const data = await response.json();
+        if (!response.ok)
+          throw new Error(
+            data.error || "The local server could not complete this request.",
+          );
+        return data;
+      }
+      function getTone(c) {
+        if (c.total_refunded_cents > c.amount_cents) return "danger";
+        if (
+          c.status === "completed" &&
+          c.total_refunded_cents !== c.amount_cents
+        )
+          return "danger";
+        if (["committed", "recovered", "completed"].includes(c.status))
+          return "";
+        return "warn";
+      }
+      function updateRecover() {
+        const terminal = [
+          "committed",
+          "recovered",
+          "completed",
+          "refused",
+          "escalated",
+          "blocked",
+          "permission_denied",
+          "failed",
+        ];
+        $("recover").hidden = terminal.includes(current.status);
+        $("recover").disabled = busy;
+        $("recover").textContent =
+          current.mode === "naive"
+            ? "2. Retry with a new decision →"
+            : current.mode === "idempotent"
+              ? "2. Retry the original request →"
+              : "2. Recover this case →";
+      }
+      function renderCase(c) {
+        current = c;
+        setMode(c.mode);
+        $("scenario").value = c.scenario;
+        updateScenario();
+        $("blank").hidden = true;
+        $("case").hidden = false;
+        const tone = getTone(c);
+        $("case-title").textContent =
+          modeNames[c.mode] + " / " + scenarios[c.scenario].title;
+        $("case-id").textContent = "CASE " + c.id;
+        $("case-status").textContent = c.status.replace(/_/g, " ");
+        $("case-status").className = "badge " + tone;
+        $("intended").textContent = money(c.amount_cents);
+        $("paid").textContent = money(c.total_refunded_cents);
+        $("payments-count").textContent =
+          c.refunds.length +
+          " committed refund" +
+          (c.refunds.length === 1 ? "" : "s");
+        const difference = c.total_refunded_cents - c.amount_cents;
+        $("extra").textContent =
+          (difference > 0 ? "+" : "") + money(difference);
+        $("extra").className = difference ? "warning" : "";
+        $("difference-note").textContent =
+          difference > 0
+            ? "More paid than originally intended"
+            : difference < 0
+              ? "Less paid than originally intended"
+              : "Provider amount matches intent";
+        $("result").className = "result " + tone;
+        $("outcome-title").textContent = c.outcome.title;
+        $("outcome-detail").textContent = c.outcome.detail;
+        $("events").innerHTML = c.events
+          .map(
+            (e) =>
+              '<div class="event ' +
+              (/crash|lost|exit/.test(e.kind) ? "crash" : "") +
+              '"><span class="event-mark"></span><div><h3>' +
+              escapeHTML(e.title) +
+              "</h3><p>" +
+              escapeHTML(e.detail) +
+              "</p></div></div>",
+          )
+          .join("");
+        $("receipts").innerHTML = c.refunds.length
+          ? c.refunds
+              .map(
+                (r) =>
+                  '<div class="receipt"><div><small>COMMITTED</small><code>Receipt ' +
+                  escapeHTML(r.id) +
+                  "</code><code>" +
+                  escapeHTML(r.reference) +
+                  "</code></div><strong>" +
+                  money(r.amount_cents) +
+                  "</strong></div>",
+              )
+              .join("")
+          : '<div class="empty">No refunds committed at the provider.</div>';
+        $("ledger-note").textContent =
+          c.scenario === "opaque"
+            ? "Visible to you as the experiment observer. The recovering agent cannot access this ledger or query this provider."
+            : "These are the fictional provider’s committed refunds. The recovery engine uses its lookup API.";
+        $("anchor").textContent = c.anchor;
+        $("permission").textContent =
+          "Current refund permission: " +
+          (c.authorized ? "granted" : "revoked") +
+          ".";
+        $("request").textContent = c.request
+          ? c.request.method +
+            " " +
+            c.request.url +
+            "\n\n" +
+            Object.entries(c.request.headers || {})
+              .map(([k, v]) => k + ": " + v)
+              .join("\n") +
+            "\n\n" +
+            JSON.stringify(c.request.body, null, 2)
+          : "No request recorded.";
+        updateRecover();
+      }
+      function showView(view) {
+        $("lab-view").hidden = view !== "lab";
+        $("activity-view").hidden = view !== "activity";
+        $("lab-tab").setAttribute("aria-selected", view === "lab");
+        $("activity-tab").setAttribute("aria-selected", view === "activity");
+      }
+      function renderHistory() {
+        $("count").textContent = cases.length ? "(" + cases.length + ")" : "";
+        $("history").innerHTML = cases.length
+          ? cases
+              .map(
+                (c) =>
+                  '<div class="history-row"><div><strong>' +
+                  escapeHTML(c.id.slice(0, 12)) +
+                  "</strong><p>" +
+                  modeNames[c.mode] +
+                  "</p></div><div>" +
+                  escapeHTML(scenarios[c.scenario]?.title || c.scenario) +
+                  "</div><div>" +
+                  money(c.total_refunded_cents) +
+                  '</div><div><span class="badge ' +
+                  getTone(c) +
+                  '">' +
+                  escapeHTML(c.status.replace(/_/g, " ")) +
+                  '</span></div><button class="quiet open-case" data-id="' +
+                  escapeHTML(c.id) +
+                  '">Open case ↗</button></div>',
+              )
+              .join("")
+          : '<div class="blank"><h2>No experiments yet.</h2><p>Run the first case in the recovery lab.</p><button class="quiet" id="history-start">Go to the lab →</button></div>';
+        document
+          .querySelectorAll(".open-case")
+          .forEach((b) =>
+            b.addEventListener("click", () => openCase(b.dataset.id)),
+          );
+        if ($("history-start"))
+          $("history-start").addEventListener("click", () => showView("lab"));
+      }
+      async function refresh() {
+        const result = await api("/api/cases");
+        cases = Array.isArray(result) ? result : result.cases;
+        renderHistory();
+      }
+      async function openCase(id) {
+        if (busy) return;
+        clearError();
+        setBusy(true);
+        try {
+          renderCase(await api("/api/cases/" + encodeURIComponent(id)));
+          showView("lab");
+        } catch (e) {
+          showError(e);
+        } finally {
+          setBusy(false);
+        }
+      }
+      $("run").addEventListener("click", async () => {
+        clearError();
+        setBusy(true);
+        try {
+          renderCase(
+            await api("/api/cases", { scenario: $("scenario").value, mode }),
+          );
+          await refresh();
+        } catch (e) {
+          showError(e);
+        } finally {
+          setBusy(false);
+        }
+      });
+      $("recover").addEventListener("click", async () => {
+        if (!current) return;
+        clearError();
+        setBusy(true);
+        try {
+          renderCase(
+            await api(
+              "/api/cases/" + encodeURIComponent(current.id) + "/recover",
+              {},
+            ),
+          );
+          await refresh();
+        } catch (e) {
+          showError(e);
+        } finally {
+          setBusy(false);
+        }
+      });
+      $("scenario").addEventListener("change", updateScenario);
+      for (const m of ["belay", "idempotent", "naive"])
+        $("mode-" + m).addEventListener("click", () => setMode(m));
+      $("lab-tab").addEventListener("click", () => showView("lab"));
+      $("activity-tab").addEventListener("click", () => {
+        showView("activity");
+        refresh().catch(showError);
+      });
+      $("refresh").addEventListener("click", () => refresh().catch(showError));
+      updateScenario();
+      refresh().catch(showError);
+    </script>
+  </body>
+</html>

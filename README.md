@@ -8,6 +8,43 @@ the contract: *belay* also means stop.
 
 ---
 
+## Try the initial product prototype
+
+**Project status:** the runnable application below is a local recovery
+simulation. The current product plan is a broader autonomous task app with
+advance delegation. Subscriptions and a limited customer guarantee remain
+proposals; there is no live coverage, bank connection or ticket checkout.
+Start with the [document index](docs/INDEX.md),
+[current architecture](docs/AUTONOMOUS_APP_ARCHITECTURE.md), and
+[next-stage plan](docs/NEXT_STAGE.md).
+The [integration guide](docs/INTEGRATION.md) maps the existing components and
+the interfaces that future agent and guarantee services must respect.
+
+The **Recovery Lab** is a local application for exploring one concrete case:
+an agent intends a $50 partial refund on a $100 order, then crashes around
+the payment request. Its **Activity** view keeps the intent, provider
+receipts and recovery decision together for an operator.
+
+```bash
+python -m prototype.server --port 8765
+# Open http://127.0.0.1:8765
+python -m unittest discover -s tests -p "test_prototype.py" -v
+```
+
+The prototype supports Windows, Linux and macOS with Python 3.10+ and no
+third-party dependencies. It makes real HTTP requests to a **fictional local
+provider**; all money and agent decisions are simulated. Compare Belay,
+the provider's existing stable-key retry, and an unprotected fresh-key retry.
+Try a lost reply, a crash before sending, revoked permission, an opaque
+provider, or a successful request.
+
+This is a separate implementation of the pattern using SQLite, not a
+production wrapper around the research runtime below. See
+[prototype instructions and boundaries](docs/PROTOTYPE.md) and the
+[repository evaluation](docs/REVIEW.md), including two reproduced recovery
+defects in the original runtime and limits of its reported metrics.
+The original SIGKILL experiments still require POSIX.
+
 ## The problem
 
 An agent calls a payment API. The process dies between the call landing and
@@ -62,6 +99,11 @@ anchored:  anchor ──▶ decide ──▶ call under anchor ──▶ 💀 �
 ```
 
 ## Results
+
+These are the original committed synthetic experiment results. They are not
+customer loss rates, production guarantees or inputs sufficient to price
+customer reimbursement. See [the review](docs/REVIEW.md) for reproduced
+runtime defects and limitations of the grader and overhead measurements.
 
 960 trials, each a real SIGKILL at a named instruction boundary, graded
 against an external ledger rather than against the runtime's own report.
@@ -149,7 +191,7 @@ Stated up front so nobody has to go looking.
 | Python | 3.10 or newer (tested on 3.10 and 3.12) |
 | OS | Linux, macOS, or WSL |
 | Dependencies | none — standard library only |
-| Network | not used |
+| Network | Original simulations use local data; the prototype uses loopback HTTP; optional live-model experiments use an external API |
 
 > **Linux, macOS or WSL only.** The experiments send a real `SIGKILL`, and
 > Windows has no such signal. A catchable exception would let `finally`

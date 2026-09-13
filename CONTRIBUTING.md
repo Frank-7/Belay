@@ -6,8 +6,17 @@ This repo makes measured claims, so a change has to keep them true.
 
 ```bash
 make test        # must print: 42 passed, 0 failed
+make test-second # evidence adjudicator assertions
+make test-prototype # portable Recovery Lab tests
+make checkdocs   # committed results and documentation agree
 ruff check .
 ```
+
+The contract and end-to-end adjudicator suites require POSIX. On Windows,
+run `python -m unittest discover -s tests -p "test_prototype.py" -v` and
+`python experiments/check_docs.py`, then verify the POSIX jobs in GitHub CI.
+See [the integration guide](docs/INTEGRATION.md) for the separate runtime,
+adjudicator and prototype boundaries.
 
 If you change anything under `belay/` or `services/`, also run:
 

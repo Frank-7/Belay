@@ -7,6 +7,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  prototype:
+    name: portable prototype (${{ matrix.os }} / py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: HTTP, crash recovery and persistent case tests
+        run: python -m unittest discover -s tests -p "test_prototype.py" -v
+
   contract:
     name: contract invariants (${{ matrix.os }} / py${{ matrix.python }})
     runs-on: ${{ matrix.os }}
@@ -44,7 +60,7 @@ jobs:
 
       # Short, but it must still show a zero next to a non-zero: a run in
       # which the trusting control happens to make no mistake proves nothing.
-      # The next step restores the committed results/ before check_docs.
+      # Restore committed results only after both fresh-result assertions.
       - name: Adjudication (short), and zero false resolutions
         run: |
           python3 experiments/run_adjudication.py --reps 2
@@ -62,11 +78,6 @@ jobs:
                     "run, so the comparison is uninformative here")
           PY
 
-      - name: Docs agree with the committed results
-        # Only meaningful on a full run; the short CI matrix produces a
-        # different draw, so we check the committed numbers instead.
-        run: git checkout -- results/ && python3 experiments/check_docs.py
-
       - name: Assert zero contract violations for `anchored`
         run: |
           python3 - <<'PY'
@@ -82,6 +93,11 @@ jobs:
           if rv:
               sys.exit("invariant 2 violated")
           PY
+
+      - name: Docs agree with the committed results
+        # Validate fresh experiment outcomes before restoring the committed
+        # baseline used by the documentation consistency check.
+        run: git checkout -- results/ && python3 experiments/check_docs.py
 
       - name: Build the trace viewer
         run: python3 viewer/build_viewer.py

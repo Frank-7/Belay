@@ -1,4 +1,4 @@
-.PHONY: help test test-second demo example matrix revocation adjudication \
+.PHONY: help test test-second test-prototype prototype demo example matrix revocation adjudication \
         analyze checkdocs viewer all clean
 
 PY ?= python3
@@ -7,6 +7,8 @@ REPS ?= 8
 help:
 	@echo "make test        42 contract assertions under real SIGKILL   (~30s)"
 	@echo "make test-second 37 adjudicator assertions                    (~15s)"
+	@echo "make test-prototype  portable Recovery Lab tests"
+	@echo "make prototype      start the local Recovery Lab on port 8765"
 	@echo "make demo        the divergence mechanism, annotated          (~10s)"
 	@echo "make example     the pattern applied to another workflow      (~2s)"
 	@echo "make all         matrix + revocation + analysis + viewer      (~3m)"
@@ -24,6 +26,12 @@ test:
 
 test-second:
 	$(PY) tests/test_second.py
+
+test-prototype:
+	$(PY) -m unittest discover -s tests -p "test_prototype.py" -v
+
+prototype:
+	$(PY) -m prototype.server --port 8765
 
 demo:
 	$(PY) experiments/run_divergence.py
@@ -54,7 +62,7 @@ checkdocs:
 viewer:
 	$(PY) viewer/build_viewer.py
 
-all: test test-second example matrix revocation adjudication analyze checkdocs viewer
+all: test test-second test-prototype example matrix revocation adjudication analyze checkdocs viewer
 	@echo ""
 	@echo "done. open viewer/trace.html"
 
