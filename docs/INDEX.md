@@ -10,6 +10,7 @@ Read these in order. Product plans describe proposed work, not live capabilities
 | [Recovery and guarantee decision](RECOVERY_AND_GUARANTEE_DECISION.md) | Selected architecture | Refunds, blockchain limits and who should carry losses |
 | [Next stage](NEXT_STAGE.md) | Build and validation plan | Deliverables, dependencies and acceptance criteria |
 | [Recovery Lab](PROTOTYPE.md) | Implemented local simulation | Run the existing demonstration and understand its limits |
+| [Recovery Desk and evaluation](DEMO.md) | Implemented recorded demo; optional model adapter | Inspect evidence-backed recovery and compare bounded recovery agents |
 | [Repository review](REVIEW.md) | Known engineering findings | Unresolved research-runtime defects and evidence limits |
 | [Evidence adjudicator](SECOND.md) | Existing research code on main | Validates evidence for ambiguous research actions; not a guarantee claims service |
 | [Concert blueprint](CONCERT_APP_BLUEPRINT.md) | Earlier design | Ticketing research; its per-purchase approval policy is superseded |
@@ -17,6 +18,7 @@ Read these in order. Product plans describe proposed work, not live capabilities
 | [Stripe learnings](STRIPE_COMMERCE_LEARNINGS.md) | Research notes | Payment options and integration constraints |
 
 The runnable code does not yet include subscriptions, claims, reimbursements,
-live ticket booking, bank connectivity, AP2 integration or a real model planner.
+live ticket booking, bank connectivity, AP2 integration or a real purchasing planner.
+The optional model in the Recovery Desk proposes evidence and claims only.
 No guarantee is offered by this repository. Its original experiment results
 are synthetic research results, not customer loss rates or guarantee pricing data.

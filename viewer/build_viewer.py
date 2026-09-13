@@ -10,6 +10,7 @@ step, no dependencies.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -20,6 +21,7 @@ sys.path.insert(0, ROOT)
 
 from belay.runtimes import ORDER  # noqa: E402
 from experiments.harness import run_trial  # noqa: E402
+from experiments.recovery_demo import generate_demo  # noqa: E402
 
 ORDER_VALUE = 5000
 
@@ -172,17 +174,48 @@ def _detail(r: dict) -> str:
     return "  ".join(bits)
 
 
-def main() -> int:
-    base = tempfile.mkdtemp(prefix="belay-viewer-")
-    print("capturing scenarios...")
-    data = []
-    for s in SCENARIOS:
-        print(f"  {s['id']}")
-        data.append(capture(base, s))
+def script_json(value) -> str:
+    """JSON for an inline script; never allow data to close the script tag."""
+    return json.dumps(value, ensure_ascii=True).replace("<", "\\u003c").replace(
+        ">", "\\u003e"
+    ).replace("&", "\\u0026")
 
-    out = os.path.join(ROOT, "viewer", "trace.html")
+
+def render_html(data: list[dict], demo: dict) -> str:
+    if demo.get("schema_version") != 1 or not demo.get("cases"):
+        raise ValueError("expected a recovery demo recording with schema_version 1 and cases")
+    with open(os.path.join(ROOT, "viewer", "recovery_desk.css"), encoding="utf-8") as fh:
+        css = fh.read()
+    with open(os.path.join(ROOT, "viewer", "recovery_desk.js"), encoding="utf-8") as fh:
+        js = fh.read()
+    return (HTML.replace("__RECOVERY_CSS__", css)
+            .replace("__RECOVERY_JS__", js)
+            .replace("__DATA__", script_json(data))
+            .replace("__DEMO__", script_json(demo)))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--demo-json", help="include a recorded heuristic or live-model demo")
+    parser.add_argument("--out", default=os.path.join(ROOT, "viewer", "trace.html"))
+    args = parser.parse_args()
+    if args.demo_json:
+        with open(args.demo_json, encoding="utf-8") as fh:
+            demo = json.load(fh)
+    else:
+        print("recording recovery desk...")
+        demo = generate_demo()
+    with tempfile.TemporaryDirectory(prefix="belay-viewer-") as base:
+        print("capturing forensic scenarios...")
+        data = []
+        for s in SCENARIOS:
+            print(f"  {s['id']}")
+            data.append(capture(base, s))
+
+    out = args.out
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     with open(out, "w", encoding="utf-8") as fh:
-        fh.write(HTML.replace("__DATA__", json.dumps(data)))
+        fh.write(render_html(data, demo))
     print(f"\nwrote {out}")
     return 0
 
@@ -192,7 +225,7 @@ HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Belay | crash forensics</title>
+<title>Belay | recovery desk</title>
 <style>
   :root{
     --ground:#132029; --panel:#1b2c38; --panel2:#223744; --rule:#2b4256;
@@ -218,7 +251,7 @@ HTML = r"""<!DOCTYPE html>
     font-family:var(--sans);font-size:13px;padding:7px 13px;border-radius:2px;
     cursor:pointer;transition:none}
   button.tab:hover{border-color:var(--anchor);color:var(--ink)}
-  button.tab[aria-selected=true]{background:var(--anchor);border-color:var(--anchor);
+  button.tab[aria-pressed=true]{background:var(--anchor);border-color:var(--anchor);
     color:#0d1620;font-weight:600}
   button.tab:focus-visible{outline:2px solid var(--settled);outline-offset:2px}
 
@@ -293,17 +326,33 @@ HTML = r"""<!DOCTYPE html>
     .lede{font-size:21px}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+__RECOVERY_CSS__
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
-  <h1>Belay &nbsp;/&nbsp; crash forensics</h1>
-  <p class="lede">Four runtimes, the same process death, and a ledger that
-  remembers what <b>actually</b> happened.</p>
+  <h1>Belay &nbsp;/&nbsp; recovery desk</h1>
+  <p class="lede">The agent lost its place.<br>The money <b>didn't.</b></p>
+  <p class="header-note">Investigate an uncertain refund. Verify the evidence. Resume only when the record supports it.</p>
 </header>
 
-<nav id="tabs" role="tablist"></nav>
+<section id="recovery" aria-label="Recorded recovery demonstration">
+  <div class="recording-bar"><span class="recording-badge">Recorded execution</span><span>Sandbox payments</span><span id="agent-label"></span></div>
+  <p class="desk-caption">Explore actual sandbox runs below. The buttons navigate the recording; payment actions happened during capture.</p>
+  <nav id="recovery-cases" aria-label="Recovery cases"></nav>
+  <div id="recovery-story"></div>
+  <div class="desk-grid">
+    <nav id="recovery-stages" aria-label="Recorded recovery steps"></nav>
+    <article class="desk-card" id="recovery-step" aria-live="polite"></article>
+  </div>
+  <details class="assumptions"><summary>What this demonstration assumes</summary><div id="recovery-assumptions"></div></details>
+</section>
+
+<section class="forensics" aria-label="Original crash forensics">
+<h2>Under the hood: crash forensics</h2>
+<p class="desk-caption">Four runtimes face the same process death. Compare their journals with what the sandbox ledger actually recorded.</p>
+<nav id="tabs" aria-label="Forensic scenarios"></nav>
 <div class="scen" id="scen"></div>
 <div class="board" id="board"></div>
 <div class="readout" id="readout"></div>
@@ -315,10 +364,12 @@ HTML = r"""<!DOCTYPE html>
   <span style="color:var(--halt)"><i></i>halted for a human</span>
   <span style="color:var(--violation)">&#9553;&nbsp;&nbsp;crash seam</span>
 </div>
+</section>
 </div>
 
 <script>
 const DATA = __DATA__;
+const DEMO = __DEMO__;
 const ORDER_VALUE = 5000;
 let active = 0;
 
@@ -330,10 +381,9 @@ function drawTabs(){
   DATA.forEach((s,i)=>{
     const b = document.createElement("button");
     b.className = "tab";
-    b.role = "tab";
     b.textContent = s.name;
-    b.setAttribute("aria-selected", i===active);
-    b.onclick = ()=>{ active=i; draw(); };
+    b.setAttribute("aria-pressed", i===active);
+    b.onclick = ()=>{ active=i; draw(); nav.children[i].focus(); };
     nav.appendChild(b);
   });
 }
@@ -419,6 +469,7 @@ function draw(){
      <tbody>${rows}</tbody></table>`;
 }
 draw();
+__RECOVERY_JS__
 </script>
 </body>
 </html>

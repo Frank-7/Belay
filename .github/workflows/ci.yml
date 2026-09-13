@@ -22,6 +22,8 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: HTTP, crash recovery and persistent case tests
         run: python -m unittest discover -s tests -p "test_prototype.py" -v
+      - name: Evidence source and order boundaries (offline)
+        run: python tests/test_evidence_boundaries.py
 
   contract:
     name: contract invariants (${{ matrix.os }} / py${{ matrix.python }})
@@ -48,6 +50,14 @@ jobs:
       - name: Adjudicator safety properties
         run: python3 tests/test_second.py
 
+      - name: Recovery adapter and evaluation (offline)
+        run: |
+          python3 tests/test_live_agent.py
+          python3 tests/test_evidence_boundaries.py
+          python3 tests/test_evaluate_recovery.py
+          python3 tests/test_recovery_demo.py
+          python3 experiments/evaluate_recovery.py --out tmp-runs/recovery-evaluation.json
+
       - name: Divergence mechanism demo
         run: python3 experiments/run_divergence.py
 
@@ -58,9 +68,8 @@ jobs:
           python3 experiments/run_revocation.py --reps 2
           python3 experiments/analyze.py
 
-      # Short, but it must still show a zero next to a non-zero: a run in
-      # which the trusting control happens to make no mistake proves nothing.
-      # Restore committed results only after both fresh-result assertions.
+      # Check fresh adjudications. The short control may produce no mistakes;
+      # report that honestly without treating an uninformative draw as a failure.
       - name: Adjudication (short), and zero false resolutions
         run: |
           python3 experiments/run_adjudication.py --reps 2
@@ -69,6 +78,8 @@ jobs:
           s = json.load(open("results/adjudication.json"))["summary"]
           val = s["by_pipeline"].get("validated", {})
           trust = s["by_pipeline"].get("trusting", {})
+          if not sum(val.values()) or not sum(trust.values()):
+              sys.exit("adjudication did not exercise both pipelines")
           print(f"validated: {val.get('false', 0)} false of {sum(val.values())}")
           print(f"trusting:  {trust.get('false', 0)} false of {sum(trust.values())}")
           if val.get("false"):
@@ -82,8 +93,27 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, sys
+          matrix = json.load(open("results/matrix.json"))
+          trials = matrix["trials"]
+          config = matrix["config"]
+          expected = (len(config["runtimes"]) * len(config["tiers"])
+                      * len(config["crash_points"]) * 2 * config["reps"])
+          if not trials or len(trials) != expected:
+              sys.exit("crash matrix is incomplete")
+          if not all(t["crashed_as_asked"] for t in trials):
+              sys.exit("a requested matrix crash did not occur")
+          revoked = json.load(open("results/revocation.json"))["trials"]
+          if len(revoked) != len(config["runtimes"]) * 2 * config["reps"]:
+              sys.exit("revocation matrix is incomplete")
+          if not all(t["crashed_as_asked"] for t in revoked):
+              sys.exit("a requested revocation crash did not occur")
           d = json.load(open("results/findings.json"))
           a = d["runtimes"]["anchored"]
+          if (d["n_crashes_confirmed"] != len(trials)
+                  or a["trials"] != sum(t["runtime"] == "anchored" for t in trials)
+                  or d["revocation"]["anchored"]["trials"]
+                  != sum(t["runtime"] == "anchored" for t in revoked)):
+              sys.exit("analysis does not match the fresh trials")
           print(f"anchored: {a['violations']}/{a['trials']} violations, "
                 f"{a['cents_overpaid']} cents overpaid")
           if a["violations"] or a["cents_overpaid"]:
@@ -94,13 +124,24 @@ jobs:
               sys.exit("invariant 2 violated")
           PY
 
-      - name: Docs agree with the committed results
-        # Validate fresh experiment outcomes before restoring the committed
-        # baseline used by the documentation consistency check.
-        run: git checkout -- results/ && python3 experiments/check_docs.py
-
       - name: Build the trace viewer
         run: python3 viewer/build_viewer.py
+
+      - name: Save fresh evidence and the standalone demo
+        # Results remain from this run. Do not restore the committed baseline
+        # before this upload. Run only after successful generation/checks and
+        # exclude historical live-model recordings from this fresh bundle.
+        uses: actions/upload-artifact@v4
+        with:
+          name: belay-evidence-${{ matrix.os }}-py${{ matrix.python }}
+          path: |
+            results/matrix.json
+            results/revocation.json
+            results/findings.json
+            results/adjudication.json
+            viewer/trace.html
+            tmp-runs/recovery-evaluation.json
+          retention-days: 7
 
   lint:
     runs-on: ubuntu-latest

@@ -5,7 +5,15 @@ journal, a permission store, and a way to issue the effect; it does not need
 -- and must not have -- the ledger. Wiring happens in `experiments/`, which
 is grader-side and allowed to see the oracle.
 
-Three things here are load-bearing.
+Four things here are load-bearing.
+
+**A dossier resolves the journal state it inspected.** Immediately before
+applying either rung, the live slot must still be halted with the same
+anchor, amount, scope and journal revision. A completed slot or a newer
+attempt invalidates the dossier, even if the newer attempt raised before
+recording its outcome. Only fresh adjudication may resolve that uncertainty.
+This check assumes one workflow instance at a time, as in CONTRACT.md; it
+is not a lease and does not permit concurrent writers of the same journal.
 
 **Authorisation happens at execution, not at proposal.** I2 says the
 permission check and the call must not be separated by a restart. A dossier
@@ -36,6 +44,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from belay.authz import Denied
+from second.adjudicate import project_escalated_slots
 from second.dossier import Dossier, ProposalKind, Verdict
 
 # What happened. Reported by the experiment, and written to the journal.
@@ -43,7 +52,7 @@ NONE = "none"                           # abstained; the anchor stays halted
 CLOSED_FROM_EVIDENCE = "closed_from_evidence"   # query rung; no effect issued
 COMPLETED = "completed"                 # completion rung; a new effect issued
 REFUSED = "refused"                     # scope gone at execution time
-INCONSISTENT = "inconsistent"           # dossier shape refused defensively
+INCONSISTENT = "inconsistent"           # stale state or inconsistent dossier shape
 
 
 @dataclass
@@ -83,10 +92,13 @@ def apply_dossier(
     issue_effect=None,
     operator: str = "unattributed",
 ) -> Applied:
-    """Apply one dossier. Never raises.
+    """Apply one dossier under the single-workflow-instance assumption.
 
     `issue_effect(amount_cents) -> receipt` is required only for a
     completion. The receipt needs `external_id` and `amount_cents`.
+    I/O and effect exceptions propagate. Once an adjudication intent is
+    durable, even an exception leaves an ambiguous attempt that requires
+    fresh adjudication; replaying this dossier will be refused.
     """
     d = dossier
 
@@ -106,10 +118,28 @@ def apply_dossier(
         )
         return Applied(NONE, "; ".join(d.validator_notes) or "abstained", d)
 
+    # Check state for both rungs. Querying creates nothing, but a stale query
+    # must not overwrite a newer completion or resolve a different intent.
+    live = next(
+        (s for s in project_escalated_slots(journal.read(), "") if s.slot == d.slot),
+        None,
+    )
+    if live is None:
+        return Applied(INCONSISTENT, "slot is not currently halted and unresolved", d)
+    if not d.journal_revision or d.journal_revision != live.journal_revision:
+        return Applied(INCONSISTENT, "journal state changed or dossier is unbound; "
+                       "adjudicate the current slot again", d)
+    if d.anchor != live.anchor or d.amount_cents != live.amount_cents:
+        return Applied(INCONSISTENT, "dossier identity or amount differs from live intent", d)
+    if d.proposal.amount_cents != live.amount_cents:
+        return Applied(INCONSISTENT, "proposal amount differs from live intent", d)
+
     # ---- query rung: evidence already settles it -------------------------
     if d.verdict is Verdict.COMMITTED:
         if d.proposal.kind is not ProposalKind.QUERY:
             return Applied(INCONSISTENT, "committed verdict with a non-query proposal", d)
+        if d.proposal.scope is not None:
+            return Applied(INCONSISTENT, "query proposal unexpectedly carries a scope", d)
         journal.append(
             "adjudicated",
             slot=d.slot,
@@ -119,6 +149,7 @@ def apply_dossier(
             amount=d.amount_cents,
             external_id=d.external_id,
             citations=_citation_summary(d),
+            journal_revision=d.journal_revision,
             validator_notes=d.validator_notes,
             operator=operator,
             note="out-of-band records show the effect committed; no effect issued",
@@ -140,6 +171,8 @@ def apply_dossier(
         amount = d.proposal.amount_cents
         if not scope or amount is None:
             return Applied(INCONSISTENT, "completion missing scope or amount", d)
+        if scope != live.scope:
+            return Applied(INCONSISTENT, "proposal scope differs from live intent", d)
 
         try:
             perms.require(scope)
@@ -166,6 +199,7 @@ def apply_dossier(
             amount=amount,
             scope=scope,
             citations=_citation_summary(d),
+            journal_revision=d.journal_revision,
             operator=operator,
         )
 
@@ -180,6 +214,7 @@ def apply_dossier(
             amount=int(receipt.amount_cents),
             external_id=int(receipt.external_id),
             citations=_citation_summary(d),
+            journal_revision=d.journal_revision,
             validator_notes=d.validator_notes,
             operator=operator,
             note="evidence proved the effect never landed; completed under a "

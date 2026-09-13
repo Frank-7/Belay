@@ -35,4 +35,4 @@ perms.json
 # ---- Deliberately NOT ignored ----
 # results/*.json is committed on purpose. FINDINGS.md quotes those numbers,
 # and a reader should be able to check the prose against the data without a
-# three-minute rerun. `make clean` removes them locally; don't add them here.
+# three-minute rerun. `make clean` preserves them; don't add them here.

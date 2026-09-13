@@ -4,13 +4,18 @@ Reviewed the original repository at commit `7c68e95`. The product prototype
 is an addition; the research runtime and committed experiment results have
 not been repaired or regenerated in this change.
 
-Handoff integration note: this prototype and review have now been combined
-with main at `1fae768`. That main revision adds a research evidence adjudicator
-and a Gemini decision-stability experiment. Neither connects a real planner
-to the Recovery Lab or implements a customer guarantee. The journal and
-anchor-initialization defects below remain in that revision. Its committed
-live sample contains 150 responses with no observed decision divergence;
-the synthetic divergent decisions in this lab are a different experiment.
+Integration update: the prototype and review are combined with main at
+`d7caea5` and the evidence Recovery Desk. Main's Gemini measurements include
+separate archived and partial runs; inspect each run's counts and configuration
+in `results/live_divergence.json` before quoting it. The optional OpenAI
+recovery adapter proposes evidence and claims; it does not connect a purchasing
+planner to the Recovery Lab or implement a customer guarantee.
+
+The integration fixes exact order binding for absence evidence and prevents
+model-selected evidence paths from escaping the allowed source set/root. It
+also includes the Recovery Desk's journal-revision checks against stale
+adjudications. The original journal and anchor-initialization defects below
+remain; these fixes do not establish production readiness.
 
 ## Verdict
 
