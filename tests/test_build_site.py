@@ -164,6 +164,9 @@ class BuildBoundaryTests(unittest.TestCase):
         (self.root / "site" / "assets" / "app.js").write_text(
             "/* local asset */", encoding="utf-8",
         )
+        (self.root / "site" / "assets" / "favicon.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg"/>', encoding="utf-8",
+        )
         self.evidence = builder.evidence_from_records(
             *records(), "c" * 40, "Frank-7/Belay",
         )
@@ -177,7 +180,10 @@ class BuildBoundaryTests(unittest.TestCase):
         self.assertEqual(command[1], str(self.root / "viewer" / "build_viewer.py"))
         self.assertEqual(command[2], "--out")
         self.assertTrue(kwargs["check"])
-        Path(command[3]).write_text("<!doctype html>recorded demo", encoding="utf-8")
+        Path(command[3]).write_text(
+            "<!doctype html><html><head></head><body>recorded demo</body></html>",
+            encoding="utf-8",
+        )
 
     def build(self, path=Path("_site")):
         with patch.object(builder.subprocess, "run", side_effect=self.render):
@@ -186,6 +192,8 @@ class BuildBoundaryTests(unittest.TestCase):
     def test_complete_build_and_rebuild_remove_stale_assets(self):
         output = self.build()
         self.assertTrue((output / "recovery-desk.html").is_file())
+        self.assertIn('href="assets/favicon.svg"',
+                      (output / "recovery-desk.html").read_text(encoding="utf-8"))
         self.assertTrue((output / "assets" / "app.js").is_file())
         self.assertEqual(
             json.loads((output / "evidence.json").read_text(encoding="utf-8")),
