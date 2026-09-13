@@ -2,41 +2,44 @@
 
 ## Deliverable now
 
-The repository contains the local Recovery Lab plus current architecture,
-subscription/guarantee proposal and this execution plan. These documents do
-not activate customer coverage, subscription billing or a payment integration.
+The repository contains the local Recovery Lab, Purchase Simulator and the
+selected [USDC settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md).
+The contract, chain adapters and fiat conversions are proposed; these documents
+do not activate coverage, subscription billing or a payment integration.
 Use [the index](INDEX.md) to distinguish implemented work from plans.
 
 ## First build increment
 
-Keep concert tickets as the main example. Build a simulated purchase flow
-that shares the Recovery Lab's durable-execution approach. One user grants
-authority for exactly two adjacent seats within an inclusive USD 300 budget.
-The agent selects an eligible USD 280 fixture offer, submits it, survives an
-interruption and shows the original outcome without another routine approval.
+Extend the two-panel purchase demonstration with the USDC contract workflow:
+owner funding, bounded mission grant, merchant-signed quote, order escrow,
+delivery attestation, challenge/dispute, allocation and withdrawal. Keep concert
+tickets as the example and use fictional assets/providers first.
 
-Required pieces are a real model planning adapter, structured grant and quote,
-deterministic validation, atomic budget reservation, a protected test signer,
-simulated seller adapter, persisted operation and an activity screen.
-Label test signatures and simulated money; do not claim production AP2
-interoperability without implementing and checking the selected profile.
-
-Done means: eligible work proceeds; wrong quantity, wrong event/date and
-excessive cost are blocked; current authority is checked; restart recovers the
-original action; an unknown outcome stays unknown. A correct provider-idempotent
-baseline must be shown alongside Belay.
+Done means: a 42 USDC order debits a 100 USDC grant once; duplicate/replayed
+requests cannot debit it again; wrong items/merchant and excessive costs are
+blocked; no delivery refunds remaining escrow; contested delivery uses the
+pinned resolver and timeout; restart preserves unknown operations. Show USD
+conversion and bank payout separately from token settlement. Label the current
+simulator's earlier provider flow accurately until this extension is built.
 
 ## Second build increment
 
-Add a guarantee demonstration using fictional subscription entitlement and
-claim amounts. Simulate a duplicate purchase that cannot be fully refunded.
-Show its evidence, net loss, cap and proposed reimbursement. Also show a
-correct purchase with buyer remorse and explain its different treatment.
+Build the proposed Solidity contract and local EVM invariant tests, then
+integrate a Base testnet wallet, protected signer, relayer/RPC and canonical
+event indexer. Test signatures/nonces, conservation, deadline races, revoked
+grants, token-transfer failure, missing receipts, transaction replacement and
+reorganization recovery. Mock ticket delivery and conversion providers until
+their actual integrations are approved. No real funds in these increments.
 
-Done means: the same loss cannot produce two payouts; previous refunds reduce
-the eligible amount; terms version and remaining limits are visible; an
-unknown purchase is not automatically treated as a loss. Actual claims remain
-unavailable until the commercial and legal route is established.
+Next, establish one merchant and the buyer/seller conversion routes. Live use
+requires reviewed contract code, accepted release/dispute terms, delivery
+evidence access and approved operating responsibilities. The full gates are
+in [the settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md).
+
+A separate guarantee simulation can follow. It must distinguish returning
+escrow from paying additional compensation and deduct prior recoveries. An
+unknown purchase is not automatically a loss; actual claims remain unavailable
+until payer, funding and terms are established.
 
 ## Commercial validation in parallel
 
@@ -45,7 +48,7 @@ unavailable until the commercial and legal route is established.
 | Interview frequent delegators | A recent failed purchase/task, real impact and current workaround |
 | Test the offer | Willingness to delegate and pay at a clearly disclosed cap; compare service-only and guarantee propositions |
 | Confirm financial structure | Named payer, reviewed terms, funded obligations and approved launch scope |
-| Confirm provider access | Supported booking/payment route and documented recovery guarantees |
+| Confirm provider access | Merchant accepts USDC/escrow terms; delivery source, conversion routes and recovery behavior are verified |
 | Observe a controlled pilot | Eligible actions, net losses, unresolved outcomes, support cost and repeat use |
 
 Do not invent demand or broad market statistics from interviews that have not
@@ -67,12 +70,13 @@ check-in; confirm the actual schedule with the organizers.
 
 ## Selected direction and remaining dependencies
 
-- Use existing payment rails with cancellation/refund recovery. Blockchain is
-  not a prerequisite for reversing an economic loss.
+- Use native USDC on Base, prefunded grants and contract release/refund rules.
+  Stripe/card payment selection is superseded; no blockchain deployment exists yet.
 - Belay supplies the app and its service-fee remedy. Pursue a licensed partner
   for transaction-loss protection; no partner or policy is secured.
 - Exact guarantee triggers, amount limits, price and initial live jurisdiction.
-- Which merchant and autonomous payment integration grants access.
+- Which merchant, delivery verifier, dispute operator and conversion providers
+  accept the selected arrangement; exact US operating/control responsibilities.
 
 The architecture and simulator can proceed while these decisions are resolved.
 Live financial promises depend on the payer, terms and permissions actually

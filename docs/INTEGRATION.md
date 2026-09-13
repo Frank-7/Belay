@@ -17,7 +17,7 @@ the research runtime.
 | Live decision experiment | `experiments/run_live_agent.py` | Optional API-backed measurement and committed results; not the lab's decision engine |
 | Recovery Lab | `python -m prototype.server` | Separate SQLite application/provider stores and loopback HTTP; scripted decisions and fictional money |
 | Purchase Simulator | `python -m purchase_simulator.server` | Separate local application/provider records; interactive ticket purchase, permission checks, mock credentials and exact-operation recovery |
-| Autonomous app and guarantee | Architecture and proposal documents | Future services; no live purchases, subscriptions, coverage or reimbursements |
+| Autonomous USDC app and guarantee | Architecture and proposal documents | Future grants/settlement contract and services; no deployed blockchain, live purchases, subscriptions, coverage or reimbursements |
 
 Keep lab data under `.belay-prototype/` or another isolated directory. Do not
 point it at research evidence or treat its database as the JSONL research
@@ -78,10 +78,11 @@ a dossier also requires its bound journal state to remain current.
 ## Boundary for the proposed autonomous app
 
 [INTERNAL_PAYMENT_PROTOCOL.md](INTERNAL_PAYMENT_PROTOCOL.md) develops this
-boundary into proposed API, record, interlock and adapter contracts. Its
-`/internal/v1` routes and conditional-payment modes are not implemented by
-the existing lab or simulator. They require the production integrations and
-merchant agreements described there.
+boundary into proposed USDC API/adapter contracts. The
+[settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md) defines on-chain
+grants, escrow, release/refund allocation, withdrawals and fiat conversion.
+These `/internal/v1` routes and blockchain functions are not implemented by
+the existing lab or simulator. Preserve their current fictional workflows.
 
 The future app should expose one controlled action submission boundary. The
 planner supplies a proposal; the authority service validates it and the
@@ -95,11 +96,18 @@ The record passed across that boundary must retain:
 - Grant version, allowed action, provider and credential reference.
 - Exact immutable intent, quote/version/hash, amount and currency.
 - Reserved budget, submission status and verified provider evidence.
+- Chain, token and contract identity, grant/order slot, signer/nonce,
+  replacement transaction lineage, block hash and observed finality.
+- Pinned delivery/dispute policy, fixed beneficiaries, allocation/withdrawal
+  states and independent conversion-provider/payout records.
 
 An adapter declares its actual capabilities and retry rules. A success response
 needs evidence tied to the original operation and exact inputs. A failed
 connection or empty lookup does not automatically establish absence. Provider
 idempotency scope and lifetime must be respected across restarts.
+For chain adapters, contract-enforced operation uniqueness and canonical-state
+reconciliation complement the local journal. RPC receipt arrival is not
+finality; removed events must be unwound from the derived view after a reorg.
 
 Do not make both the model and an adjudicator independent executors. If
 `second/` is adapted, read validated findings through a reviewed translation
@@ -134,6 +142,11 @@ crash recovery, delayed evidence and duplicate callbacks with the chosen
 provider. Preserve unknown outcomes when evidence is insufficient. Verify
 the exact adapter and payment/mandate profile; do not infer compatibility
 from similar names or fields.
+
+The USDC extension additionally requires grant conservation, signature replay
+protection, expiry/revocation ordering, release/refund exclusivity, failed-token
+withdrawals, resolver timeouts, gas failure and reorg tests. The research
+adjudicator is not a production delivery verifier or an authorized arbitrator.
 
 Known original-runtime defects remain documented in [REVIEW.md](REVIEW.md).
 Neither the separate lab suite nor an architectural diagram proves that

@@ -4,6 +4,11 @@
 The payer, launch jurisdictions, terms, price and limits are not approved.
 The examples below are design assumptions for review, not measured loss rates.
 
+The selected payment architecture is now [USDC contract settlement](USDC_SETTLEMENT_ARCHITECTURE.md).
+Returning funds still in contract escrow is a purchase remedy, not a funded
+guarantee payout. The dollar examples below would require explicit valuation
+and conversion terms before applying them to USDC purchases.
+
 ## The offer in simple words
 
 The customer subscribes to an agent that executes permitted tasks, monitors

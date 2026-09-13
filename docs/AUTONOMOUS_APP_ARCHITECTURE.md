@@ -12,14 +12,16 @@ when it needs new authority, required provider verification, or reliable
 evidence of an uncertain outcome. The agent signs with its own delegated key.
 It never receives the user's private signing key.
 
-This supersedes the earlier blueprint's per-purchase approval default. The
-architecture requires neither a custom smart contract nor a service that
-holds customer funds pending delivery.
+The selected payment direction is now USDC on Base, with a proposed payment
+contract holding funded orders under agreed delivery/refund rules. Buyers
+and sellers use their own approved conversion-provider accounts at the fiat
+edges. Stripe is not a dependency of this plan. This supersedes both the earlier
+per-purchase approval default and the later card-first settlement decision.
 
 The [internal payment protocol](INTERNAL_PAYMENT_PROTOCOL.md) specifies API
-boundaries, funds control, reservation interlocks and failure handling.
-Ordinary merchant checkout is the initial path; conditional capture or seller
-transfers require a participating merchant and a supported payment arrangement.
+boundaries and guarded commands. The [USDC settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md)
+specifies wallets, prefunded grants, contract state, conversion providers,
+delivery evidence and dispute rules. It is proposed, not a deployed integration.
 
 ## System responsibilities
 
@@ -31,7 +33,7 @@ flowchart TD
     A --> B[Reserve budget and persist exact intent]
     B --> S[Protected signer]
     S --> E[Execution worker]
-    E --> C[Approved merchant and payment adapters]
+    E --> C[Merchant APIs and Base settlement contract]
     C --> R[Receipts and reconciliation]
     R --> V[Activity and fulfillment view]
     R --> P
@@ -45,8 +47,10 @@ flowchart TD
 | Authority service | Current permission, constraints, atomic budget reservations and signing requests |
 | Protected signer | Protocol-specific signing with managed keys; no raw key access for the model |
 | Execution worker | Stable action identity, saved intent, provider submission and supported retries |
-| Adapters | Explicit capabilities, credentials, provider consistency and idempotency rules |
-| Recovery service | Verified receipts, reconciliation, provider cancellation/refund recovery and unresolved states |
+| Adapters | Merchant access, wallet/RPC submission, conversion-provider capabilities and consistency rules |
+| Settlement contract | Funded grant limits, order escrow, agreed allocation rules and beneficiary withdrawals |
+| Delivery and dispute services | Pinned evidence verification and separate decisions for challenged orders |
+| Recovery service | Canonical-chain reconciliation, uncertain transaction recovery, refund allocation and conversion/payout status |
 
 Keep one accountable executor initially. Specialist tools may make proposals
 but cannot independently spend. Untrusted websites and tool outputs are data;
@@ -61,18 +65,27 @@ maintained implementation, supported constraints and exact versioned profiles.
 AP2 does not provide bank connectivity or merchant inventory APIs. Its current
 specification leaves agent-to-agent mandate delegation outside scope.
 
-Evaluate [Stripe Issuing for agents](https://docs.stripe.com/issuing/agents)
-for autonomous spending, subject to program access and funding arrangements.
-[Link spend requests](https://docs.stripe.com/agentic-commerce/link-cli/use-link-wallet-pay-online)
-currently require customer approval before releasing credentials. AP2 cannot
-override that requirement. Reading bank balances is a separate permission
-from moving money; see [financial insights](https://docs.stripe.com/financial-connections/agents/financial-insights).
+AP2/A2A integration is optional for a counterparty that supports an agreed
+profile. The proposed on-chain grants use their own typed contract signatures;
+they must not be presented as AP2-conformant mandates without an implemented
+and tested mapping. Blockchain settlement does not require an A2A deployment.
 
-The merchant receives an approved payment credential through checkout and
-its processor requests authorization. Track authorization, capture,
-settlement and delivery separately. Card controls complement Belay's checks;
-they do not validate exact seats or guarantee every final capture amount.
-See [Stripe spending controls](https://docs.stripe.com/issuing/controls/spending-controls).
+The buyer initially funds a mission in native USDC and authorizes a scoped
+agent signer. The contract enforces funded amount, merchant, expiry and order
+identity constraints. The model never receives the owner's key or arbitrary
+wallet transfer access. A separate deterministic policy validator checks
+off-chain item requirements; chain hashes alone cannot prove their meaning.
+
+Evaluate [Coinbase Onramp/Offramp](https://docs.cdp.coinbase.com/onramp/introduction/welcome)
+for eligible funding/cash-out and [Circle Mint](https://developers.circle.com/circle-mint)
+for qualifying business merchants. Access, supported routes and operating
+responsibilities must be established. Funding a mission may require initial
+provider/user verification; do not promise autonomous fiat replenishment.
+
+The merchant accepts a signed order with funded contract escrow and agreed
+delivery/dispute terms. Track chain confidence, allocation, withdrawal,
+delivery and bank payout separately. Automatic eligible release follows those
+terms; it does not require a routine buyer click for each purchase.
 
 [Ticketmaster Discovery](https://developer.ticketmaster.com/products-and-docs/apis/discovery-api/v2/)
 provides event information and purchase links. Direct booking requires
@@ -84,24 +97,25 @@ access. No such access is established here. The first checkout demo is simulated
 1. Resolve missing requirements before starting autonomous work.
 2. Obtain a current quote and validate seller, event, date, quantity, seats,
    all fees, expiry and the user's current scope.
-3. Reserve budget atomically and persist an immutable operation and exact
-   intent before requesting an external side effect.
-4. Sign and submit through an approved adapter, using provider idempotency
-   where supported. A changed quote requires validation again.
+3. Reserve budget atomically and persist immutable operation/intent before
+   broadcast. The contract independently enforces the funded grant and slot.
+4. Sign and submit through the approved chain adapter, bound to the correct
+   chain, contract, order and nonce. A changed quote requires validation again.
 5. If the result is unknown, retain its reservation and reconcile the same
    operation. A lookup returning no record need not prove no purchase occurred.
-6. Record verified outcomes and track fulfillment. A payment alone does not
-   establish delivery. Refunds and cancellations are separate authorized actions.
+6. Record canonical outcomes and verify fulfillment. Release/refund allocation,
+   USDC withdrawal and later fiat conversion are separate guarded actions.
 
-Check current revocation before each new submission. This check is not atomic
-with a remote commit: an in-flight purchase may still complete after revocation.
-Revocation cannot recall a committed purchase. Reconciliation and support continue after expiry
-or revocation under their appropriate access permissions.
+Check current revocation before new submissions. On-chain ordering determines
+whether an order precedes a revocation transaction. Revocation blocks new
+orders and releases unused grant credit; it does not recall committed order
+escrow. Reconciliation and support continue under appropriate permissions.
 
 Persist grants and versions, missions, offers, exact action payloads,
 operation IDs, quote hashes, budget reservations, execution attempts,
-provider IDs, receipts, exceptions and fulfillment state. Store credential
-references rather than raw payment secrets in ordinary records.
+provider IDs, chain transaction/nonce/replacement records, block hashes,
+confidence, evidence and fulfillment state. Store key references rather than
+raw signing secrets, and keep private delivery evidence off-chain.
 
 ## Where a proposed guarantee belongs
 
@@ -124,8 +138,9 @@ must pass through the same authority, budget and execution service. Its
 research journal and the lab's SQLite records are not interchangeable. See
 [the integration guide](INTEGRATION.md).
 
-The model planner, standing grants, production signer, domain adapters,
-customer accounts and guarantee service are proposed. Start with one web
-application, one worker and SQLite for the local demonstration. Production
-requires durable deployment, account isolation, managed secrets, concurrency
-controls, operational support and provider-specific integration review.
+The model planner, on-chain grants/escrow, production signers, domain/conversion
+adapters, customer accounts and guarantee service are proposed. Start with
+one web application, one worker and isolated local/testnet contract tests.
+Production requires contract review, durable deployment, account isolation,
+managed keys, canonical-chain recovery, approved provider/merchant arrangements
+and an operated dispute process. The existing simulators remain unchanged.

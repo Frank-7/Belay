@@ -32,8 +32,12 @@ mock functions with fictional credentials. No external APIs are contacted.
 
 **Project status:** the runnable application below is a local recovery
 simulation. The current product plan is a broader autonomous task app with
-advance delegation. Subscriptions and a limited customer guarantee remain
-proposals; there is no live coverage, bank connection or ticket checkout.
+advance delegation and [USDC settlement on Base](docs/USDC_SETTLEMENT_ARCHITECTURE.md).
+The proposed contract holds funded orders under agreed delivery/refund rules;
+approved conversion providers connect wallets to fiat. Subscriptions and a
+limited customer guarantee remain proposals; there is no deployed contract,
+live coverage, bank connection or ticket checkout. The simulator above still
+demonstrates the earlier fictional payment-provider flow.
 Start with the [document index](docs/INDEX.md),
 [current architecture](docs/AUTONOMOUS_APP_ARCHITECTURE.md), and
 [next-stage plan](docs/NEXT_STAGE.md).

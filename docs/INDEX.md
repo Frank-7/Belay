@@ -6,7 +6,8 @@ Read these in order. Product plans describe proposed work, not live capabilities
 |---|---|---|
 | [Public website](WEBSITE.md) | GitHub Pages site | Preview, build and publish the product introduction and recorded demo |
 | [Autonomous app architecture](AUTONOMOUS_APP_ARCHITECTURE.md) | Current product direction | Advance delegation, protected execution and connected services |
-| [Internal payment protocol](INTERNAL_PAYMENT_PROTOCOL.md) | Proposed implementation contract | API and wallet roles, funds control, atomic reservations, conditional release and failure scenarios |
+| [USDC settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md) | Selected blockchain product plan | Base, funded grants, contract escrow, delivery/disputes and buyer/seller fiat conversion |
+| [Internal payment protocol](INTERNAL_PAYMENT_PROTOCOL.md) | Proposed USDC implementation contract | Backend API roles and mapping to guarded contract actions |
 | [Integration guide](INTEGRATION.md) | Repository boundaries and extension contract | How the existing runtime, adjudicator, lab and proposed services fit |
 | [Subscription and guarantee proposal](SUBSCRIPTION_GUARANTEE.md) | Internal proposal only | Customer offer, potential remedies, loss prevention and economics |
 | [Recovery and guarantee decision](RECOVERY_AND_GUARANTEE_DECISION.md) | Selected architecture | Refunds, blockchain limits and who should carry losses |
@@ -19,9 +20,11 @@ Read these in order. Product plans describe proposed work, not live capabilities
 | [Concert blueprint](CONCERT_APP_BLUEPRINT.md) | Earlier design | Ticketing research; its per-purchase approval policy is superseded |
 | [AP2 learnings](AP2_PODCAST_LEARNINGS.md) | Research notes | Protocol roles, signing and adoption boundaries |
 | [Stripe learnings](STRIPE_COMMERCE_LEARNINGS.md) | Research notes | Payment options and integration constraints |
+| [Earlier card payment protocol](PAYMENT_PROTOCOL_CARD_REFERENCE.md) | Superseded design | Preserved comparison; Stripe/card settlement is not the selected product architecture |
 
 The runnable code does not yet include subscriptions, claims, reimbursements,
-live ticket booking, bank connectivity, AP2 integration or a real purchasing planner.
+live ticket booking, bank connectivity, a deployed blockchain contract, USDC
+conversion, AP2 integration or a real purchasing planner.
 The optional model in the Recovery Desk proposes evidence and claims only.
 No guarantee is offered by this repository. Its original experiment results
 are synthetic research results, not customer loss rates or guarantee pricing data.

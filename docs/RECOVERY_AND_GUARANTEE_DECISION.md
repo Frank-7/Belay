@@ -2,10 +2,15 @@
 
 ## Decision
 
-Use existing merchant/payment integrations and Belay's controlled executor.
-Recover money through permitted cancellation, refund and dispute processes.
-Keep blockchain out of the initial app's critical path. Use a staged protection
-model: Belay provides recovery and a defined remedy for its own service fee;
+The payment-rail decision changed on September 13, 2026: use native USDC on
+Base with prefunded grants and agreed contract escrow. See
+[USDC_SETTLEMENT_ARCHITECTURE.md](USDC_SETTLEMENT_ARCHITECTURE.md). This replaces
+the prior card-first recommendation. Recover funds still controlled by the
+contract through its release/refund/dispute rules; later refunds require
+available merchant funds or another designated payer.
+
+Keep the separate staged protection model: Belay provides recovery and a
+defined remedy for its own service fee;
 an appropriately authorized partner should carry agreed transaction-loss
 protection before that benefit is offered live.
 
@@ -22,23 +27,20 @@ transaction or functionality provided by the contract. See
 It cannot cancel a separate card charge merely by recording that the charge
 was wrong.
 
-For a card purchase, an authorized merchant integration may cancel an
-uncaptured payment or refund a successful one. Refunds can remain pending or
-fail. A buyer-side agent does not control the seller's Stripe account: it
-must request a remedy through the seller or the relevant provider process.
-See [Stripe cancellation and refunds](https://docs.stripe.com/refunds).
-
-If a seller does not cooperate, a supported issuer dispute process may be
-available, but it does not guarantee repayment. A remaining covered loss
-requires an actual payer under the protection contract. See
-[Stripe Issuing disputes](https://docs.stripe.com/issuing/purchases/disputes).
+In the selected USDC design, refund allocation credits the recorded buyer
+from remaining order escrow. The buyer must then successfully withdraw the
+USDC. Allocation, token receipt and any later conversion to dollars are three
+different stages. A token block or unavailable off-ramp can prevent completion.
+Once seller funds have been released, a later refund needs available funds
+and appropriate authority; the old card chargeback mechanism is not provided
+by the blockchain.
 
 ## Compare the payment architectures
 
 | Option | What it can accomplish | Compatibility and decision |
 |---|---|---|
-| Existing payment rails plus Belay recovery | Prevent avoidable errors; reconcile uncertain results; seek a cancellation, refund or dispute | Best initial fit for approved ticket and service integrations |
-| Blockchain escrow | Return funds under agreed conditions before release, where funds were placed in the arrangement | Requires compatible payments, merchant acceptance and a dispute/release mechanism; not a universal ticket-checkout solution |
+| Existing card rails plus Belay recovery | Reconcile uncertain results and seek provider remedies | Superseded proposal; retained in PAYMENT_PROTOCOL_CARD_REFERENCE.md |
+| USDC contract escrow plus Belay recovery | Allocate still-controlled funds under accepted delivery/refund/dispute rules; reconcile chain outcomes | Selected direction; requires participating merchants, supported conversions and reviewed contract/operating roles |
 | Existing rails plus blockchain audit hashes | Provide a later external record of an evidence digest | Optional if a partner needs independent audit evidence; adds no card-reversal authority |
 
 Escrow must be arranged before payment release. It cannot retrieve funds
@@ -47,10 +49,11 @@ whether an offchain concert ticket was delivered and usable; it needs trusted
 external evidence or a dispute mechanism. See
 [Ethereum oracles](https://ethereum.org/developers/docs/oracles/).
 
-If a later merchant use case justifies escrow, integrate an established
-provider with reviewed terms and supported settlement. Do not build a custom
-smart contract for the initial app. Never publish raw customer or payment
-data on a public blockchain.
+The initial blockchain prototype specifies a bounded settlement contract and
+tests it with fictional assets before testnet integration. Live use requires
+reviewed contract code, merchant terms, accepted evidence/dispute procedures
+and approved operating roles. Never publish raw customer or ticket data on a
+public blockchain.
 
 ## Compare who pays a remaining loss
 
@@ -68,15 +71,17 @@ See [New York Insurance Law 1101](https://www.nysenate.gov/legislation/laws/ISC/
 
 ## A concrete example
 
-One authorized order is USD 280. Suppose an execution defect creates a second
-USD 280 order. Belay identifies the original intent and both provider orders,
-then requests cancellation or refund of the additional order. A USD 280 refund
-would restore that direct loss. The original records remain intact.
+One authorized order is 280 USDC. Suppose an execution defect nevertheless
+creates another funded order. Belay identifies the original intent and both
+on-chain orders, then follows the applicable refund/dispute rules. Returning
+280 USDC restores those token units; net dollar recovery also depends on any
+conversion costs. Original records remain intact. The proposed order-slot and
+grant controls are intended to prevent this duplicate in the first place.
 
-If only USD 180 is recovered, USD 100 remains. Under a future contract that
+If only 180 USDC is recovered, 100 USDC remains. Under a future contract that
 actually covers this event, the claim service submits the evidence and the
-designated payer handles the eligible amount subject to limits. The blockchain
-does not supply the USD 100. If there is no applicable live protection contract,
+designated payer handles the eligible amount subject to limits and its defined
+valuation rules. The blockchain does not supply the missing 100 USDC. If there is no applicable live protection contract,
 Belay must not represent that reimbursement is available.
 
 ## How this fits the existing architecture
@@ -84,7 +89,7 @@ Belay must not represent that reimbursement is available.
 ```mermaid
 flowchart TD
     A[Delegated authority] --> E[Controlled executor]
-    E --> M[Merchant and payment adapters]
+    E --> M[Merchant and USDC contract adapters]
     M --> R[Order and payment evidence]
     R --> C[Cancel refund dispute or reconcile]
     C --> D{Eligible unrecovered loss}
@@ -97,6 +102,6 @@ provider outcomes. A separate claims service uses those records plus the
 active terms; it does not let the purchasing model approve its own compensation.
 Provider idempotency and receipt verification apply to any payout too.
 
-For the hackathon, demonstrate both recovery and a clearly labeled simulated
-claim. No blockchain integration, real reimbursement or insurer relationship
-is necessary to demonstrate that architecture honestly.
+For the next prototype, demonstrate contract funding, delivery, release,
+refund and recovery with mock/testnet assets. A separately labeled simulated
+claim may follow; it must not be presented as funded customer coverage.
