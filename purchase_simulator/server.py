@@ -119,11 +119,12 @@ def make_server(engine, port=8777):
                     if set(body) != {"scenario", "budget_cents", "quantity"}:
                         raise DemoError("Provide only scenario, budget_cents and quantity")
                     return self.respond(201, engine.create(body["scenario"], body["budget_cents"], body["quantity"]))
-                match = re.fullmatch(r"/api/runs/([a-f0-9]{32})/(advance|verify)", self.path)
+                match = re.fullmatch(r"/api/runs/([a-f0-9]{32})/(advance|verify|investigate)", self.path)
                 if match:
                     if set(body) != {"expected_revision"}:
                         raise DemoError("Provide only expected_revision")
-                    method = engine.advance if match.group(2) == "advance" else engine.verify
+                    method = {"advance": engine.advance, "verify": engine.verify,
+                              "investigate": engine.investigate}[match.group(2)]
                     return self.respond(200, method(match.group(1), body["expected_revision"]))
                 raise DemoError("Not found", 404)
             except DemoError as exc:
@@ -137,7 +138,8 @@ def make_server(engine, port=8777):
         do_PUT = do_DELETE = do_PATCH = do_OPTIONS = do_HEAD = unsupported
 
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    server.daemon_threads = True
+    server.daemon_threads = False
+    server.block_on_close = True
     return server
 
 

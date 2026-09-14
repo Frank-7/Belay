@@ -187,6 +187,13 @@ EVENT_CONTEXT = {
         "money_effect": "200 USDC leaves the hold for the conversion provider.",
         "retry_rule": "The same operation ID returns the existing provider operation.",
     },
+    "dispatch_unknown": {
+        "layer_id": "treasury", "layer": "Dispatch uncertainty",
+        "control": "The exact dispatch intent is durable before contacting the provider; the order hold cannot be released while acceptance is unknown.",
+        "proof": "Persisted dispatch intent and the original operation ID",
+        "money_effect": "200 USDC stays unavailable until the exact provider operation is reconciled.",
+        "retry_rule": "Read-only lookup only. Missing evidence does not authorize a release or another submission.",
+    },
     "converted": {
         "layer_id": "settlement", "layer": "Asset conversion",
         "control": "The adapter validates the provider record against the signed source amount and merchant net amount.",
@@ -422,6 +429,13 @@ class Engine:
                     run_id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE,
                     delivery_state TEXT NOT NULL, evidence_json TEXT NOT NULL,
                     evidence_digest TEXT NOT NULL
+                )"""
+            )
+            db.execute(
+                """CREATE TABLE IF NOT EXISTS dispatch_attempts_v3 (
+                    run_id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE,
+                    operation_id TEXT NOT NULL UNIQUE, intent_json TEXT NOT NULL,
+                    started_at INTEGER NOT NULL
                 )"""
             )
 
@@ -813,7 +827,7 @@ class Engine:
             delivery_record = db.execute(
                 "SELECT * FROM delivery_outcomes_v3 WHERE run_id=?", (run_id,)
             ).fetchone()
-            provider = self.provider.lookup(state["operation_id"])
+            provider, provider_error = self._observe_provider(state["operation_id"])
             result = json.loads(encode(state))
             committed = int(coverage["committed_units"])
             pending = int(coverage["pending_units"])
@@ -852,6 +866,11 @@ class Engine:
                     result["delivery_record"].pop("evidence_json")
                 )
             result["provider"] = {key: value for key, value in (provider or {}).items() if key != "intent_json"}
+            result["provider_read_error"] = provider_error
+            dispatch = db.execute(
+                "SELECT * FROM dispatch_attempts_v3 WHERE run_id=?", (run_id,)
+            ).fetchone()
+            result["dispatch_record"] = dict(dispatch) if dispatch is not None else None
             result["provider_payout_count"] = result["settlement"]["provider_payout_count"]
             result["budget"] = {
                 "available_cents": result["buyer"]["available_usdc_units"] // USDC_PER_USD_CENT,
@@ -971,7 +990,7 @@ class Engine:
             "paid_usdc_units": int(coverage["paid_units"]),
             "status": coverage["status"],
         }
-        provider = self.provider.lookup(state["operation_id"])
+        provider, _provider_error = self._observe_provider(state["operation_id"])
         event["provider_after"] = {
             key: provider[key] for key in (
                 "operation_id", "provider_reference", "attempt_count",
@@ -1159,6 +1178,9 @@ class Engine:
                 self._advance_historical(db, state)
             else:
                 self._advance_standard(db, state)
+            if state["revision"] > expected_revision + 1:
+                # Dispatch preparation was a separately committed transition.
+                before_state = state["events"][-2]["state_after"]
             self._enrich_latest_event(
                 db, state, before_state=before_state,
                 before_accounts=before_accounts,
@@ -1173,9 +1195,166 @@ class Engine:
             self._guard_revision(state, expected_revision)
             raise DemoError("This USDC-to-USD flow has no bank-verification step.", 409, self._snapshot(state, db))
 
+    def investigate(self, run_id, expected_revision):
+        """Inspect the original payout without mutating the run or provider."""
+        from purchase_simulator.recovery import investigate
+
+        with self.lock, connect(self.path) as db:
+            state = self._read(db, run_id)
+            self._guard_revision(state, expected_revision)
+            return investigate(state, self.provider.lookup)
+
+    def _observe_provider(self, operation_id):
+        try:
+            return self.provider.lookup(operation_id), None
+        except (ProviderConflict, OSError, sqlite3.Error):
+            return None, "Provider evidence is unavailable; payment status remains unknown."
+
+    def _dispatch_record(self, db, state):
+        return db.execute(
+            "SELECT * FROM dispatch_attempts_v3 WHERE run_id=?", (state["id"],)
+        ).fetchone()
+
+    def _validate_dispatch_binding(self, db, state):
+        record = self._dispatch_record(db, state)
+        if record is None or (
+            record["order_id"] != state["order_id"]
+            or record["operation_id"] != state["operation_id"]
+            or record["intent_json"] != encode(state.get("intent"))
+            or state.get("intent") != self._intent(state)
+        ):
+            raise DemoError("Dispatch recovery does not match the saved exact intent; funds remain reserved.", 409)
+        if db.execute("SELECT 1 FROM order_authority_v3 WHERE run_id=?", (state["id"],)).fetchone() is None:
+            raise DemoError("Original order authority is missing; funds remain reserved.", 409)
+        self._record_order_authority(db, state, "admitted_order")
+
+    def _require_undispatched(self, db, state):
+        """Only proven local pre-dispatch holds may be released or submitted."""
+        provider, error = self._observe_provider(state["operation_id"])
+        if self._dispatch_record(db, state) is not None or provider is not None or error:
+            raise DemoError("Dispatch may already exist. Reconcile its original operation before releasing funds.", 409)
+
+    def _start_dispatch(self, db, state):
+        self._require_undispatched(db, state)
+        before_state = self._event_state(state)
+        before_accounts = self._event_accounts(db, state["id"])
+        before_keys = self._event_ledger_keys(db, state["id"])
+        db.execute(
+            "INSERT INTO dispatch_attempts_v3 VALUES(?,?,?,?,?)",
+            (state["id"], state["order_id"], state["operation_id"], encode(state["intent"]), int(time.time())),
+        )
+        state.update(
+            funding_state="dispatch_unknown", payout_state="unknown",
+            user_message="Dispatch is starting. Its original operation must be reconciled before any hold can return.",
+            outcome={
+                "kind": "warning", "headline": "Dispatch acceptance unknown",
+                "detail": "The exact intent is saved and 200 USDC remains reserved. A missing reply cannot authorize another payment.",
+            },
+        )
+        self._event(
+            state, step=4, stage="dispatch_unknown", title="Dispatch intent saved before provider contact",
+            explanation="An interruption from this point leaves funds reserved. Recovery can only look up the original operation.",
+            actor="Treasury executor", sender="Belay", recipient="Durable dispatch journal",
+            method="PREPARE", url="belay://treasury/dispatch-intent",
+            request={"operation_id": state["operation_id"], "intent_digest": digest(state["intent"])},
+            response={"hold_reserved": True, "provider_acceptance": "unknown"},
+        )
+        self._enrich_latest_event(
+            db, state, before_state=before_state, before_accounts=before_accounts,
+            before_ledger_keys=before_keys,
+        )
+        db.execute("UPDATE runs SET state_json=? WHERE id=?", (encode(state), state["id"]))
+        # This commit is the safety boundary. No provider I/O may precede it.
+        db.commit()
+        db.execute("BEGIN IMMEDIATE")
+        state["revision"] += 1
+
+    def _accept_dispatch(self, db, state, provider, *, recovered, finding=None):
+        self._validate_dispatch_binding(db, state)
+        expected = {
+            "operation_id": state["operation_id"], "intent_json": encode(state["intent"]),
+            "beneficiary_id": state["intent"]["beneficiary_id"],
+            "source_usdc_units": state["intent"]["source_usdc_units"],
+            "net_usd_cents": state["intent"]["net_usd_cents"],
+        }
+        valid_status = provider is not None and (
+            (provider.get("funding_state"), provider.get("conversion_state"), provider.get("payout_state"))
+            in {("received", "pending", "pending"), ("received", "converted", "pending"), ("settled", "converted", "paid")}
+        )
+        if not valid_status or any(provider.get(key) != value for key, value in expected.items()):
+            raise DemoError("Exact dispatch evidence is missing or conflicts; funds remain reserved.", 409)
+        self._move(
+            db, state, f"{state['order_id']}:dispatch", "order_hold", "provider_in_transit",
+            "USDC", state["intent"]["source_usdc_units"], "provider_dispatch",
+        )
+        if recovered and provider["payout_state"] == "paid":
+            self._confirm_payout(db, state, provider)
+            state["outcome"] = {
+                "kind": "safe", "headline": "Payout reconciled: paid once",
+                "detail": "Read-only evidence confirmed the original USD payout after interrupted dispatch. No second submission was made.",
+            }
+            self._event(
+                state, step=9, stage="payout_reconciled", title="Original payout recovered after interrupted dispatch",
+                explanation="The saved intent matches the existing paid provider operation; local accounting catches up once.",
+                actor="Recovery worker", sender="Belay", recipient="Conversion provider",
+                method="GET", url=f"https://fx.belay.invalid/v1/payouts/{state['operation_id']}",
+                request={"operation_id": state["operation_id"], "creates_payment": False},
+                response={"payout_state": "paid", "provider_reference": provider["provider_reference"], "recovery_finding": finding},
+            )
+            return
+        state.update(funding_state="dispatched", payout_state="provider_received")
+        state["user_message"] = "The provider received the original 200 USDC operation. The hold was accounted for once."
+        state["outcome"] = {
+            "kind": "active", "headline": "USDC accepted; USD payout pending",
+            "detail": "The original provider operation received 200 USDC. Conversion, merchant payout and delivery are still separate steps.",
+        }
+        self._event(
+            state, step=5, stage="usdc_dispatched", title="Executor dispatches USDC once",
+            explanation="Exact provider evidence confirms the persisted operation. Recovery never submits it again.",
+            actor="Recovery worker" if recovered else "Treasury executor",
+            sender="Belay order hold", recipient="Conversion provider",
+            method="GET" if recovered else "POST",
+            url=f"https://fx.belay.invalid/v1/payouts/{state['operation_id']}" if recovered else "https://fx.belay.invalid/v1/payouts",
+            request={"operation_id": state["operation_id"], "creates_payment": False} if recovered else state["intent"],
+            response={"provider_reference": provider["provider_reference"], "attempt_count": provider["attempt_count"]},
+        )
+
+    def _recover_dispatch(self, db, state):
+        self._validate_dispatch_binding(db, state)
+        provider, error = self._observe_provider(state["operation_id"])
+        if error or provider is None:
+            raise DemoError("Exact dispatch evidence is unavailable. Funds remain reserved; no retry is authorized.", 409)
+        finding = None
+        if provider.get("payout_state") == "paid":
+            provider, finding = self._investigated_provider(db, state)
+        self._accept_dispatch(db, state, provider, recovered=True, finding=finding)
+
+    def _investigated_provider(self, db, state):
+        from purchase_simulator.recovery import investigate
+
+        # Findings bind the source revision a user could have inspected, not
+        # the prospective revision advance() will commit after reconciliation.
+        persisted = self._read(db, state["id"])
+        finding = investigate(persisted, self.provider.lookup)
+        if (not finding["can_reconcile"]
+                or finding.get("revision") != persisted["revision"]
+                or finding.get("operation_id") != state["operation_id"]
+                or finding.get("intent_digest") != digest(state["intent"])):
+            raise DemoError("Recovery Desk could not validate the original payout. Funds remain reserved.", 409)
+        provider, error = self._observe_provider(state["operation_id"])
+        if error or provider is None or digest(provider) != finding["evidence_digest"]:
+            raise DemoError("Provider evidence changed after investigation. Reinvestigate before reconciliation.", 409)
+        return provider, finding
+
     def _advance_standard(self, db, state):
         step = state["step"] + 1
         scenario = state["scenario"]
+        # A provider call can commit independently of this application's SQLite
+        # transaction. Resolve that durable uncertainty before evaluating any
+        # expiry, changed terms, or cancellation that could release its hold.
+        if step == 5 and self._dispatch_record(db, state) is not None:
+            self._recover_dispatch(db, state)
+            return
         if step in (3, 4, 5) and self._expire_before_dispatch(db, state, step):
             return
         if step in (4, 5):
@@ -1282,6 +1461,7 @@ class Engine:
             )
         elif step == 5:
             if scenario == "cancel_before_dispatch":
+                self._require_undispatched(db, state)
                 amount = state["fx_quote"]["source_usdc_units"]
                 self._move(db, state, f"{state['order_id']}:cancel", "order_hold", "customer_available", "USDC", amount, "hold_released")
                 self._release_coverage(db, state, "cancelled")
@@ -1299,21 +1479,15 @@ class Engine:
                     request={"reason": "customer_cancelled_before_dispatch"}, response={"returned_usdc_units": amount},
                 )
                 return
-            amount = state["fx_quote"]["source_usdc_units"]
-            self._move(db, state, f"{state['order_id']}:dispatch", "order_hold", "provider_in_transit", "USDC", amount, "provider_dispatch")
+            self._start_dispatch(db, state)
             try:
                 provider = self.provider.submit(state["intent"])
-            except ProviderConflict as exc:
-                raise DemoError(str(exc), 409) from exc
-            state.update(funding_state="dispatched", payout_state="provider_received")
-            state["user_message"] = "200 USDC left the hold once, under the saved operation ID."
-            self._event(
-                state, step=5, stage="usdc_dispatched", title="Executor dispatches USDC once",
-                explanation="The provider operation is idempotent. A retry with the same identity returns the prior operation.",
-                actor="Treasury executor", sender="Belay order hold", recipient="Conversion provider",
-                method="POST", url="https://fx.belay.invalid/v1/payouts", request=state["intent"],
-                response={"provider_reference": provider["provider_reference"], "attempt_count": provider["attempt_count"]},
-            )
+            except (ProviderConflict, OSError, sqlite3.Error) as exc:
+                raise DemoError(
+                    "Dispatch acceptance is unknown. The hold remains reserved; reconcile the original operation.",
+                    409, self._snapshot(self._read(db, state["id"]), db),
+                ) from exc
+            self._accept_dispatch(db, state, provider, recovered=False)
         elif step == 6:
             try:
                 provider = self.provider.convert(state["operation_id"])
@@ -1388,7 +1562,7 @@ class Engine:
             )
         elif step == 9:
             if state["payout_state"] == "unknown":
-                provider = self.provider.lookup(state["operation_id"])
+                provider, finding = self._investigated_provider(db, state)
                 if not provider or provider["payout_state"] != "paid":
                     raise DemoError("Exact provider payout is not yet final", 409)
                 self._confirm_payout(db, state, provider)
@@ -1403,7 +1577,7 @@ class Engine:
                     actor="Recovery worker", sender="Belay", recipient="Conversion provider",
                     method="GET", url=f"https://fx.belay.invalid/v1/payouts/{state['operation_id']}",
                     request={"operation_id": state["operation_id"], "creates_payment": False},
-                    response={"payout_state": provider["payout_state"], "attempt_count": provider["attempt_count"], "provider_reference": provider["provider_reference"]},
+                    response={"payout_state": provider["payout_state"], "attempt_count": provider["attempt_count"], "provider_reference": provider["provider_reference"], "recovery_finding": finding},
                 )
             else:
                 state["order_state"] = "merchant_confirmed"
@@ -1518,6 +1692,7 @@ class Engine:
     def _expire_before_dispatch(self, db, state, step):
         if time.time() < state["grant"]["expires_at"]:
             return False
+        self._require_undispatched(db, state)
         held = self._account(db, state["id"], "order_hold", "USDC")
         if held:
             self._move(
@@ -1547,6 +1722,7 @@ class Engine:
         return True
 
     def _reject_changed_or_expired_terms(self, db, state, step, decision):
+        self._require_undispatched(db, state)
         held = self._account(db, state["id"], "order_hold", "USDC")
         if held:
             self._move(

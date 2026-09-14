@@ -20,6 +20,7 @@
   let timer = null;
   let followLatest = true;
   let selectedEventId = null;
+  let investigation = null;
 
   const usdc = (units, digits = 0) => `${new Intl.NumberFormat("en-US", {
     minimumFractionDigits: digits,
@@ -129,27 +130,47 @@
     return run?.payout_state === "unknown";
   }
 
+  function requiresManualAction() {
+    return isUnknown() || Boolean(run?.manual_review);
+  }
+
+  function needsPayoutInvestigation() {
+    return isUnknown() && run?.step === 8 && run?.stage !== "dispatch_unknown";
+  }
+
+  function currentInvestigation() {
+    return investigation?.run_id === run?.id && investigation?.revision === run?.revision
+      ? investigation : null;
+  }
+
+  function canReconcilePayout() {
+    const finding = currentInvestigation();
+    return finding?.verdict === "paid" && finding?.can_reconcile === true;
+  }
+
   function chapterFor(event) {
     const stage = event?.stage || run?.stage;
     if (["mission_authorized", "historical_fixture_loaded", "grant_expired"].includes(stage)) return "authorize";
     if (["offer_found", "checkout_bound"].includes(stage)) return "propose";
     if (["policy_blocked", "admitted", "intent_signed", "terms_rejected"].includes(stage)) return "control";
-    if (["cancelled", "usdc_dispatched", "converted", "payout_submitted", "payout_unknown", "merchant_paid", "payout_reconciled", "order_confirmed"].includes(stage)) return "settle";
+    if (["cancelled", "dispatch_unknown", "usdc_dispatched", "converted", "payout_submitted", "payout_unknown", "merchant_paid", "payout_reconciled", "order_confirmed"].includes(stage)) return "settle";
     if (["delivery_check", "non_delivery", "review_required", "delivered", "agent_error_detected"].includes(stage)) return "verify";
     return "recover";
   }
 
   function updateButtons() {
     const actionable = run && !run.terminal && run.can_advance;
+    if (!actionable || requiresManualAction()) stopPlayback();
     $("start").disabled = busy || Boolean(run);
     $("scenario").disabled = busy || Boolean(run);
-    $("play").disabled = busy || !actionable;
-    $("next").disabled = busy || !actionable || playing;
+    $("play").disabled = busy || !actionable || requiresManualAction();
+    $("next").disabled = busy || !actionable || playing || (needsPayoutInvestigation() && !canReconcilePayout());
+    $("investigate").disabled = busy || !needsPayoutInvestigation();
     $("reset").disabled = busy || !run;
     $("play").textContent = playing ? "Pause" : "Auto play";
     $("play").setAttribute("aria-pressed", String(playing));
     $("next").replaceChildren(
-      document.createTextNode(isUnknown() ? "Reconcile paid operation " : "Next event "),
+      document.createTextNode(run?.stage === "dispatch_unknown" ? "Reconcile original dispatch " : isUnknown() ? "Reconcile paid operation " : "Next event "),
       element("span", "", "→"),
     );
     $("next").lastElementChild.setAttribute("aria-hidden", "true");
@@ -653,8 +674,37 @@
     $("technical-notice").textContent = config.notice;
   }
 
+  function renderInvestigation() {
+    const finding = currentInvestigation();
+    $("recovery-investigation").hidden = !needsPayoutInvestigation();
+    $("investigation-summary").textContent = finding?.summary
+      || "Check the provider's existing USD payout record before reconciling this purchase. This lookup cannot send, convert, or release funds.";
+    $("investigation-verdict").textContent = finding ? human(finding.verdict) : "Awaiting evidence check";
+    $("investigation-verdict").dataset.verdict = finding?.verdict || "pending";
+    $("investigation-scope").textContent = finding?.scope || "Recovery Desk · deterministic evidence check · fictional provider";
+    $("investigation-checks").replaceChildren(...(finding?.checks || []).map((check) => {
+      const row = element("li", check.passed ? "passed" : "failed");
+      row.append(element("b", "", check.passed ? "PASS" : "WAIT"), element("span", "", check.label));
+      return row;
+    }));
+    $("investigation-observations").replaceChildren(...(finding?.observations || []).map((observation) => {
+      const details = element("details");
+      details.append(
+        element("summary", "", observation.source),
+        element("small", "", `Evidence digest: ${observation.digest}`),
+        element("pre", "", JSON.stringify(observation.payload, null, 2)),
+      );
+      return details;
+    }));
+    $("investigation-next").textContent = canReconcilePayout()
+      ? "The existing payout matches. Reconcile paid operation will check fresh evidence again and record the result; it will not send another payout."
+      : "Reconciliation stays paused until the existing payout can be verified. Missing or conflicting evidence never authorizes a resend.";
+  }
+
   function render() {
+    if (!currentInvestigation()) investigation = null;
     updateButtons();
+    renderInvestigation();
     renderProgress();
     renderScenario();
     renderTrace();
@@ -691,13 +741,15 @@
   }
 
   function scheduleAdvance() {
-    if (!playing || busy || !run?.can_advance || run.terminal || isUnknown() || run.manual_review) return;
+    if (!playing || busy || !run?.can_advance || run.terminal || requiresManualAction()) return;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => advance(true), playbackDelay());
   }
 
   async function advance(automatic = false) {
     if (busy || !run || run.terminal || !run.can_advance) return;
+    if (automatic && requiresManualAction()) return;
+    if (needsPayoutInvestigation() && !canReconcilePayout()) return;
     const restoreNextFocus = !automatic && document.activeElement === $("next");
     busy = true;
     showError();
@@ -709,7 +761,7 @@
       followLatest = true;
       selectedEventId = null;
       render();
-      if (run.terminal || isUnknown() || run.manual_review) {
+      if (run.terminal || requiresManualAction()) {
         stopPlayback();
         updateButtons();
         if (run.terminal && !automatic) (run.receipt ? $("receipt") : $("outcome")).focus();
@@ -724,6 +776,35 @@
       if (isUnknown()) $("next").focus();
     }
     scheduleAdvance();
+  }
+
+  async function investigatePayout() {
+    if (busy || !needsPayoutInvestigation()) return;
+    const runId = run.id;
+    const revision = run.revision;
+    busy = true;
+    investigation = null;
+    showError();
+    render();
+    try {
+      const finding = await api(`/api/runs/${encodeURIComponent(runId)}/investigate`, { expected_revision: revision });
+      if (run?.id !== runId || run?.revision !== revision) return;
+      const blockedIntent = finding.operation_id === null && finding.verdict === "unknown" && finding.can_reconcile === false;
+      if (finding.schema_version !== "belay.purchase.investigation.v1"
+        || finding.run_id !== runId || finding.revision !== revision
+        || (finding.operation_id !== run.operation_id && !blockedIntent)
+        || !["paid", "unknown", "conflict"].includes(finding.verdict)
+        || !Array.isArray(finding.checks) || !Array.isArray(finding.observations)) {
+        throw new Error("The investigation did not match this purchase revision. Check the evidence again.");
+      }
+      investigation = finding;
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      busy = false;
+      render();
+      if (canReconcilePayout()) $("next").focus();
+    }
   }
 
   $("mission-form").addEventListener("submit", async (event) => {
@@ -753,13 +834,14 @@
   });
 
   $("next").addEventListener("click", () => advance(false));
+  $("investigate").addEventListener("click", investigatePayout);
   $("play").addEventListener("click", () => {
     if (playing) {
       stopPlayback();
       updateButtons();
       return;
     }
-    if (!busy && run?.can_advance) {
+    if (!busy && run?.can_advance && !run.terminal && !requiresManualAction()) {
       playing = true;
       followLatest = true;
       selectedEventId = null;

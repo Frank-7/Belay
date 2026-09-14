@@ -97,6 +97,24 @@
         </div>
       </div>
 
+      <section id="recovery-investigation" class="recovery-investigation" aria-labelledby="investigation-title" hidden>
+        <div class="investigation-heading">
+          <div>
+            <p class="eyebrow">RECOVERY DESK · READ-ONLY INVESTIGATION</p>
+            <h2 id="investigation-title">Verify the USD payout before continuing.</h2>
+          </div>
+          <button id="investigate" class="button button-primary" type="button">Investigate evidence</button>
+        </div>
+        <div class="investigation-finding" aria-live="polite">
+          <strong id="investigation-verdict">Awaiting evidence check</strong>
+          <p id="investigation-summary"></p>
+          <small id="investigation-scope"></small>
+          <ul id="investigation-checks" class="investigation-checks"></ul>
+          <div id="investigation-observations" class="investigation-observations"></div>
+          <p id="investigation-next" class="investigation-next"></p>
+        </div>
+      </section>
+
       <section class="synchronized-lens" aria-labelledby="lens-title">
         <div class="lens-index"><span id="lens-step">00</span><small>SYNCED EVENT</small></div>
         <div class="lens-copy">
