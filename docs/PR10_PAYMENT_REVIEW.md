@@ -95,10 +95,11 @@ same-tuple external transfer is not cryptographically bound to the order.
 
 ## Combining with the simulator branch
 
-Merge-tree preview against committed `codex/purchase-simulator` at `50224d1`
+Merge-tree preview against `codex/purchase-simulator` at `5fa1382`
 reports seven conflicts: `.github/workflows/ci.yml`, `.gitignore`, `Makefile`,
 `README.md`, `docs/INDEX.md`, `docs/INTEGRATION.md`, `docs/NEXT_STAGE.md`.
-The current v0.3 document edits also need preservation during that integration.
+The v0.3 architecture documents are included in that preview and need
+preservation during integration.
 
 Keep both test targets, data-directory exclusions and application entry points.
 Preserve main's fixes and historical research numbers. Describe Recovery Desk
