@@ -31,7 +31,11 @@ def make_server(engine, port=8777):
     assets = {"/": ("index.html", "text/html; charset=utf-8"),
               "/index.html": ("index.html", "text/html; charset=utf-8"),
               "/style.css": ("style.css", "text/css; charset=utf-8"),
-              "/app.js": ("app.js", "text/javascript; charset=utf-8")}
+              "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+              "/purchase": ("purchase/index.html", "text/html; charset=utf-8"),
+              "/purchase/": ("purchase/index.html", "text/html; charset=utf-8"),
+              "/purchase/style.css": ("purchase/style.css", "text/css; charset=utf-8"),
+              "/purchase/app.js": ("purchase/app.js", "text/javascript; charset=utf-8")}
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_args):
@@ -127,19 +131,27 @@ def make_server(engine, port=8777):
                         raise DemoError("Provide only scenario, budget_cents and quantity")
                     return self.respond(201, engine.create(body["scenario"], body["budget_cents"], body["quantity"]))
                 if self.path == "/api/missions/analyze":
-                    if set(body) != {"request"}:
-                        raise DemoError("Provide only request")
-                    return self.respond(201, mission_engine.analyze(body["request"]))
+                    if set(body) not in ({"request"}, {"request", "demo_outcome"}):
+                        raise DemoError("Provide request and optionally demo_outcome")
+                    return self.respond(201, mission_engine.analyze(
+                        body["request"], demo_outcome=body.get("demo_outcome", "success")))
                 details = re.fullmatch(r"/api/missions/([a-f0-9]{32})/details", self.path)
                 if details:
                     if set(body) != {"expected_revision", "fields"}:
                         raise DemoError("Provide only expected_revision and fields")
                     return self.respond(200, mission_engine.update_details(details.group(1), body["expected_revision"], body["fields"]))
-                mission_action = re.fullmatch(r"/api/missions/([a-f0-9]{32})/(authorize|advance)", self.path)
+                reconcile = re.fullmatch(r"/api/missions/([a-f0-9]{32})/reconcile", self.path)
+                if reconcile:
+                    if set(body) != {"expected_revision", "evidence_digest"}:
+                        raise DemoError("Provide only expected_revision and evidence_digest")
+                    return self.respond(200, mission_engine.reconcile(
+                        reconcile.group(1), body["expected_revision"], body["evidence_digest"]))
+                mission_action = re.fullmatch(r"/api/missions/([a-f0-9]{32})/(authorize|advance|investigate)", self.path)
                 if mission_action:
                     if set(body) != {"expected_revision"}:
                         raise DemoError("Provide only expected_revision")
-                    method = mission_engine.authorize if mission_action.group(2) == "authorize" else mission_engine.advance
+                    method = {"authorize": mission_engine.authorize, "advance": mission_engine.advance,
+                              "investigate": mission_engine.investigate}[mission_action.group(2)]
                     return self.respond(200, method(mission_action.group(1), body["expected_revision"]))
                 match = re.fullmatch(r"/api/runs/([a-f0-9]{32})/(advance|verify|investigate)", self.path)
                 if match:

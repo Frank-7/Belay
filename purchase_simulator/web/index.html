@@ -44,6 +44,7 @@
       <form id="mission-form" class="composer-card">
         <label class="visually-hidden" for="request-input">Describe the payment</label>
         <textarea id="request-input" name="request" rows="3" minlength="4" maxlength="1200" required aria-describedby="request-help sensitive-warning" placeholder="Pay invoice INV-1042 for $1,250 to Acme Design by September 30"></textarea>
+        <label class="demo-option" for="simulate-lost-reply"><input id="simulate-lost-reply" type="checkbox"><span>Simulate a lost payout reply<small>Pause an uncertain payment, inspect its evidence, then explicitly reconcile.</small></span></label>
         <div class="composer-actions">
           <p id="request-help">Ask naturally. You will review every money-moving detail before anything runs.</p>
           <button id="analyze" class="button button-primary" type="submit">Build my payment plan <span aria-hidden="true">→</span></button>
@@ -102,6 +103,19 @@
 
           <section id="authorization-card" class="authorization-card" aria-labelledby="authorization-title" hidden><span class="authorization-mark" aria-hidden="true">✓</span><div><small>YOUR AUTHORIZATION</small><h3 id="authorization-title">One exact payment</h3><p id="authorization-summary"></p></div><span id="authorization-state" class="state-badge">ACTIVE</span></section>
 
+          <section id="recovery-card" class="recovery-card" aria-labelledby="recovery-title" hidden>
+            <span class="panel-kicker">RECOVERY DESK · PAYMENT EVIDENCE</span>
+            <h3 id="recovery-title">Check what happened before continuing</h3>
+            <p>The original payment remains reserved or in transit. Inspect the existing operation without sending another payment.</p>
+            <div id="recovery-finding" hidden aria-live="polite">
+              <h4 id="recovery-verdict"></h4><p id="recovery-summary"></p>
+              <ul id="recovery-checks" class="recovery-checks"></ul>
+              <details><summary>Inspect evidence and citations</summary><pre id="recovery-evidence" tabindex="0"></pre></details>
+            </div>
+            <div class="recovery-actions"><button id="investigate-payment" class="button button-secondary" type="button">Investigate evidence</button><button id="reconcile-payment" class="button button-primary" type="button" hidden>Reconcile paid operation</button></div>
+            <p class="recovery-scope">This read-only, deterministic investigator checks fictional provider records. Reconciliation rechecks the evidence before updating local accounting. It never sends a payout. No real USD settlement is connected.</p>
+          </section>
+
           <section id="receipt-card" class="receipt-card" aria-labelledby="receipt-title" tabindex="-1" hidden>
             <header><div class="receipt-check" aria-hidden="true">✓</div><div><small>PAYMENT RECEIPT</small><h3 id="receipt-title">Payment complete</h3></div><span>LINKED PROOF</span></header>
             <div class="receipt-facts"><article><span>Paid to</span><strong id="receipt-payee">—</strong></article><article><span>Amount</span><strong id="receipt-amount">—</strong></article><article><span>Reference</span><strong id="receipt-reference">—</strong></article><article><span>Receipt</span><strong id="receipt-id">—</strong></article></div>
@@ -152,6 +166,7 @@
       <article><b>02</b><div><strong>Exact authority before money moves</strong><span>Payee, amount, reference, destination, and expiry are fixed.</span></div></article>
       <article><b>03</b><div><strong>One receipt with honest limits</strong><span>It says what the payment proves and what must be verified elsewhere.</span></div></article>
     </section>
+    <nav class="demo-links" aria-label="More Belay demonstrations"><a href="/purchase/">Explore the protected purchase recovery scenarios</a><span>Seven commerce walkthroughs, including unknown payouts and delivery failures.</span></nav>
   </main>
 
   <footer><span class="brand"><span class="brand-mark" aria-hidden="true">B</span><span>belay</span></span><p>Fictional local product demonstration · No financial product, live payment, guarantee, or coverage</p></footer>

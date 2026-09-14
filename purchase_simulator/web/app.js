@@ -29,6 +29,7 @@
   let autoRunning = false;
   let timer = null;
   let lastFormRevision = null;
+  let investigation = null;
 
   class ApiError extends Error {
     constructor(message, status, current) {
@@ -149,7 +150,7 @@
     if (mission.stage === "review_required") {
       return mission.states?.confirmation === "integrity_failed" || mission.provider_payment?.status === "paid" ? 4 : 3;
     }
-    if (["checked", "held", "signed", "dispatched", "paid", "blocked"].includes(mission.stage)) return 3;
+    if (["checked", "held", "signed", "dispatched", "payout_unknown", "paid", "blocked"].includes(mission.stage)) return 3;
     if (mission.stage === "authorized") return 2;
     if (["plan_ready", "needs_details"].includes(mission.stage) || ["ready", "needs_details"].includes(mission.status)) return 1;
     return 0;
@@ -186,6 +187,7 @@
       held: "FUNDS RESERVED",
       signed: "INSTRUCTION LOCKED",
       dispatched: "PAYMENT SENT",
+      payout_unknown: "PAYOUT NEEDS EVIDENCE",
       paid: "USD DELIVERED",
       complete: "PAYMENT COMPLETE",
       blocked: "PAYMENT STOPPED",
@@ -294,6 +296,55 @@
     const state = $("authorization-state");
     state.textContent = mission.terminal ? "CLOSED" : "ACTIVE";
     state.className = `state-badge ${mission.terminal ? "" : "active"}`;
+  }
+
+  function currentFinding(finding = investigation) {
+    return Boolean(finding && mission && mission.can_investigate
+      && finding.schema_version === "belay.payment.investigation.v1"
+      && finding.run_id === mission.id && finding.revision === mission.revision
+      && Array.isArray(finding.checks)
+      && finding.checks.every((check) => check && typeof check.label === "string" && typeof check.passed === "boolean")
+      && ["paid", "unknown", "conflict"].includes(finding.verdict)
+      && ((finding.operation_id === mission.operation_id
+        && typeof mission.recovery_intent_digest === "string"
+        && finding.intent_digest === mission.recovery_intent_digest
+        && (/^sha256:[a-f0-9]{64}$/.test(finding.evidence_digest || "")
+          || (finding.evidence_digest === null && finding.verdict === "unknown" && finding.can_reconcile === false)))
+        // An unreadable authority can explain a manual-review block, never authorize a write.
+        || (finding.verdict === "unknown" && finding.can_reconcile === false
+          && finding.operation_id === null && finding.intent_digest === null && finding.evidence_digest === null)));
+  }
+
+  function canReconcile() {
+    return currentFinding() && investigation.verdict === "paid"
+      && investigation.can_reconcile === true
+      && Array.isArray(investigation.checks) && investigation.checks.length > 0
+      && investigation.checks.every((check) => check.passed === true);
+  }
+
+  function renderRecovery() {
+    if (!currentFinding()) investigation = null;
+    $("recovery-card").hidden = !mission.can_investigate;
+    $("investigate-payment").disabled = busy || !mission.can_investigate;
+    $("investigate-payment").textContent = investigation ? "Check evidence again" : "Investigate evidence";
+    $("reconcile-payment").hidden = !canReconcile();
+    $("reconcile-payment").disabled = busy || !canReconcile();
+    $("recovery-finding").hidden = !investigation;
+    if (!investigation) return;
+    const labels = { paid: "Payout evidence matches", unknown: "Evidence is incomplete", conflict: "Evidence conflicts" };
+    $("recovery-verdict").textContent = labels[investigation.verdict];
+    $("recovery-summary").textContent = investigation.summary;
+    $("recovery-checks").replaceChildren(...(investigation.checks || []).map((check) => {
+      const item = element("li", check.passed === true ? "passed" : "failed");
+      item.append(element("b", "", check.passed === true ? "Pass" : "Hold"), element("span", "", check.label));
+      return item;
+    }));
+    $("recovery-evidence").textContent = pretty({
+      mission_id: investigation.run_id, revision: investigation.revision,
+      operation_id: investigation.operation_id, intent_digest: investigation.intent_digest,
+      evidence_digest: investigation.evidence_digest,
+      observations: investigation.observations, citations: investigation.citations,
+    });
   }
 
   function renderReceipt() {
@@ -478,9 +529,11 @@
   }
 
   function render() {
+    if (mission && (!mission.can_advance || mission.terminal)) stopAuto();
     $("mission-form").setAttribute("aria-busy", String(busy));
     $("request-input").disabled = busy || Boolean(mission);
     $("analyze").disabled = busy || Boolean(mission);
+    $("simulate-lost-reply").disabled = busy || Boolean(mission);
     $("new-mission").disabled = busy;
     $("product").hidden = !mission;
     document.querySelectorAll(".example-chip").forEach((button) => { button.disabled = busy || Boolean(mission); });
@@ -491,6 +544,7 @@
     renderConversation();
     renderPlan();
     renderAuthorization();
+    renderRecovery();
     renderReceipt();
     renderBackendNow();
     renderChecks();
@@ -501,7 +555,7 @@
 
   function scheduleAdvance() {
     if (!autoRunning || busy || !mission?.can_advance || mission.terminal) {
-      if (mission?.terminal) autoRunning = false;
+      if (mission && (!mission.can_advance || mission.terminal)) stopAuto();
       render();
       return;
     }
@@ -510,7 +564,8 @@
   }
 
   async function recoverConflict(error) {
-    if (error.current) {
+    investigation = null;
+    if (error.current && error.current.id === mission?.id) {
       mission = error.current;
       return true;
     }
@@ -575,7 +630,10 @@
     showError();
     render();
     try {
-      mission = await api("/api/missions/analyze", { request });
+      mission = await api("/api/missions/analyze", {
+        request, demo_outcome: $("simulate-lost-reply").checked ? "payout_reply_lost" : "success",
+      });
+      investigation = null;
       remember(mission.id);
       lastFormRevision = null;
       dirty = false;
@@ -663,14 +721,63 @@
     scheduleAdvance();
   });
 
+  $("investigate-payment").addEventListener("click", async () => {
+    if (busy || !mission?.can_investigate) return;
+    stopAuto();
+    investigation = null;
+    busy = true;
+    showError();
+    render();
+    const expected = { id: mission.id, revision: mission.revision };
+    try {
+      const finding = await api(`/api/missions/${encodeURIComponent(expected.id)}/investigate`, { expected_revision: expected.revision });
+      if (mission?.id !== expected.id || mission.revision !== expected.revision || !currentFinding(finding)) {
+        throw new Error("The evidence does not match the current payment. Investigate again before reconciling.");
+      }
+      investigation = finding;
+    } catch (error) {
+      await recoverConflict(error);
+      showError(`${error.message} No payment was repeated or reconciled.`);
+    } finally {
+      busy = false;
+      render();
+    }
+  });
+
+  $("reconcile-payment").addEventListener("click", async () => {
+    if (busy || !canReconcile()) return;
+    stopAuto();
+    busy = true;
+    showError();
+    render();
+    const expected = { id: mission.id, revision: mission.revision, evidence: investigation.evidence_digest };
+    investigation = null;
+    try {
+      mission = await api(`/api/missions/${encodeURIComponent(expected.id)}/reconcile`, {
+        expected_revision: expected.revision, evidence_digest: expected.evidence,
+      });
+      remember(mission.id);
+      autoRunning = mission.can_advance && !mission.can_investigate;
+    } catch (error) {
+      await recoverConflict(error);
+      showError(`${error.message} Investigate again before continuing; Belay will not repeat the payout.`);
+    } finally {
+      busy = false;
+      render();
+    }
+    scheduleAdvance();
+  });
+
   $("new-mission").addEventListener("click", () => {
     if (busy) return;
     stopAuto();
     mission = null;
+    investigation = null;
     dirty = false;
     lastFormRevision = null;
     remember(null);
     $("request-input").value = "";
+    $("simulate-lost-reply").checked = false;
     $("technical-audit").open = false;
     setMobileView("customer");
     showError();
@@ -747,6 +854,7 @@
         try {
           mission = await api(`/api/missions/${encodeURIComponent(saved)}`);
           $("request-input").value = mission.request_text;
+          $("simulate-lost-reply").checked = mission.demo_outcome === "payout_reply_lost";
           lastFormRevision = null;
           dirty = false;
           setMobileView("customer");

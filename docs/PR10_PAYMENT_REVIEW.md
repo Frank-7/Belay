@@ -74,10 +74,11 @@ re-reads the provider and accounts the original payout once only if the
 evidence is still identical. The API accepts only the current revision at
 `POST /api/runs/{id}/investigate` and does not accept a client verdict.
 
-This is an implemented legacy compatibility path. It is not wired into the
-generalized `belay.mission.v0.1` investor flow, and it does not turn Recovery
-Desk into a signer, ledger, provider client, claims service or autonomous
-executor.
+The generalized `belay.mission.v0.1` flow now has its own domain-neutral typed
+adapter over the shared payment validator. Its UI can investigate a lost reply
+and explicitly reconcile fresh evidence under the original operation identity.
+The v0.3 UI remains available at `/purchase/`. Neither adapter turns Recovery
+Desk into a signer, ledger, provider client, claims service or autonomous executor.
 
 ## Missing product layers
 
@@ -116,11 +117,10 @@ same-tuple external transfer is not cryptographically bound to the order.
 Keep both test targets, data-directory exclusions and application entry points.
 Recovery Desk uses port 8766 and `.belay-recovery/`; Payment Mission uses port
 8777 and `.belay-purchase-simulator/`. Preserve main's fixes and historical
-research numbers. Treat Recovery Desk as implemented recovery and Payment
-Mission as a separate local payment simulation. The legacy v0.3 ticket path now
-has a typed, read-only provider observation; connect the generalized v0.1
-mission path later through its own adapter rather than a shared executor or
-database.
+research numbers. Both payment simulations call shared read-only Recovery Desk
+checks through domain-specific typed adapters. Their state and execution remain
+separate from Recovery Desk's incident database and wallet path. Live external
+providers still require their own evidence, authority and crash protocols.
 
 ## Checks performed here
 

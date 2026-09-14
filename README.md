@@ -22,7 +22,9 @@ bill, insurance premium, tax obligation, subscription, transfer, ticket order
 or another purchase. Belay leaves unknown payees, amounts and required
 references blank. After one exact approval, the customer view and backend view
 follow the same durable event through policy checks, a simulated USDC hold, a
-simulated USDC-to-USD payout and a linked receipt.
+simulated USDC-to-USD payout and a linked receipt. When a provider reply is lost,
+the same interface investigates the original operation with Recovery Desk's
+read-only evidence validator before an explicit reconciliation.
 
 ```bash
 python -m purchase_simulator.server --port 8777
@@ -38,12 +40,17 @@ government agency, insurer, biller, merchant or external API is connected. A
 tax receipt confirms only the simulated payment; an insurance receipt confirms
 only the simulated premium payment.
 
-The investor experience uses the `belay.mission.v0.1` simulation schema. The
-earlier `belay.purchase.v0.3` ticket routes remain for compatibility. That
-legacy path now saves dispatch uncertainty before provider contact and exposes
-a typed, read-only Recovery Desk investigation of the original payout. The
-bridge does not yet run inside `belay.mission.v0.1`; the investor interface
-demonstrates the universal product's normal payment path. A live product still
+Select **Simulate a lost payout reply** before preparing a mission. After
+authorization, inspect the original payment evidence, then reconcile it without
+sending again. The investigator is deterministic; it does not call a model or
+receive a payment/signing callback. Missing or conflicting evidence keeps the
+operation unresolved. The earlier seven-scenario purchase walkthrough remains
+available at `http://127.0.0.1:8777/purchase/`.
+
+The `belay.mission.v0.1` and `belay.purchase.v0.3` workflows use distinct typed
+intent adapters over a shared Recovery Desk payment-evidence validator. USDC
+base units and USD cents remain separate; neither is disguised as a refund.
+A live product still
 requires authenticated users, custody and settlement providers, verified
 payee adapters, compliance review and production cryptography. Read the
 [mission presentation](docs/MVP_PRESENTATION.md),
@@ -103,8 +110,10 @@ incidents. No customer time savings or live-model improvement is assumed.
 ## Earlier Recovery Lab
 
 The earlier runnable application below is a separate local recovery
-simulation. The current pitch leads with the Payment Mission MVP and preserves
-the Recovery Desk as the implemented investigation path for uncertain actions.
+simulation. The current AI Apps story is authorized agent actions that can be
+explained and safely recovered. Payment Mission demonstrates the commerce
+journey; Recovery Desk supplies evidence validation and its separate optional
+model and human-signed testnet demonstration.
 There is no live coverage, bank connection, autonomous wallet or ticket
 checkout.
 Start with the [document index](docs/INDEX.md),

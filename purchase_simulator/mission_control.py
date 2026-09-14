@@ -145,8 +145,8 @@ SENSITIVE_PATTERNS = (
     (
         "private_key",
         re.compile(
-            r"-----BEGIN [^-\r\n]{1,40} PRIVATE KEY-----.*?"
-            r"-----END [^-\r\n]{1,40} PRIVATE KEY-----",
+            r"-----BEGIN (?:[A-Z0-9][A-Z0-9 -]{0,39} )?PRIVATE KEY-----.*?"
+            r"(?:-----END (?:[A-Z0-9][A-Z0-9 -]{0,39} )?PRIVATE KEY-----|\Z)",
             re.IGNORECASE | re.DOTALL,
         ),
         lambda _match: "[REDACTED PRIVATE KEY]",
@@ -157,16 +157,18 @@ SENSITIVE_PATTERNS = (
             r"\b(?:sk|pk)_(?:live|test)_[A-Za-z0-9_-]{8,}\b",
             re.IGNORECASE,
         ),
-        lambda match: f"{match.group(0)[:7]}…[REDACTED]",
+        lambda _match: "[REDACTED]",
     ),
     (
         "credential",
         re.compile(
-            r"\b(?:api[ _-]?key|access[ _-]?token|bearer|password|secret)"
-            r"\s*(?:is|=|:)?\s+[A-Za-z0-9_./+=-]{6,}\b",
+            r"\b(?P<label>api[ _-]?key|access[ _-]?token|private[ _-]?key|"
+            r"bearer|password|secret)"
+            r"(?:\s*[=:]\s*|\s+is\s+|\s+)"
+            r'(?:"[^"\r\n]*"|\x27[^\x27\r\n]*\x27|[^\s,;]+)',
             re.IGNORECASE,
         ),
-        lambda match: match.group(0).split()[0] + " [REDACTED]",
+        lambda match: match.group("label") + " [REDACTED]",
     ),
     (
         "ssn",
@@ -218,7 +220,12 @@ def _clean(value: str, limit: int) -> str:
 
 
 def _redact_sensitive_text(value: str) -> tuple[str, set[str]]:
-    """Remove credentials and high-risk numeric identifiers before persistence."""
+    """Remove recognized credentials and identifiers before persistence.
+
+    A private-key opening marker consumes through its closing marker or the end
+    of the input. A partially pasted key must not become safe merely because
+    its closing marker is missing. Redact before truncating editable fields.
+    """
 
     redacted = value
     categories = set()
@@ -276,9 +283,12 @@ def _money_to_cents(number: str, suffix: str | None = None) -> int | None:
 
 
 def _extract_amounts(text: str) -> list[tuple[int, int, int]]:
+    # A sentence-ending full stop is punctuation, not an invalid decimal.
+    # Keep rejecting partial matches within malformed amounts such as $5.123.
+    amount_end = r"(?![A-Za-z0-9_-]|\.(?!\s|$))"
     patterns = (
-        rf"(?<![-+A-Za-z0-9])\$\s*({MONEY_NUMBER_PATTERN})(?:\s*([kK]))?(?![A-Za-z0-9_.-])",
-        rf"\bUSD\s*({MONEY_NUMBER_PATTERN})(?:\s*([kK]))?(?![A-Za-z0-9_.-])",
+        rf"(?<![-+A-Za-z0-9])\$\s*({MONEY_NUMBER_PATTERN})(?:\s*([kK]))?{amount_end}",
+        rf"\bUSD\s*({MONEY_NUMBER_PATTERN})(?:\s*([kK]))?{amount_end}",
         rf"(?<![-+])\b({MONEY_NUMBER_PATTERN})(?:\s*([kK]))?\s*(?:US dollars?|dollars?|USD)\b",
     )
     found = []
@@ -456,23 +466,54 @@ def _apply_category(plan: dict, category: str) -> None:
     )
 
 
+def _amount_role(text: str, start: int, end: int) -> str:
+    """Distinguish a spending ceiling or estimate from an exact payment.
+
+    This is deliberately a small deterministic parser. An unsupported range,
+    estimate, or minimum must leave the exact amount for the user to supply.
+    """
+
+    lead = text[:start].lower()
+    tail = text[end:].lower()
+    ceiling = (
+        r"\b(?:under|up\s+to|at\s+most|no\s+more\s+than|not\s+more\s+than|"
+        r"not\s+exceeding|do\s+not\s+exceed|"
+        r"(?:maximum|max)(?:\s+amount)?|budget|(?:spending\s+)?(?:cap|limit)|ceiling)"
+        r"\s*(?:(?:of|is|at)\s*|[=:]\s*)?$"
+    )
+    if re.search(ceiling, lead) or re.match(
+        r"\s*(?:maximum|max|budget|cap|limit|ceiling|or\s+less|or\s+lower)\b", tail
+    ):
+        return "maximum"
+    if re.search(
+        r"\b(?:at\s+least|more\s+than|over|minimum(?:\s+amount)?|"
+        r"about|around|approximately|roughly|between|from)"
+        r"\s*(?:(?:of|is)\s*|[=:]\s*)?$",
+        lead,
+    ) or re.match(r"\s*(?:minimum|or\s+more|or\s+higher)\b", tail):
+        return "ambiguous"
+    return "exact"
+
+
 def _extract_plan(request_text: str) -> dict:
     category = _category(request_text)
     amounts = _extract_amounts(request_text)
     amount = None
     maximum = None
-    lower = request_text.lower()
     exact_amounts = []
-    for start, _end, cents in amounts:
-        lead = lower[max(0, start - 24):start]
-        if re.search(
-            r"(?:under|up to|maximum(?:\s+of)?|max(?:\s+of)?|no more than)\s*$",
-            lead,
-        ):
+    ambiguous = False
+    for start, end, cents in amounts:
+        role = _amount_role(request_text, start, end)
+        if role == "maximum":
             maximum = cents if maximum is None else min(maximum, cents)
+        elif role == "ambiguous":
+            ambiguous = True
         else:
             exact_amounts.append(cents)
-    if exact_amounts and len(set(exact_amounts)) == 1:
+    for (_start, end, _cents), (next_start, _end, _next_cents) in zip(amounts, amounts[1:], strict=False):
+        if re.fullmatch(r"\s*(?:to|or|[-–—])\s*", request_text[end:next_start], re.IGNORECASE):
+            ambiguous = True
+    if not ambiguous and exact_amounts and len(set(exact_amounts)) == 1:
         amount = exact_amounts[0]
     if maximum is None and amount is not None:
         maximum = amount
@@ -498,7 +539,9 @@ def _extract_plan(request_text: str) -> dict:
         "domain_confirmation_label": details["domain_confirmation"],
         "confirmation_scope": details["scope"],
         "review_notes": (
-            ["More than one payment amount was found. Enter the exact amount to pay."]
+            ["An amount range, estimate, or minimum was found. Enter the exact amount to pay."]
+            if ambiguous
+            else ["More than one payment amount was found. Enter the exact amount to pay."]
             if len(set(exact_amounts)) > 1
             else []
         ),
@@ -654,6 +697,14 @@ class MissionEngine:
                 );
                 """
             )
+            # Nullable columns preserve old databases without inventing evidence
+            # for already dispatched legacy payments.
+            columns = {row[1] for row in db.execute("PRAGMA table_info(mission_payments)")}
+            for name, kind in (("intent_json", "TEXT"), ("grant_json", "TEXT"),
+                               ("source_usdc_units", "INTEGER"), ("source_asset", "TEXT"),
+                               ("destination_asset", "TEXT")):
+                if name not in columns:
+                    db.execute(f"ALTER TABLE mission_payments ADD COLUMN {name} {kind}")
 
     def close(self) -> None:
         """Stop accepting work; database connections are closed per operation."""
@@ -670,6 +721,7 @@ class MissionEngine:
         return {
             "schema_version": SCHEMA_VERSION,
             "examples": list(EXAMPLES),
+            "demo_outcomes": ["success", "payout_reply_lost"],
             "starting_balance_usdc_units": STARTING_USDC_UNITS,
             "max_payment_usd_cents": MAX_PAYMENT_USD_CENTS,
             "notice": "Local product simulation. No model, wallet, blockchain, bank, biller, government agency, insurer, merchant, coverage, or real money is connected.",
@@ -678,6 +730,8 @@ class MissionEngine:
                 "details": "POST /api/missions/{id}/details",
                 "authorize": "POST /api/missions/{id}/authorize",
                 "advance": "POST /api/missions/{id}/advance",
+                "investigate": "POST /api/missions/{id}/investigate",
+                "reconcile": "POST /api/missions/{id}/reconcile",
             },
         }
 
@@ -760,6 +814,15 @@ class MissionEngine:
 
     def _snapshot(self, state: dict, db) -> dict:
         result = deepcopy(state)
+        result.setdefault("demo_outcome", "success")
+        result["can_investigate"] = self._can_investigate(state)
+        result["recovery_intent_digest"] = None
+        if state.get("signed_intent"):
+            from purchase_simulator.mission_recovery import intent_from_state
+            try:
+                result["recovery_intent_digest"] = intent_from_state(state).view()["intent_digest"]
+            except (KeyError, ValueError, TypeError, OverflowError, RecursionError):
+                pass
         result["missing_fields"] = _missing(result["plan"])
         result["can_authorize"] = result["status"] in {"needs_details", "ready"} and not result["missing_fields"]
         result["can_advance"] = result["status"] in {"authorized", "checked", "held", "signed", "dispatched", "paid"}
@@ -779,8 +842,10 @@ class MissionEngine:
         with self.lock, _connect(self.path) as db:
             return self._snapshot(self._read(db, mission_id), db)
 
-    def analyze(self, request_text) -> dict:
+    def analyze(self, request_text, *, demo_outcome="success") -> dict:
         self._ensure_open()
+        if not isinstance(demo_outcome, str) or demo_outcome not in {"success", "payout_reply_lost"}:
+            raise DemoError("Choose success or payout_reply_lost as the demo outcome")
         if not isinstance(request_text, str):
             raise DemoError("request must be text")
         request_text = _clean(request_text, MAX_REQUEST_LENGTH + 1)
@@ -805,6 +870,7 @@ class MissionEngine:
             "schema_version": SCHEMA_VERSION,
             "id": mission_id,
             "operation_id": operation_id,
+            "demo_outcome": demo_outcome,
             "revision": 0,
             "plan_revision": 1,
             "status": "needs_details" if missing else "ready",
@@ -1035,6 +1101,83 @@ class MissionEngine:
         except sqlite3.IntegrityError as exc:
             raise DemoError("This value movement already exists; Belay refused a duplicate", 409) from exc
 
+    @staticmethod
+    def _captured_intent(state):
+        from recovery_app.payment import canonical
+        return canonical({key: value for key, value in state["signed_intent"].items()
+                          if key not in {"digest", "signature"}})
+
+    @staticmethod
+    def _captured_grant(state):
+        from recovery_app.payment import canonical
+        return canonical(state["grant"])
+
+    @staticmethod
+    def _can_investigate(state):
+        return (state["status"] in {"dispatched", "payout_unknown", "review_required"}
+                and state["money"]["provider_in_transit_usdc_units"] > 0)
+
+    def _investigate(self, db, state):
+        from purchase_simulator.mission_recovery import investigate
+
+        def lookup(operation_id):
+            row = db.execute("SELECT * FROM mission_payments WHERE operation_id=?",
+                             (operation_id,)).fetchone()
+            return dict(row) if row is not None else None
+
+        return investigate(state, lookup)
+
+    def investigate(self, mission_id: str, expected_revision) -> dict:
+        """Return deterministic evidence only, with no state or ledger mutation."""
+        self._ensure_open()
+        with self.lock, _connect(self.path) as db:
+            db.execute("BEGIN")
+            state = self._read(db, mission_id)
+            self._guard_revision(state, expected_revision, db)
+            if not self._can_investigate(state):
+                raise DemoError("Only an unresolved dispatched payment can be investigated", 409)
+            return self._investigate(db, state)
+
+    def reconcile(self, mission_id: str, expected_revision, evidence_digest) -> dict:
+        """Account an already paid original operation after a fresh evidence read."""
+        self._ensure_open()
+        if not isinstance(evidence_digest, str) or not re.fullmatch(r"sha256:[a-f0-9]{64}", evidence_digest):
+            raise DemoError("Provide the evidence_digest from the current investigation")
+        with self.lock, _connect(self.path) as db:
+            db.execute("BEGIN IMMEDIATE")
+            state = self._read(db, mission_id)
+            self._guard_revision(state, expected_revision, db)
+            if not self._can_investigate(state):
+                raise DemoError("This mission has no unresolved payout to reconcile", 409)
+            finding = self._investigate(db, state)
+            if (finding["evidence_digest"] != evidence_digest
+                    or finding["verdict"] != "paid" or not finding["can_reconcile"]):
+                raise DemoError("Fresh evidence does not confirm the original payment; investigate again", 409,
+                                self._snapshot(state, db))
+            before_states, before_money = self._states(state), self._balances(state)
+            amount_units = state["signed_intent"]["source_usdc_units"]
+            amount_cents = state["signed_intent"]["destination_usd_cents"]
+            self._ledger_once(db, state, f"{state['operation_id']}:paid", "usdc_to_usd_payout",
+                              "settlement_provider", "payee_received", "USDC_TO_USD_1_TO_1_DEMO", amount_units)
+            state["money"]["provider_in_transit_usdc_units"] -= amount_units
+            state["money"]["payee_received_usd_cents"] += amount_cents
+            state.update(status="paid", terminal=False, revision=state["revision"] + 1)
+            state["states"].update(funding="settled", payout="paid", confirmation="payment_recorded")
+            self._event(
+                state, stage="paid", title="Original payout reconciled",
+                user_message="Fresh provider evidence confirmed the original simulated USD payout. Belay recorded it once without sending another payment.",
+                actor="Recovery Desk and payment executor", action="Reconcile existing payout evidence",
+                control="Read-only findings cannot move money; the executor checks fresh evidence and revision.",
+                proof="Cited provider payout record", safe_retry="A unique ledger key prevents double accounting.",
+                method="RECONCILE", route=f"/api/missions/{mission_id}/reconcile",
+                request={"expected_revision": expected_revision, "evidence_digest": evidence_digest},
+                response={"verdict": finding["verdict"], "citations": finding["citations"],
+                          "intent_digest": finding["intent_digest"]},
+                before_states=before_states, before_money=before_money,
+            )
+            self._save(db, state)
+            return self._snapshot(state, db)
+
     def advance(self, mission_id: str, expected_revision) -> dict:
         self._ensure_open()
         with self.lock, _connect(self.path) as db:
@@ -1170,8 +1313,9 @@ class MissionEngine:
                     """
                     INSERT INTO mission_payments(
                         operation_id,mission_id,payee_id,amount_usd_cents,status,
-                        attempt_count,provider_reference,created_at
-                    ) VALUES(?,?,?,?,?,?,?,?)
+                        attempt_count,provider_reference,created_at,
+                        intent_json,grant_json,source_usdc_units,source_asset,destination_asset
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
                     """,
                     (
                         state["operation_id"],
@@ -1182,6 +1326,11 @@ class MissionEngine:
                         1,
                         provider_reference,
                         int(time.time()),
+                        self._captured_intent(state),
+                        self._captured_grant(state),
+                        state["signed_intent"]["source_usdc_units"],
+                        state["signed_intent"]["source_asset"],
+                        state["signed_intent"]["destination_asset"],
                     ),
                 )
                 self._ledger_once(db, state, state["operation_id"], "provider_dispatch", "payment_hold", "settlement_provider", "USDC", amount_units)
@@ -1223,7 +1372,7 @@ class MissionEngine:
                     == state["money"]["provider_in_transit_usdc_units"]
                 )
                 if not payment_matches:
-                    state.update(status="review_required", terminal=True)
+                    state.update(status="review_required", terminal=False)
                     state["states"]["payout"] = "unknown"
                     self._event(
                         state, stage="review_required", title="Settlement needs review",
@@ -1247,6 +1396,38 @@ class MissionEngine:
                     "UPDATE mission_payments SET status='paid' WHERE operation_id=?",
                     (state["operation_id"],),
                 )
+                finding = self._investigate(db, state)
+                if not finding["can_reconcile"]:
+                    state.update(status="review_required", terminal=False)
+                    state["states"]["payout"] = "unknown"
+                    self._event(
+                        state, stage="review_required", title="Settlement evidence needs review",
+                        user_message=finding["summary"], actor="Recovery Desk",
+                        action="Compare original dispatch and provider evidence",
+                        control="Incomplete or conflicting evidence cannot release or credit funds.",
+                        proof="Deterministic evidence checks", safe_retry="Investigate the same operation; never send again.",
+                        method="VERIFY", route="belay://recovery/payment",
+                        request={"operation_id": state["operation_id"]},
+                        response={"verdict": finding["verdict"]},
+                        before_states=before_states, before_money=before_money,
+                    )
+                    self._save(db, state)
+                    return self._snapshot(state, db)
+                if state.get("demo_outcome") == "payout_reply_lost":
+                    state.update(status="payout_unknown", terminal=False)
+                    state["states"]["payout"] = "unknown"
+                    self._event(
+                        state, stage="payout_unknown", title="Payout reply lost",
+                        user_message="The fictional provider completed the payout, but its reply was lost. Investigate the original payment before changing its balance.",
+                        actor="Settlement adapter", action="Record an uncertain payout",
+                        control="Funds remain in transit; no retry or release is permitted.",
+                        proof="Stable operation identity", safe_retry="Read the original provider record; never send again.",
+                        method="GET", route="https://settlement.belay.invalid/v1/payments/{operation_id}",
+                        request={"operation_id": state["operation_id"]}, response={"status": "unknown"},
+                        before_states=before_states, before_money=before_money,
+                    )
+                    self._save(db, state)
+                    return self._snapshot(state, db)
                 self._ledger_once(db, state, f"{state['operation_id']}:paid", "usdc_to_usd_payout", "settlement_provider", "payee_received", "USDC_TO_USD_1_TO_1_DEMO", amount_units)
                 state["money"]["provider_in_transit_usdc_units"] -= amount_units
                 state["money"]["payee_received_usd_cents"] += amount_cents

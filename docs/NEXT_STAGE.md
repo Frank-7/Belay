@@ -2,14 +2,14 @@
 
 Belay is competing in **AI Apps**. The current pitch has one product promise:
 
-> Tell Belay what to pay. It turns the request into one exact authorization,
-> executes under deterministic controls and keeps a receipt of what happened.
+> Authorize an exact agent action, then explain and safely recover its outcome
+> when a payment reply is uncertain.
 
-The Payment Mission MVP leads the demonstration. Recovery Desk remains the
-implemented supporting product for an operation whose external outcome is
-uncertain. The legacy `belay.purchase.v0.3` path now uses it through a typed,
-read-only purchase investigation. The generalized `belay.mission.v0.1` path
-still needs a domain-neutral observation adapter rather than another executor.
+Payment Mission demonstrates that promise through the commerce journey.
+Both `belay.mission.v0.1` and the preserved `belay.purchase.v0.3` walkthrough
+use distinct typed adapters over Recovery Desk's shared read-only payment
+validator. The separate Recovery Desk app supplies the optional model
+investigation and human-signed Arc Testnet demonstration.
 
 No interviews, willingness to pay, provider access or customer incident rates
 are established by this repository.
@@ -18,15 +18,17 @@ are established by this repository.
 
 | Product | Working local path | Boundary |
 |---|---|---|
-| Payment Mission MVP | Open-ended request, editable plan, exact authorization, deterministic checks, simulated USDC hold and USD payout, scoped receipt, synchronized customer/backend views | No model, wallet, chain, bank, payee or real money is connected |
-| Legacy v0.3 purchase recovery | Durable dispatch-attempt record, reserved hold, exact-operation investigation and evidence-bound reconciliation | Ticket fixture only; not connected to the universal mission interface |
+| Payment Mission MVP | Open-ended request, editable plan, exact authorization, simulated USDC hold and USD payout, read-only lost-reply investigation, explicit reconciliation and receipt | Deterministic local fixtures; no model, wallet, chain, bank, payee or real money is connected |
+| v0.3 purchase walkthrough at `/purchase/` | Durable dispatch-attempt record, reserved hold, exact-operation investigation, evidence-bound reconciliation and delivery/claim scenarios | Separate ticket state, shared payment evidence checks; fictional provider and reserve |
 | Recovery Desk | Persistent incidents, bounded optional model proposal, deterministic evidence validation, guarded operator resolution and audit export | Local refund fixture; no autonomous payment key or live remedy |
 | Arc test wallet | Human-signed capped test-USDC transfer and read-only finalized-receipt verification | Arc Testnet only; separate from Payment Mission settlement |
 | Research runtime | Anchored side-effect experiments and recorded crash demonstrations | Synthetic measurements; POSIX crash harness |
 
 ## Freeze for the investor pitch
 
-1. Run one complete invoice mission from request through receipt.
+1. Run one invoice mission with a lost payout reply: request, authorization,
+   uncertainty, evidence, explicit reconciliation, then receipt. Show that the
+   original provider attempt count remains one.
 2. Start one incomplete tax or insurance request and show that the payee,
    amount or required reference stays blank until supplied.
 3. Keep the main interface in plain language. Use the technical audit only to
@@ -36,8 +38,9 @@ are established by this repository.
 5. Run the targeted Python and JavaScript suites, documentation consistency
    check and full repository lint before freezing the branch.
 
-Do not add another customer scenario or visual mode during the pitch freeze.
-The example prompts must exercise the same composer and state machine.
+The example prompts and lost-reply toggle exercise the same composer, authority
+and state machine. Keep the older purchase walkthrough accessible for deeper
+delivery and reserve questions.
 
 ## First connected pilot
 
@@ -72,8 +75,9 @@ before provider I/O, keeps the hold reserved, rejects missing or conflicting
 evidence and reconciles the original paid operation only after a fresh provider
 read.
 
-Reuse that pattern for `belay.mission.v0.1` through a new domain-neutral
-provider-observation interface:
+The generalized `belay.mission.v0.1` path now uses a domain-neutral typed
+provider-observation adapter over the same validator. Keep these boundaries
+when replacing its local provider:
 
 - send the exact Payment Mission operation and provider identities;
 - request read-only evidence and preserve unknown outcomes;

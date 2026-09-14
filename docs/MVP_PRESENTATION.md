@@ -3,14 +3,15 @@
 Use the runnable Payment Mission MVP on port 8777. All wallets, signatures,
 USDC, conversion, USD payout and payee confirmation are local fixtures. The
 product interaction, HTTP API, persisted workflow, revision checks and ledger
-are implemented. The same server also retains a legacy ticket API with a
-working read-only lost-payout investigation. That safety bridge is not yet wired
-into the universal investor interface.
+are implemented. General payment missions and the preserved ticket walkthrough
+use distinct typed adapters over Recovery Desk's shared read-only payment
+validator. The main demo includes a lost payout reply, evidence investigation
+and explicit reconciliation under the original operation identity.
 
 ## One sentence
 
-Belay turns any payment request into one exact, reviewable authorization and a
-payment trail an AI cannot silently rewrite.
+Belay makes an agent's proposed payment reviewable, then helps explain and
+safely recover its outcome when the confirmation is lost.
 
 ## 60-second pitch
 
@@ -25,7 +26,9 @@ beneficiary, amount, purpose and operation identity.
 
 From there, deterministic controls take over. Belay checks the grant, reserves
 the exact funds once, locks the instruction, pays through one stable operation
-and creates a receipt that says exactly what happened. A tax receipt does not
+and investigates a lost reply before anyone retries. The operator inspects
+the original payment evidence and explicitly reconciles it without sending
+again. A linked receipt says exactly what happened. A tax receipt does not
 pretend a return was filed. An insurance receipt does not pretend coverage was
 approved.
 
@@ -36,14 +39,16 @@ agent, wallet and regulated settlement provider can plug into."
 ## Live walkthrough
 
 1. Type `Pay invoice INV-1042 for $1,250 to Acme Design by September 30`.
-2. Select **Prepare payment**. Point to the editable plan: the AI proposal is
-   visible and has no authority yet.
+2. Enable **Simulate a lost payout reply**, then select **Prepare payment**.
+   Point to the editable plan: this deterministic proposal is visible and has
+   no authority yet. A live model is a separate integration.
 3. Select **Authorize one payment**. Point to the fixed amount, beneficiary and
    one-time scope.
 4. Let the payment run. Follow the customer progress on the left and the same
    event in **Behind this action** on the right.
-5. Open the receipt. Show the linked request, authorization, provider result
-   and honest confirmation scope.
+5. Investigate the uncertain payout. Show exact intent and provider checks,
+   then explicitly reconcile the original payment. Open the receipt and show
+   the provider attempt count is still one, with honest confirmation scope.
 6. Begin `Pay my federal estimated tax`. The missing amount and reference stay
    blank. Say: "Belay asks; it does not guess with money."
 
@@ -58,9 +63,11 @@ agent, wallet and regulated settlement provider can plug into."
   are rendered from the same persisted event.
 - Receipt wording separates payment from external outcomes such as delivery,
   tax filing, remaining bill balance, coverage or claim approval.
-- The legacy `belay.purchase.v0.3` path proves that dispatch can be saved before
-  provider contact and an unknown original payout can be investigated without
-  authorizing another send. A universal `belay.mission.v0.1` adapter is next.
+- Both payment domains investigate the original operation through shared
+  read-only evidence checks. The mission path preserves in-transit funds while
+  uncertain, then accounts a confirmed payout after explicit fresh-evidence
+  reconciliation. The older `/purchase/` walkthrough also preserves its
+  pre-dispatch uncertainty and delivery/claim scenarios.
 
 ## What comes next
 
@@ -84,10 +91,10 @@ control contract:
 | Does an insurance payment prove coverage? | No. It proves only the simulated premium payment. Coverage and claims require the insurer's evidence. |
 | Why use USDC if the payee wants dollars? | USDC is the internal source asset in the proposed architecture; a regulated provider converts it and pays verified USD details. The demo simulates that route. |
 | Why will a merchant integrate? | The merchant can keep receiving USD. Belay's initial adapter target should use an existing invoice or bill-payment interface rather than require the merchant to adopt a wallet. |
-| What if the payout provider's reply is lost? | The legacy v0.3 backend keeps the hold reserved, looks up the original operation through a read-only evidence bridge and reconciles only exact paid evidence. The universal mission adapter is the next integration step. |
+| What if the payout provider's reply is lost? | The mission UI pauses, investigates the original payment through Recovery Desk's read-only validator, and requires explicit reconciliation with fresh matching evidence. Missing or contradictory evidence cannot authorize another send. |
 | What is defensible? | The durable authorization and evidence graph across agents, wallets, payout providers and payee systems, plus the operational data required to reconcile failures safely. |
 | Is it a blockchain or payment processor? | It is the control layer. Wallet, chain and settlement providers remain replaceable adapters. |
-| What has actually been built? | An open-ended composer, editable plan, exact authorization, deterministic checks, simulated settlement, scoped receipt, two-sided audit, HTTP API and persisted SQLite state, plus a typed read-only lost-payout bridge on the legacy v0.3 API. |
+| What has actually been built? | A composer, editable plan, exact authorization, deterministic checks, simulated settlement, typed read-only investigation, explicit reconciliation, scoped receipt, synchronized audit and SQLite state; the older purchase walkthrough remains accessible. |
 
 ## Language for the pitch
 

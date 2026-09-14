@@ -9,6 +9,8 @@ The customer experience and **Behind this action** view use the same persisted
 event. An investor can watch the simple product flow and inspect the policy
 decision, money route, stable operation identity, provider result, ledger and
 receipt without switching to a separate demonstration.
+An uncertain payout can be investigated in the same view through the shared
+Recovery Desk validator, then explicitly reconciled without another send.
 
 ## Run it
 
@@ -20,6 +22,8 @@ python -m purchase_simulator.server --port 8777
 
 Open `http://127.0.0.1:8777`. The server listens on loopback only. No API key,
 package installation or payment account is required.
+The preserved ticket, delivery and reserve scenarios run at
+`http://127.0.0.1:8777/purchase/` on the same server.
 
 An installed wheel also provides the same launcher:
 
@@ -41,7 +45,8 @@ records in SQLite.
 ## Three-minute investor walkthrough
 
 1. Enter a request such as `Pay invoice INV-1042 for $1,250 to Acme Design by
-   September 30` and select **Prepare payment**.
+   September 30`, enable **Simulate a lost payout reply**, and select
+   **Prepare payment**.
 2. Show that the payee, exact amount, limit, reference and due date are visible
    before authorization. Edit any field to demonstrate that the customer's
    reviewed plan is the source of authority.
@@ -50,13 +55,16 @@ records in SQLite.
 4. Let Belay execute. The customer sees plain progress while the backend pane
    shows deterministic checks, a single-use hold, a bound payment instruction,
    one provider dispatch and a simulated USD payout.
-5. Open the final receipt. It links what the customer requested, what they
+5. When the payout becomes uncertain, investigate its evidence. The finding
+   does not move money. Explicitly reconcile the confirmed original payment,
+   then open the final receipt. It links what the customer requested, what they
    authorized, what was paid and what the domain-specific confirmation proves.
 6. Start a tax or insurance request with a missing amount. Belay leaves the
    amount blank and asks for it. It does not invent a money-moving fact.
 
-The example prompts are shortcuts into the same composer. They are not
-separate hard-coded scenarios.
+The example prompts are shortcuts into the same composer. The lost-reply
+toggle changes only the labeled fictional provider outcome, using the same
+review, authority and payment identity.
 
 ## Requests the MVP can shape
 
@@ -105,6 +113,8 @@ The implemented mission lifecycle is:
 ```text
 needs details / ready -> authorized -> checked -> held -> signed
                       -> dispatched -> paid -> complete
+                                    -> payout unknown -> investigate
+                                                      -> reconcile -> paid
 ```
 
 - **Intent compiler:** converts text into a draft. It cannot authorize or move
@@ -173,27 +183,37 @@ When the legacy executor reconciles, it reads the provider again and rejects a
 changed evidence digest. The original payout is accounted once; no browser
 verdict is accepted and no investigation callback can sign, submit, convert,
 complete or pay a claim. This bridge currently covers one fictional lost-payout
-path. The universal `belay.mission.v0.1` interface still needs its own typed
-recovery adapter.
+path. The universal `belay.mission.v0.1` interface uses a separate domain-neutral
+intent adapter over the same `recovery_app/payment.py` validator. It preserves
+the distinction between USDC base units and USD cents without inventing an order
+or projecting a general payment into the research refund schema.
+
+Mission investigation is read-only and deterministic. The executor rereads the
+provider and compares its evidence digest at reconciliation; a browser-supplied
+verdict cannot authorize it. An unknown mission has no automatic advance or
+replacement payment. Once a payment may have happened, grant expiry does not
+prove that its funds can be returned.
 
 ## Local API
 
 | Route | Body | Purpose |
 |---|---|---|
 | `GET /api/mission/config` | — | Read examples, limits, schema and the simulation notice |
-| `POST /api/missions/analyze` | `request` | Create and persist a draft payment mission |
+| `POST /api/missions/analyze` | `request`, optional `demo_outcome` (`success` or `payout_reply_lost`) | Create and persist a draft payment mission |
 | `GET /api/missions/{id}` | — | Read the current mission, events, ledger and provider result |
 | `POST /api/missions/{id}/details` | `expected_revision`, `fields` | Save editable plan fields before authorization |
 | `POST /api/missions/{id}/authorize` | `expected_revision` | Approve one exact, complete payment plan |
 | `POST /api/missions/{id}/advance` | `expected_revision` | Execute one permitted transition |
+| `POST /api/missions/{id}/investigate` | `expected_revision` | Read original-payment evidence without changing the mission or sending money |
+| `POST /api/missions/{id}/reconcile` | `expected_revision`, `evidence_digest` | Revalidate fresh evidence and account the confirmed original payout once |
 
 The editable fields are `payee`, `amount_usd_cents`,
-`maximum_usd_cents`, `reference`, `due_date` and `description`. Amounts use
+`maximum_usd_cents`, `reference`, `due_date`, `description` and `category`. Amounts use
 whole USD cents. A stale revision returns HTTP 409. The route never accepts a
 wallet key, bank credential or raw payment token.
 
 The earlier `GET /api/config` and `/api/runs` ticket-simulator routes remain
-available for repository compatibility. They use the separate
+available through the `/purchase/` walkthrough. They use the separate
 `belay.purchase.v0.3` schema and do not drive the current investor interface.
 `POST /api/runs/{id}/investigate` accepts only `expected_revision` and returns
 the read-only finding for that legacy run's original payout.
@@ -202,17 +222,19 @@ the read-only finding for that legacy run's original payout.
 
 ```bash
 python -m unittest discover -s tests -p "test_mission_control.py" -v
+python -m unittest discover -s tests -p "test_mission_inputs.py" -v
+python -m unittest discover -s tests -p "test_mission_recovery.py" -v
 python -m unittest discover -s tests -p "test_purchase_simulator.py" -v
 python -m unittest discover -s tests -p "test_purchase_recovery.py" -v
 node --check purchase_simulator/web/app.js
-node --test tests/test_purchase_simulator_ui.mjs
+node --test tests/test_purchase_simulator_ui.mjs tests/test_purchase_walkthrough_ui.mjs
 python experiments/check_docs.py
 ```
 
 The suites use temporary databases and no remote services. The mission tests
 cover parsing, missing details, authorization bounds, the complete money path,
 stable revisions, persistence and the loopback API. The legacy suite protects
-the ticket workflow that remains available through its API. The recovery suite
+the ticket workflow that remains available through its API and UI. The recovery suite
 covers dispatch uncertainty, hold safety, exact evidence binding, unknown and
 conflicting observations, current revisions and no replacement submission.
 

@@ -22,7 +22,8 @@ Commit `fe23651` now demonstrates the read-only boundary for the legacy
 `belay.purchase.v0.3` lost-payout path: dispatch uncertainty is persisted
 before provider contact, and exact provider evidence can reconcile the original
 payout without another submission. The generalized `belay.mission.v0.1` path
-does not yet call this bridge.
+now uses a separate domain-neutral intent adapter over the same read-only
+payment validator and exposes investigation before explicit reconciliation.
 
 ## 1. The product, in simple words
 

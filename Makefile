@@ -48,9 +48,11 @@ purchase-simulator:
 
 test-purchase-simulator:
 	$(PY) -m unittest discover -s tests -p "test_mission_control.py" -v
+	$(PY) -m unittest discover -s tests -p "test_mission_inputs.py" -v
+	$(PY) -m unittest discover -s tests -p "test_mission_recovery.py" -v
 	$(PY) -m unittest discover -s tests -p "test_purchase_simulator.py" -v
 	$(PY) tests/test_purchase_recovery.py
-	node --test tests/test_purchase_simulator_ui.mjs
+	node --test tests/test_purchase_simulator_ui.mjs tests/test_purchase_walkthrough_ui.mjs
 
 desk:
 	$(PY) -m recovery_app.server --port 8766
