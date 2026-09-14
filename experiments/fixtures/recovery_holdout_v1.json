@@ -1,0 +1,98 @@
+{
+  "version": "constructed-holdout-v1",
+  "authoring_seed": 20260913,
+  "status": "Constructed boundary fixtures authored independently of the 24-case evaluator. Frozen after authoring; subsequent runs are regression runs, not fresh unseen incidents.",
+  "order_id": "heldout-order",
+  "amount_cents": 7300,
+  "intent_ts": 1700000000,
+  "cases": [
+    {
+      "case_id": "agreeing-receipts", "expected_verdict": "committed",
+      "reason": "Two sources describe the same simulator effect.",
+      "sources": {
+        "settlement": {"coverage": {"kind": "complete_until", "cutoff_ts": 1700000001}, "records": [{"kind": "refund", "order_id": "heldout-order", "amount_cents": 7300, "external_id": 17}]},
+        "receipt": {"coverage": {"kind": "lossy", "drop_rate": 0.4}, "records": [{"kind": "refund", "order_id": "heldout-order", "amount_cents": 7300, "external_id": 17}]}
+      }
+    },
+    {
+      "case_id": "agreeing-covered-silence", "expected_verdict": "absent",
+      "reason": "Both complete sources cover the attempt and return no record.",
+      "sources": {
+        "one": {"coverage": {"kind": "complete_until", "cutoff_ts": 1700000001}, "records": []},
+        "two": {"coverage": {"kind": "complete_until", "cutoff_ts": 1700000002}, "records": []}
+      }
+    },
+    {
+      "case_id": "complete-silence-versus-receipt", "expected_verdict": "abstain",
+      "reason": "A declared complete source contradicts a matching receipt.",
+      "sources": {
+        "settlement": {"coverage": {"kind": "complete_until", "cutoff_ts": 1700000001}, "records": []},
+        "receipt": {"coverage": {"kind": "lossy", "drop_rate": 0.4}, "records": [{"kind": "refund", "order_id": "heldout-order", "amount_cents": 7300, "external_id": 17}]}
+      }
+    },
+    {
+      "case_id": "inconsistent-refund-amount", "expected_verdict": "abstain",
+      "reason": "The one-refund slot cannot be reconciled with two amounts.",
+      "sources": {
+        "one": {"coverage": {"kind": "lossy"}, "records": [{"kind": "refund", "order_id": "heldout-order", "amount_cents": 7300, "external_id": 17}]},
+        "two": {"coverage": {"kind": "lossy"}, "records": [{"kind": "refund", "order_id": "heldout-order", "amount_cents": 7310, "external_id": 17}]}
+      }
+    },
+    {
+      "case_id": "inconsistent-effect-identity", "expected_verdict": "abstain",
+      "reason": "Two distinct effects may represent a duplicate refund.",
+      "sources": {
+        "one": {"coverage": {"kind": "lossy"}, "records": [{"kind": "refund", "order_id": "heldout-order", "amount_cents": 7300, "external_id": 17}]},
+        "two": {"coverage": {"kind": "lossy"}, "records": [{"kind": "refund", "order_id": "heldout-order", "amount_cents": 7300, "external_id": 18}]}
+      }
+    },
+    {
+      "case_id": "misnamed-source", "expected_verdict": "abstain",
+      "reason": "The document identity does not match the selected source.",
+      "sources": {"settlement": {"source": "someone-else", "coverage": {"kind": "complete_until", "cutoff_ts": 1700000001}, "records": []}}
+    },
+    {
+      "case_id": "malformed-record-array", "expected_verdict": "abstain",
+      "reason": "A null record is unreadable evidence, never absence.",
+      "sources": {"settlement": {"coverage": {"kind": "complete_until", "cutoff_ts": 1700000001}, "records": [null]}}
+    },
+    {
+      "case_id": "malformed-cutoff", "expected_verdict": "abstain",
+      "reason": "A textual cutoff cannot establish coverage.",
+      "sources": {"settlement": {"coverage": {"kind": "complete_until", "cutoff_ts": "tomorrow"}, "records": []}}
+    },
+    {
+      "case_id": "stale-silence-with-receipt", "expected_verdict": "committed",
+      "reason": "An old silent report does not contradict a later matching receipt.",
+      "sources": {
+        "settlement": {"coverage": {"kind": "complete_until", "cutoff_ts": 1699999999}, "records": []},
+        "receipt": {"coverage": {"kind": "lossy", "drop_rate": 0.4}, "records": [{"kind": "refund", "order_id": "heldout-order", "amount_cents": 7300, "external_id": 17}]}
+      }
+    },
+    {
+      "case_id": "only-lossy-silence", "expected_verdict": "abstain",
+      "reason": "Lossy silence cannot distinguish noncommitment from a dropped record.",
+      "sources": {"webhook": {"coverage": {"kind": "lossy", "drop_rate": 0.4}, "records": []}}
+    },
+    {
+      "case_id": "covered-different-order", "expected_verdict": "absent",
+      "reason": "A different order does not invalidate complete silence for this exact order.",
+      "sources": {"settlement": {"coverage": {"kind": "complete_until", "cutoff_ts": 1700000001}, "records": [{"kind": "refund", "order_id": "heldout-order-other", "amount_cents": 7300, "external_id": 17}]}}
+    },
+    {
+      "case_id": "context-budget-exhausted", "expected_verdict": "abstain",
+      "reason": "Nine available sources exceed the declared eight-source consistency scan.",
+      "sources": {
+        "s1": {"coverage": {"kind": "lossy"}, "records": []},
+        "s2": {"coverage": {"kind": "lossy"}, "records": []},
+        "s3": {"coverage": {"kind": "lossy"}, "records": []},
+        "s4": {"coverage": {"kind": "lossy"}, "records": []},
+        "s5": {"coverage": {"kind": "lossy"}, "records": []},
+        "s6": {"coverage": {"kind": "lossy"}, "records": []},
+        "s7": {"coverage": {"kind": "lossy"}, "records": []},
+        "s8": {"coverage": {"kind": "lossy"}, "records": []},
+        "s9": {"coverage": {"kind": "lossy"}, "records": []}
+      }
+    }
+  ]
+}

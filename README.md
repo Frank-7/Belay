@@ -1,11 +1,11 @@
 # Belay
 
-**Durable side effects for nondeterministic agents.**
+**Find out what an interrupted AI action actually did, and what can safely happen next.**
 
 **[Visit the Belay website](https://frank-7.github.io/Belay/)** for an
-interactive introduction, the recorded Recovery Desk, and inspectable evidence.
-The public site runs on GitHub Pages; the Payment Mission MVP and Recovery Lab
-below run locally.
+interactive introduction, recorded recovery walkthroughs, and inspectable evidence.
+The public site runs on GitHub Pages; the Payment Mission MVP and Recovery Desk
+run locally.
 See [website build and deployment](docs/WEBSITE.md) to develop the site.
 
 To belay is to secure the rope before the climber moves. The protection goes
@@ -14,15 +14,15 @@ the contract: *belay* also means stop.
 
 ---
 
-## Try the payment-mission MVP
+## Try the Payment Mission MVP
 
 The **Belay Payment Mission MVP** turns an open-ended payment request into a
 plan the customer can inspect, correct and authorize. Ask it to pay an invoice,
 bill, insurance premium, tax obligation, subscription, transfer, ticket order
 or another purchase. Belay leaves unknown payees, amounts and required
-references blank. After one exact approval, the customer view and the backend
-control room follow the same durable event through policy checks, a simulated
-USDC hold, a simulated USDC-to-USD payout and a linked receipt.
+references blank. After one exact approval, the customer view and backend view
+follow the same durable event through policy checks, a simulated USDC hold, a
+simulated USDC-to-USD payout and a linked receipt.
 
 ```bash
 python -m purchase_simulator.server --port 8777
@@ -31,21 +31,78 @@ python -m purchase_simulator.server --port 8777
 
 See [MVP instructions and architecture](docs/PURCHASE_SIMULATOR.md). The
 browser talks to a real loopback server and persists each mission, event,
-single-use value movement and provider result in SQLite. The plain-language
-extractor, authorization signature, wallet, USDC transfer, conversion,
-bank payout and payee confirmation are fictional local fixtures. No model,
-blockchain, bank, government agency, insurer, biller, merchant or external API
-is connected. A tax receipt confirms only the simulated payment; an insurance
-receipt confirms only the simulated premium payment.
+single-use value movement and provider result in SQLite. The request extractor,
+authorization signature, wallet, USDC transfer, conversion, bank payout and
+payee confirmation are fictional local fixtures. No model, blockchain, bank,
+government agency, insurer, biller, merchant or external API is connected. A
+tax receipt confirms only the simulated payment; an insurance receipt confirms
+only the simulated premium payment.
 
-**Project status:** the investor experience uses the durable
-`belay.mission.v0.1` simulation schema. The earlier
-`belay.purchase.v0.3` ticket routes remain for compatibility. A live product
-still requires authenticated users, custody and settlement providers, verified
-payee adapters, compliance review and production cryptography. Read the
-[MVP master plan](docs/MVP_MASTER_PLAN.md),
+The investor experience uses the `belay.mission.v0.1` simulation schema. The
+earlier `belay.purchase.v0.3` ticket routes remain for compatibility. A live
+product still requires authenticated users, custody and settlement providers,
+verified payee adapters, compliance review and production cryptography. Read
+the [mission presentation](docs/MVP_PRESENTATION.md),
 [USDC settlement architecture](docs/USDC_SETTLEMENT_ARCHITECTURE.md) and
-[presentation outline](docs/MVP_PRESENTATION.md).
+[integration guide](docs/INTEGRATION.md).
+
+## Start the Recovery Desk
+
+Belay is an **AI Apps prototype for an operator investigating an uncertain
+action**. Open an incident, ask the evidence assistant for an explanation,
+inspect the validator's checks, then record a supported outcome or request
+the specific evidence still missing. The assistant never holds payment keys
+or authorizes its own proposal.
+
+From this clone, with Python 3.10 or newer:
+
+```bash
+python -m recovery_app.server --port 8766
+# Open http://127.0.0.1:8766
+```
+
+The app shares the research JSONL journal, evidence validator and guarded
+application path. Local demo scenarios include a lost acknowledgment,
+confirmed absence, stale reports, conflicting sources and revoked permission.
+They make real local SQLite writes with a controlled interruption; they are
+not new OS-crash trials. The deterministic baseline needs no credentials.
+Set `OPENAI_API_KEY` and an explicit `OPENAI_MODEL` in the server environment
+to enable the real model proposer. Each investigation makes at most two
+model requests; provider failures remain visible and do not trigger payment
+or model retries. The interface labels which proposer actually ran.
+
+**Public blockchain option:** connect MetaMask to Arc Testnet, fund it with
+free test USDC from Circle, and approve a 0.01–1.00 test-USDC transfer. Belay
+saves its intent before the wallet request and recovers the finalized receipt
+without sending again. Wallet keys stay in MetaMask; this is human-authorized
+testnet recovery, not autonomous custody, escrow or real-dollar settlement.
+See [free test-wallet setup and guarantees](docs/TEST_WALLET.md).
+
+GitHub Pages includes a **recorded operator walkthrough** using this same UI;
+it cannot run Python, make model requests or initiate a wallet transfer.
+See [integration boundaries](docs/INTEGRATION.md),
+[final demo and pitch](docs/FINAL_PRESENTATION.md), and
+[next-stage plan](docs/NEXT_STAGE.md).
+
+```bash
+python tests/test_recovery_app.py
+python tests/test_arc.py
+python experiments/evaluate_recovery.py --out tmp-runs/recovery-evaluation.json
+python experiments/recovery_holdout.py --out tmp-runs/recovery-holdout.json
+```
+
+These reports separate useful resolutions, false resolutions, refusals and
+abstentions. The frozen adversarial suite is classification-only and becomes
+regression evidence after publication; repeated fixtures are not new holdout
+incidents. No customer time savings or live-model improvement is assumed.
+
+## Earlier Recovery Lab
+
+The earlier runnable application below is a separate local recovery
+simulation. The current pitch leads with the Payment Mission MVP and preserves
+the Recovery Desk as the implemented investigation path for uncertain actions.
+There is no live coverage, bank connection, autonomous wallet or ticket
+checkout.
 Start with the [document index](docs/INDEX.md),
 [current architecture](docs/AUTONOMOUS_APP_ARCHITECTURE.md), and
 [next-stage plan](docs/NEXT_STAGE.md).
@@ -73,8 +130,8 @@ provider, or a successful request.
 This is a separate implementation of the pattern using SQLite, not a
 production wrapper around the research runtime below. See
 [prototype instructions and boundaries](docs/PROTOTYPE.md) and the
-[repository evaluation](docs/REVIEW.md), including two reproduced recovery
-defects in the original runtime and limits of its reported metrics.
+[repository evaluation](docs/REVIEW.md), including the history of two runtime
+defects fixed by PR7 and the remaining limits of reported metrics.
 The original SIGKILL experiments still require POSIX.
 
 ## The problem
@@ -134,8 +191,8 @@ anchored:  anchor ──▶ decide ──▶ call under anchor ──▶ 💀 �
 
 These are the original committed synthetic experiment results. They are not
 customer loss rates, production guarantees or inputs sufficient to price
-customer reimbursement. See [the review](docs/REVIEW.md) for reproduced
-runtime defects and limitations of the grader and overhead measurements.
+customer reimbursement. See [the review](docs/REVIEW.md) for fixed historical
+defects and remaining limitations of the grader and overhead measurements.
 
 960 trials, each a real SIGKILL at a named instruction boundary, graded
 against an external ledger rather than against the runtime's own report.
@@ -151,10 +208,13 @@ Order value $50.
 Permission revoked while the workflow was down: both replay runtimes issued
 a refund under a revoked scope **16 / 16** times. Anchored refused 16 / 16.
 
-Cost of the guarantee: about 0.4 extra fsyncs per workflow (~12%), and an
-escalation rate of **0% on any service offering idempotency keys or a
-lookup**, rising to 60% on a service offering neither — where CONTRACT.md
-§4 proves no runtime can do better.
+Recorded accounting: about 0.4 extra fsyncs per workflow (~12%); this omits
+work performed by killed workers before an outcome file was written and is
+not full-workflow overhead. **With persisted decisions**, the tested
+cooperative providers had 0% escalation, rising to 60% on the opaque provider.
+Inline decisions still escalate on cooperative providers. These are selected
+synthetic conditions, and the current grader does not cover every credit-slot
+invariant; see CONTRACT.md and docs/REVIEW.md for the precise scope.
 
 That 60% is a halt, and a halt is a dead end: a human gets handed a hex
 string. `second/` is an agent that debugs the halted agent — it searches

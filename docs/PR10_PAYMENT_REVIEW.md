@@ -1,25 +1,21 @@
-# PR #10 review: recovery component and payment architecture fit
+# PR #10 integration record: Recovery Desk and payment architecture
 
-Reviewed September 13, 2026: [Add AI Apps Recovery Desk and MetaMask testnet recovery](https://github.com/Frank-7/Belay/pull/10).
-Head: `1b056c096b0bab1844a93bd18a77186dfec0ec93`.
-Current main/base: `cffe7ac229cd0d2883b5ac336420b126d291990d`.
+Initially reviewed September 13, 2026:
+[Add AI Apps Recovery Desk and MetaMask testnet recovery](https://github.com/Frank-7/Belay/pull/10).
+The PR merged to main at `184dc9eda32d13dd399b613f398212cdb6f6f18d`.
+Its finalized-failure lifecycle fix is `250456f`.
 
 ## Recommendation
 
-Reuse this as Belay's payment-outcome investigation component. Address the
-confirmed-failure dead end below before calling the test-wallet lifecycle
-complete. The PR is a draft; its description correctly leaves a real user-signed
-testnet demonstration outstanding. Its `ci` and `pages` workflow runs report
-success for the reviewed head.
+Recovery Desk is now Belay's implemented payment-outcome investigation
+component. Keep its read-only chain recovery separate from Payment Mission's
+authority and executor. The pre-merge finding below was fixed before merge; it
+is retained as an engineering record rather than an open blocker.
 
-Main is an ancestor of this head. `git merge-tree --write-tree origin/main HEAD`
-succeeds without conflicts. This establishes Git compatibility with current
-main, not production financial safety. No merge, teammate-branch modification,
-transaction, paid model request or GitHub review/comment was made in this review.
+## Resolved finding
 
-## Actionable finding
-
-**P2 — Close verified reverted transfers without authorizing a retry.**
+**P2 — Close verified reverted transfers without authorizing a retry. Resolved
+in `250456f`.**
 
 In [engine.py line 499](https://github.com/Frank-7/Belay/blob/1b056c096b0bab1844a93bd18a77186dfec0ec93/recovery_app/engine.py#L499),
 `_refresh_arc` creates usable evidence only for `committed`. The Arc verifier
@@ -30,7 +26,8 @@ already recognizes an exact, canonical-finalized receipt with `status: 0` as
 because the old incident remains unresolved. The browser likewise permits a
 form reset only for `resolved` (`wallet.js` lines 95–103).
 
-Reproduced offline with the actual `ArcEvidenceProvider` and the existing
+Before the fix, this was reproduced offline with the actual
+`ArcEvidenceProvider` and the existing
 receipt fixture changed to status zero and no transfer logs. After prepare,
 dispatch, hash attachment and investigation:
 
@@ -41,7 +38,7 @@ Resolve refused: 409 Evidence does not support a resolution
 New explicit same-tuple transfer refused: 409 An identical test transfer is still unresolved.
 ```
 
-Add a journaled, evidence-bound terminal failure that preserves the original
+The merged fix adds a journaled, evidence-bound terminal failure that preserves the original
 hash and gas disclosure and sends no money. Permit a separate, explicitly
 authorized incident afterward. Missing/pending receipts and ambiguous wallet
 errors must remain unknown; they do not authorize retries. Regression coverage
@@ -93,19 +90,14 @@ schemas before using them for purchases, bank payouts or claims. Preserve the
 documented assumption that an operator attaches the original hash: another
 same-tuple external transfer is not cryptographically bound to the order.
 
-## Combining with the simulator branch
-
-Merge-tree preview against `codex/purchase-simulator` at `5fa1382`
-reports seven conflicts: `.github/workflows/ci.yml`, `.gitignore`, `Makefile`,
-`README.md`, `docs/INDEX.md`, `docs/INTEGRATION.md`, `docs/NEXT_STAGE.md`.
-The v0.3 architecture documents are included in that preview and need
-preservation during integration.
+## Combining with Payment Mission
 
 Keep both test targets, data-directory exclusions and application entry points.
-Preserve main's fixes and historical research numbers. Describe Recovery Desk
-as implemented recovery, Purchase Simulator as fictional shopping and v0.3 as
-the product specification. Merge shared documents by meaning; choosing one
-whole side would discard content. A combined product merge has not been done.
+Recovery Desk uses port 8766 and `.belay-recovery/`; Payment Mission uses port
+8777 and `.belay-purchase-simulator/`. Preserve main's fixes and historical
+research numbers. Treat Recovery Desk as implemented recovery and Payment
+Mission as a separate local payment simulation. Connect them later through a
+typed, read-only provider observation rather than a shared executor or database.
 
 ## Checks performed here
 
@@ -113,7 +105,8 @@ whole side would discard content. A combined product merge has not been done.
 - Evidence boundaries: 19 ran, 17 passed and two Windows symlink tests skipped.
 - Three holdout and three export tests passed.
 - Node: 30 wallet and Recovery Desk frontend tests passed.
-- Reproduced the finalized-revert dead end with an offline RPC fixture.
+- The original review reproduced the finalized-revert dead end; the merged
+  regression suite covers the corrected terminal-failure behavior.
 - GitHub CI and Pages succeeded for this head. Full POSIX crash tests were not
   rerun locally on Windows; no actual wallet transfer or model call was made.
 

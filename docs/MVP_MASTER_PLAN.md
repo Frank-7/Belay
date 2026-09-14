@@ -11,11 +11,12 @@ composer and the `belay.mission.v0.1` flow documented in
 authorization and does not present the failure fixtures below as separate
 customer scenarios.
 
-The teammate's draft [PR #10](https://github.com/Frank-7/Belay/pull/10) adds an
-optional user-signed Arc Testnet evidence path. Reuse its recovery core, subject
-to [this integration review](PR10_PAYMENT_REVIEW.md); it does not implement USD
-payouts or compensation. Keep that testnet adapter distinct from the proposed
-Base contract prototype.
+[PR #10](https://github.com/Frank-7/Belay/pull/10) merged the Recovery Desk and
+optional user-signed Arc Testnet evidence path at `184dc9e`; `250456f` fixed the
+verified-failure lifecycle before merge. Reuse its recovery core as described
+in [the integration record](PR10_PAYMENT_REVIEW.md). It does not implement USD
+payouts or compensation. Keep that testnet adapter distinct from any proposed
+Base contract or regulated settlement provider.
 
 ## 1. The product, in simple words
 

@@ -1,194 +1,223 @@
 # Repository integration guide
 
-For the teammate's draft Recovery Desk and Arc Testnet increment, see
-[PR #10 payment review](PR10_PAYMENT_REVIEW.md). It is compatible with current
-main at `cffe7ac` but conflicts with this simulator branch in seven shared
-build/documentation files. Keep its read-only chain recovery separate from the
-proposed protected executor, USD payout and compensation modules. Its refund
-slot schema needs an explicit adapter before representing USDC base units,
-USD payouts or claims; network identifiers cannot be relabeled across Arc/Base.
+Belay has two current local applications with separate responsibilities. The
+**Payment Mission MVP** prepares, authorizes and simulates one exact payment.
+The **Recovery Desk**, merged in PR #10, investigates an interrupted action and
+records what the available evidence supports. They share architectural rules,
+but they do not share a database or silently call each other.
 
-## What works together today
+The investor pitch leads with Payment Mission. Recovery Desk is the reusable
+outcome-investigation component for a later provider adapter, not an alternate
+payment executor. See the [PR #10 integration record](PR10_PAYMENT_REVIEW.md).
 
-The repository combines a portable local Recovery Lab, the Payment Mission
-MVP, the recorded Recovery Desk, the research evidence
-adjudicator and the live decision experiments. All components are checked in
-the same CI workflow. Each application owns its state and demonstrates a
-different boundary; none is a production adapter around another component.
+## Components and boundaries
 
-| Component | Entry point | State and boundary |
+| Component | Entry point | Actual behavior |
 |---|---|---|
-| Research runtime | `worker.py`, `belay/runtimes/anchored.py` | Research journal, permission store and synthetic services; POSIX crash experiments |
-| Evidence adjudicator | `second/adjudicate.py`, `second/apply.py` | Research dossiers and evidence; may complete a verified absent effect through a callback |
-| Recovery Desk | `experiments/recovery_demo.py`, `viewer/build_viewer.py` | Recorded POSIX crash scenarios using the research runtime and adjudicator; browser controls only inspect recordings |
-| Optional recovery model | `second/live_agent.py` | OpenAI proposes evidence pointers and claims; deterministic validation and the guarded executor retain control |
-| Live decision experiment | `experiments/run_live_agent.py` | Optional API-backed measurement and committed results; not the lab's decision engine |
-| Recovery Lab | `python -m prototype.server` | Separate SQLite application/provider stores and loopback HTTP; scripted decisions and fictional money |
-| Payment Mission MVP v0.1 | `python -m purchase_simulator.server` | Open-ended payment request, reviewed plan, exact authorization, deterministic policy, fictional USDC-to-USD payout, linked receipt and two-sided investor view |
-| Legacy protected-purchase API v0.3 | `/api/runs` on the same server | Bounded ticket grant, delivery evidence, reserve accounting, claims and exact-operation recovery; retained for compatibility |
-| Live autonomous USDC app and guarantee | Architecture and proposal documents | Future contracts, custody/provider integrations and funded terms; no deployed blockchain, live purchases, subscriptions, active coverage or real reimbursements |
+| Payment Mission MVP | `python -m purchase_simulator.server` | Plain-language draft, editable plan, one exact authorization, deterministic checks, simulated USDC-to-USD payout, scoped receipt and synchronized customer/backend views |
+| Legacy protected-purchase API | `/api/runs` on the Payment Mission server | Ticket-specific local state machine, recovery fixtures, reserve accounting and claims; retained for compatibility |
+| Local Recovery Desk | `python -m recovery_app.server` | Persistent incidents, research JSONL journal, `second/` validation, evidence refresh, current permission checks and downloadable audit receipts |
+| Optional recovery model | `second/live_agent.py` | OpenAI proposes pointers and a cited verdict; deterministic validation decides support and the operator applies an eligible result |
+| Local refund provider | `services/ledger.py` through `recovery_app/engine.py` | SQLite simulation with fictional amounts and constructed interrupted states |
+| Arc Testnet evidence | `recovery_app/arc.py` and browser wallet adapter | A person signs a capped test-USDC transfer in MetaMask; the server reads and verifies the original receipt against persisted intent |
+| Research runtime | `worker.py`, `belay/runtimes/anchored.py` | Journal, permission store, simulated services and POSIX SIGKILL experiments |
+| Recorded Recovery Desk | `experiments/recovery_demo.py`, `viewer/build_viewer.py` | Saved real-crash demonstrations; browser controls inspect a recording |
+| GitHub Pages | `site/`, `scripts/build_site.py` | Static product introduction and recordings; it does not host either Python API |
+| Legacy Recovery Lab | `python -m prototype.server` | Earlier separate SQLite implementation retained for baseline comparison |
+| Live payment and guarantee services | Architecture documents | Future custody, settlement, payee, compliance and funded-remedy work |
 
-Keep lab data under `.belay-prototype/` or another isolated directory. Do not
-point it at research evidence or treat its database as the JSONL research
-journal. Preserve committed `results/` when validating documentation; they
-are research evidence rather than application state.
-
-The Payment Mission MVP uses `.belay-purchase-simulator/` and port 8777, with
-no imports from the research or Recovery Lab execution engines. The Windows
-launcher isolates current data in `mission-v1/`. Its `belay.mission.v0.1`
-records keep customer USDC, a payment hold, provider transit and payee USD
-separate. Each mission also persists the original request, editable plan,
-bounded grant, deterministic policy result, signed-intent digest, event stream,
-single-use ledger keys, provider payout and scoped receipt. The legacy ticket
-API continues to use `belay.purchase.v0.3` records in the same data directory.
-
-Only browser-to-loopback requests are actual HTTP. Internal service calls use
-invented `belay://` or `.invalid` traces. No token is transferred, no currency
-is converted and no bank, biller, tax agency, insurer, merchant or reserve is
-connected. The records are deliberately simplified and are neither AP2
-messages nor deployed blockchain contracts. See
-[PURCHASE_SIMULATOR.md](PURCHASE_SIMULATOR.md) for the investor flow, API and
-limitations.
-
-## Run and test
+## Run Payment Mission
 
 From a clone with Python 3.10 or newer:
 
 ```bash
-python -m prototype.server --port 8765
-python -m unittest discover -s tests -p "test_prototype.py" -v
 python -m purchase_simulator.server --port 8777
+```
+
+Open `http://127.0.0.1:8777`. Its default data directory is
+`.belay-purchase-simulator/`; the Windows launcher uses the isolated
+`mission-v1/` subdirectory. The browser makes real loopback HTTP requests and
+the server persists missions, revisions, events, unique ledger movements and
+fictional provider results in SQLite.
+
+The Python distribution includes `purchase_simulator`, its web assets and the
+installed `belay-mission` command. No API key or third-party dependency is
+needed. Use one server process per data directory.
+
+Verify the current and compatibility paths with:
+
+```bash
 python -m unittest discover -s tests -p "test_mission_control.py" -v
 python -m unittest discover -s tests -p "test_purchase_simulator.py" -v
 node --check purchase_simulator/web/app.js
+node --test tests/test_purchase_simulator_ui.mjs
+```
+
+The Payment Mission extractor, signature, wallet, USDC, conversion, bank payout
+and payee confirmation are local fixtures. No model, chain, custodian, bank,
+government agency, biller, insurer or merchant is connected. The app never
+accepts a private key or raw payment credential.
+
+## Run Recovery Desk
+
+```bash
+python -m recovery_app.server --port 8766
+```
+
+Open `http://127.0.0.1:8766`. The deterministic baseline works without a
+wallet, credentials or network. Application data defaults to
+`.belay-recovery/`; use `--data-dir` for an isolated demonstration. One process
+owns each directory and mutation calls are serialized. This loopback server is
+not an authenticated hosted service.
+
+Set `OPENAI_API_KEY` and an explicit `OPENAI_MODEL` in the server environment
+to enable the optional model. Do not put either in browser code or commit the
+key. Each investigation permits at most two model requests and no automatic
+retries. The model receives the bounded case view and requested evidence,
+never a signing key, payment credential or execution callback.
+
+The portable checks and evaluations are:
+
+```bash
+python tests/test_recovery_app.py
+python tests/test_arc.py
 python tests/test_evidence_boundaries.py
 python tests/test_live_agent.py
 python tests/test_evaluate_recovery.py
+python tests/test_recovery_holdout.py
+python tests/test_operator_export.py
+python experiments/evaluate_recovery.py --audit-unvalidated --out tmp-runs/recovery-evaluation.json
+python experiments/recovery_holdout.py --out tmp-runs/recovery-holdout.json
 python experiments/check_docs.py
 ```
 
-Both application servers bind to `127.0.0.1`; they are local development
-demonstrations. Use one server per application data directory. No external
-payment credentials are needed. The Python distribution packages the
-`purchase_simulator` module and its HTML, CSS and JavaScript assets. The
-installed `belay-mission` command starts that server. The Recovery Lab remains
-a source-checkout application.
+Run the JavaScript tests with Node rather than Python:
 
-On POSIX with Make available, `make prototype` starts the lab,
-`make test-prototype` runs its tests, and `make all` includes both the lab and
-recovery suites alongside the existing research checks. `make test-evidence`
-runs portable order/source isolation regressions. `make test-recovery` also
-runs the adapter, evaluation and recorded demo checks. `make test` and `make test-second`
-remain the research contract and evidence-adjudicator suites. The full crash
-and adjudication experiments require POSIX. CI tests the lab on Windows and
-Linux and the research suites on Linux and macOS.
+```bash
+node --test tests/test_recovery_app_ui.mjs tests/test_wallet_ui.mjs
+```
 
-Use `make recovery-demo` on POSIX to record the Recovery Desk, then open
-`viewer/trace.html`. See [DEMO.md](DEMO.md) for the optional model and
-`make evaluate-recovery` for an offline comparison. The model never receives
-payment credentials or an execution callback.
+The raw-claim audit is classification only: it never executes an unvalidated
+dossier. For an optional model comparison, use
+`python experiments/evaluate_recovery.py --agent openai --model MODEL_ID`.
+Both agents receive identical isolated cases and evidence limits; the heuristic
+uses no model tokens. This is not an equal-compute comparison.
 
-CI checks committed results against documentation before experiments run.
-It then asserts the fresh results and uploads those same results with the
-standalone viewer. Do not restore committed results before these assertions
-or the artifact upload.
+The full research contract and recorded crash demo require POSIX signals. Run
+them on Linux, macOS or WSL. Preserve committed `results/` while testing; the
+commands above write new reports under `tmp-runs/`.
 
-The shared evidence store restricts sources to files inside its evidence root.
-The recovery adapter restricts pointers to advertised sources, their manifests
-and exact current-order selectors. Absence validation requires the exact order identity;
-a similarly prefixed order is not evidence for the current action. Reapplying
-a dossier also requires its bound journal state to remain current.
+## How the payment path works
 
-## Boundary for the proposed autonomous app
+The `belay.mission.v0.1` record keeps the original request, editable plan,
+bounded grant, deterministic policy result, signed-intent digest, event stream,
+single-use ledger keys, provider payout and scoped receipt. Customer USDC, the
+payment hold, provider transit and payee USD remain separate balances.
 
-[INTERNAL_PAYMENT_PROTOCOL.md](INTERNAL_PAYMENT_PROTOCOL.md) develops this
-boundary into proposed USDC API/adapter contracts. The
-[settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md) defines on-chain
-grants, temporary order holds, protected dispatch, withdrawals, a separate
-protection reserve and external fiat conversion/payout records.
-The current v0.3 default is USD supplier prepayment through an approved partner;
-eligible post-payment reimbursements use a separate protection reserve. Supplier
-crypto wallets/signatures are not required by the main flow. See the complete
-[MVP master plan](MVP_MASTER_PLAN.md) before adapting the older demo traces.
-The Payment Mission MVP implements a reusable local state machine for that
-flow, including conservative request extraction, user-reviewed authority, a
-1:1 zero-fee conversion fixture and scoped domain receipts. It accepts multiple
-payment domains through one control path. It does not implement the proposed
-`/internal/v1` services, a chain transaction, provider compliance, bank
-settlement, tax filing, insurance coverage or legally funded protection.
+The implemented path is:
 
-The production app should expose one controlled action submission boundary. The
-planner supplies a proposal; the authority service validates it and the
-executor records and performs the permitted operation. This is an extension
-contract, not a claim that the simulator's in-process Python boundaries provide
-production isolation.
+```text
+request -> reviewed plan -> exact authorization -> deterministic checks
+        -> USDC hold -> bound instruction -> simulated USD payout -> receipt
+```
 
-The record passed across that boundary must retain:
+The customer and backend views are projections of the same persisted event.
+Expected-revision checks reject stale actions. Unique ledger keys and one
+stable operation identity prevent a repeated local transition from moving the
+same value again. The older `belay.purchase.v0.3` ticket API uses separate
+tables and does not drive the current interface.
 
-- User, mission and stable operation identity, kept separate from a provider's
-  request/receipt identifiers.
-- Grant version, allowed action, provider and credential reference.
-- Exact immutable intent, quote/version/hash, amount and currency.
-- Reserved budget, submission status and verified provider evidence.
-- Chain, token and contract identity, grant/order slot, signer/nonce,
-  replacement transaction lineage, block hash and observed finality.
-- Pinned delivery/dispute policy, fixed beneficiaries, allocation/withdrawal
-  states and independent conversion-provider/payout records.
-- Net USD supplier amount, verified bank beneficiary reference, source USDC
-  cap/fees, reserve exposure, coverage version, claim and recovery identities.
+The receipt states its evidence boundary. Payment does not prove delivery, tax
+filing, a remaining bill balance, insurance coverage or claim approval. A live
+payee-domain adapter must provide authoritative acceptance evidence before
+Belay can report those outcomes.
 
-An adapter declares its actual capabilities and retry rules. A success response
-needs evidence tied to the original operation and exact inputs. A failed
-connection or empty lookup does not automatically establish absence. Provider
-idempotency scope and lifetime must be respected across restarts.
-For chain adapters, contract-enforced operation uniqueness and canonical-state
-reconciliation complement the local journal. RPC receipt arrival is not
-finality; removed events must be unwound from the derived view after a reorg.
+## Recovery evidence and authority
 
-Do not make both the model and an adjudicator independent executors. If
-`second/` is adapted, read validated findings through a reviewed translation
-layer. Keep its production completion callback behind the same authority,
-budget, intent and idempotency controls. Do not expose `apply_dossier` with
-an unrestricted payment callback to the app's agent.
+The Recovery Desk source store allows only files within its configured root.
+The model can request at most 16 pointers. A deterministic consistency scan
+covers at most eight advertised sources, with a manifest and exact-order query
+for each. Each source is limited to 1 MiB and 1,000 records. Exceeding a bound
+or encountering unreadable evidence yields abstention.
 
-Research evidence fixtures are not authenticated merchant reports. Any
-production evidence adapter must establish source identity, integrity,
-completeness and freshness, then bind the observation to the correct
-operation. A correct research verdict does not establish live bank authority.
+Every cited observation must have been fetched for the model. Additional
+context can reject selective or contradictory conclusions, but cannot provide
+missing support on the model's behalf. Matching committed records conflict
+with complete covered silence; inconsistent amounts, source identities,
+simulator effect IDs or same-chain transaction hashes also block resolution.
+The scan does not decide which conflicting source is true. Local file
+provenance and declared coverage remain assumptions, not Byzantine consensus
+or authenticated merchant attestations.
 
-## Boundary for a guarantee
+Applying a dossier requires the current halted journal revision and original
+intent. The app invalidates proposals after its evidence snapshot changes.
+Reporting an established commitment issues no effect. Completing a verified
+absent local refund checks current permission immediately before the simulated
+call. A failure after durable application intent requires fresh adjudication.
 
-Provider recovery and customer compensation use different authorizations.
-The recovery service reconciles orders/payments and requests available
-remedies. The claims service reads that evidence and the customer's active
-terms, calculates eligible unrecovered loss and sends the claim to its
-designated decision maker and payer. Its payout record must not be confused
-with the original purchase or merchant refund.
+PR #10's pre-merge verified-failure dead end was fixed in `250456f`. A
+canonical finalized failed Arc transaction can now close as a failed outcome
+without being treated as a successful transfer or authorizing an automatic
+retry.
 
-The purchasing model cannot approve its own reimbursement. The v0.3 simulator
-shows this separation with distinct case, economic-loss and payout identities,
-an independent claim transition and a seeded fictional reserve. It deduplicates
-the local payment for one loss, but it does not supply subscription entitlement,
-financial-loss assessment, insurance authority or real claim funding. The
-current research adjudicator supplies none of those production authorities
-either.
+## Arc test-wallet demonstration
 
-## Migration gates
+Belay has no custodial wallet or balance of its own. MetaMask holds the
+user-controlled signing key. Belay stores only public addresses, the exact test
+transfer intent and a transaction hash. The integration is fixed to Arc
+Testnet, chain ID `5042002`, and Circle's test-USDC token. Amounts are limited
+to 0.01–1.00 test USDC in 0.01 increments.
 
-Before calling a future integration ready, demonstrate policy rejection,
-concurrent budget reservation, expired/revoked authority, provider challenges,
-crash recovery, delayed evidence and duplicate callbacks with the chosen
-provider. Preserve unknown outcomes when evidence is insufficient. Verify
-the exact adapter and payment/mandate profile; do not infer compatibility
-from similar names or fields.
+Use two test accounts and the faucet linked from the app. Faucet availability,
+rate limits and network access are external prerequisites. No real funds are
+needed, but a faucet balance is needed for the transfer and test gas. The
+wallet confirmation belongs to the person holding the key; neither the server
+nor the model signs or broadcasts a replacement transfer. Follow the
+[test-wallet setup guide](TEST_WALLET.md).
 
-The USDC extension additionally requires grant conservation, signature replay
-protection, expiry/revocation ordering, release/refund exclusivity, failed-token
-withdrawals, resolver timeouts, gas failure and reorg tests. The research
-adjudicator is not a production delivery verifier or an authorized arbitrator.
-It also requires conservation across held/dispatched funds and reserve claims,
-late bank returns, protection expiry and no duplicate remedy for the same loss.
+A confirmed outcome requires the correct chain, token, sender, recipient,
+amount, original transaction, successful Transfer event and the adapter's
+canonical finalized-block checks. A missing, pending, failed or inconsistent
+receipt cannot authorize another transfer. The RPC node and network consensus
+remain trust assumptions; this is not a light-client proof. Transaction hashes
+remain strings, separate from integer identities in the Payment Mission MVP.
 
-Known original-runtime defects remain documented in [REVIEW.md](REVIEW.md).
-Neither the separate lab suite nor an architectural diagram proves that
-the research runtime or a future live app is production-ready.
+The downloadable receipt is a local audit record of the evidence and decision.
+It is not a cryptographic guarantee of external truth, a refund promise or
+insurance coverage.
+
+## Safe integration contract
+
+Recovery Desk must remain a read-only observer until Payment Mission explicitly
+asks for an observation through a typed adapter. Do not expose its resolution
+callback to the purchasing agent. Do not relabel Arc Testnet receipts as Base
+payments: chain IDs, token addresses, gas and finality rules are different.
+
+A future adapter record must retain:
+
+- user, mission and stable operation identity;
+- grant version, exact immutable intent, amount, asset and beneficiary;
+- provider request, receipt and reconciliation identities;
+- chain, token, decimals, transaction lineage and observed finality when used;
+- payee-domain evidence and its source, freshness and meaning; and
+- any claim, recovery and payout identities separate from the purchase.
+
+An empty lookup or failed connection does not establish that a payment is
+absent. Provider idempotency scope and lifetime must survive restarts. Chain
+receipt arrival is not finality, and removed events must be unwound after a
+reorganization.
+
+## Production work remains
+
+A real payment deployment needs authenticated users, production key custody,
+reviewed custody and money-transmission roles, provider-specific authority and
+finality semantics, a regulated USDC-to-USD settlement route, verified payee
+adapters, compliance controls, deployment migration rules, monitoring and an
+appropriate concurrency model.
+
+Any payout guarantee requires separate authority, terms and funding. The
+purchasing model and recovery model cannot approve their own compensation.
+The local payment simulation, Arc test-wallet receipt and research evidence
+fixtures do not establish merchant delivery, tax filing, insurance coverage,
+customer demand, production safety or provider approval. See
+[REVIEW.md](REVIEW.md) for fixed defects and remaining limitations.

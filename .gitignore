@@ -9,6 +9,7 @@ venv/
 .env
 .belay-prototype/
 .belay-purchase-simulator/
+.belay-recovery/
 
 # ---- Tooling caches ----
 .pytest_cache/

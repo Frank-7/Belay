@@ -1,106 +1,127 @@
-# Next stage
+# Next stage: one connected payment mission
 
-## Deliverable now
+Belay is competing in **AI Apps**. The current pitch has one product promise:
 
-The repository contains the local Recovery Lab, Purchase Simulator and the
-selected [USDC settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md).
-The [MVP master plan](MVP_MASTER_PLAN.md) and [presentation script](MVP_PRESENTATION.md)
-now specify the complete agent, USD merchant payment and funded-protection flow.
-The contract, chain adapters and fiat conversions are proposed; these documents
-do not activate coverage, subscription billing or a payment integration.
-Use [the index](INDEX.md) to distinguish implemented work from plans.
+> Tell Belay what to pay. It turns the request into one exact authorization,
+> executes under deterministic controls and keeps a receipt of what happened.
 
-## First build increment
+The Payment Mission MVP leads the demonstration. Recovery Desk remains the
+implemented supporting product for an operation whose external outcome is
+uncertain. It must enter the payment path through a typed, read-only observation
+adapter rather than become another executor.
 
-Extend the two-panel purchase demonstration with the USDC contract workflow:
-owner funding, bounded mission grant, exact order, conversion quote, USD supplier
-payout, receipt/evidence, separate claim decision and reserve reimbursement.
-Keep concert tickets as the example and use fictional assets/providers first.
+No interviews, willingness to pay, provider access or customer incident rates
+are established by this repository.
 
-Done means: a two-ticket $200 order debits the quoted USDC from a $300-limit mission once; duplicate/replayed
-requests cannot debit it again; wrong items/merchant and excessive costs are
-blocked; still-held funds can be returned; eligible loss after USD payout is
-paid from separately visible protection capital; contested evidence goes to
-review; restart preserves unknown operations. Show USD
-conversion and bank payout separately from token settlement. Label the current
-simulator's earlier provider flow accurately until this extension is built.
+## Implemented now
 
-## Second build increment
+| Product | Working local path | Boundary |
+|---|---|---|
+| Payment Mission MVP | Open-ended request, editable plan, exact authorization, deterministic checks, simulated USDC hold and USD payout, scoped receipt, synchronized customer/backend views | No model, wallet, chain, bank, payee or real money is connected |
+| Recovery Desk | Persistent incidents, bounded optional model proposal, deterministic evidence validation, guarded operator resolution and audit export | Local refund fixture; no autonomous payment key or live remedy |
+| Arc test wallet | Human-signed capped test-USDC transfer and read-only finalized-receipt verification | Arc Testnet only; separate from Payment Mission settlement |
+| Research runtime | Anchored side-effect experiments and recorded crash demonstrations | Synthetic measurements; POSIX crash harness |
 
-Build the proposed Solidity contract and local EVM invariant tests, then
-integrate a Base testnet wallet, protected signer, relayer/RPC and canonical
-event indexer. Test signatures/nonces, conservation, deadline races, revoked
-grants, token-transfer failure, missing receipts, transaction replacement and
-reorganization recovery. Mock ticket delivery and conversion providers until
-their actual integrations are approved. No real funds in these increments.
+## Freeze for the investor pitch
 
-Next, establish one merchant's accepted USD payment method and an approved
-buyer-funded conversion/payout route. The seller needs no crypto account. Live use
-requires reviewed contract code, accepted release/dispute terms, delivery
-evidence access and approved operating responsibilities. The full gates are
-in [the settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md).
+1. Run one complete invoice mission from request through receipt.
+2. Start one incomplete tax or insurance request and show that the payee,
+   amount or required reference stays blank until supplied.
+3. Keep the main interface in plain language. Use the technical audit only to
+   answer questions about authority, money movement and retries.
+4. Rehearse from a fresh `mission-v1` data directory and keep a local recording
+   as a fallback.
+5. Run the targeted Python and JavaScript suites, documentation consistency
+   check and full repository lint before freezing the branch.
 
-A separate agent-error case is part of the presentation. It must distinguish returning
-still-held purchase funds from paying additional compensation and deduct prior recoveries. An
-unknown purchase is not automatically a loss; actual claims remain unavailable
-until payer, funding and terms are established.
+Do not add another customer scenario or visual mode during the pitch freeze.
+The example prompts must exercise the same composer and state machine.
 
-Reuse the teammate's draft [PR #10](https://github.com/Frank-7/Belay/pull/10)
-as the payment-outcome investigation slice after addressing the finalized-revert
-dead end documented in [the payment review](PR10_PAYMENT_REVIEW.md). Adapt it
-through typed provider observations; do not turn its read-only recovery model
-into the autonomous spender. Preserve both application test suites when merging.
+## First connected pilot
 
-## Commercial validation in parallel
+Choose one invoice or bill-payment provider with a documented sandbox. A
+successful increment must replace one fictional edge end to end:
 
-| Work | Evidence required before advancing |
-|---|---|
-| Interview frequent delegators | A recent failed purchase/task, real impact and current workaround |
-| Test the offer | Willingness to delegate and pay at a clearly disclosed cap; compare service-only and guarantee propositions |
-| Confirm financial structure | Named payer, reviewed terms, funded obligations and approved launch scope |
-| Confirm provider access | Accepted USD order/payment method; authorized customer-to-supplier conversion/payout route; delivery and recovery evidence |
-| Observe a controlled pilot | Eligible actions, net losses, unresolved outcomes, support cost and repeat use |
+1. An authenticated user or agent submits a request without sending payment
+   credentials to the model.
+2. The planner returns a structured proposal; unknown payee, amount and
+   reference fields remain unset.
+3. The user reviews one exact payment and the authority service records the
+   beneficiary, amount, purpose, operation identity and expiry.
+4. A regulated provider accepts the fixed instruction, converts or sources the
+   required funds and pays the verified USD destination.
+5. Belay reconciles a lost or delayed response under the original operation
+   identity before it permits any retry.
+6. The invoice or biller adapter reports authoritative posting evidence, which
+   the receipt distinguishes from payment-provider evidence.
 
-Do not invent demand or broad market statistics from interviews that have not
-happened. A small pilot can expose problems without proving a rare-loss rate.
-Before expanding limits, test common-cause failures and delayed claims as
-well as ordinary successful purchases.
+Done means a controlled interruption after provider acceptance cannot create a
+second payment, a stale browser action cannot alter the plan, and an empty
+provider lookup remains unknown. A provider sandbox result is still not live
+money or customer validation.
 
-## Expansion after the first working mission
+## Reuse Recovery Desk safely
 
-Add one paid research mission using the same grants, budget ledger, executor
-and evidence model. Use named sources for trends and traffic estimates.
-Do not build an agent marketplace or support every merchant at once.
+PR #10 is merged. Its Recovery Desk, Arc verifier and finalized-failure
+lifecycle are implemented; `250456f` closed the pre-merge failure dead end.
+Reuse these parts through a provider-observation interface:
 
-For the hackathon, target a complete demonstration by hour 48. The supplied
-72-hour playbook conflicts with the stated 48-hour environment window.
-If 72 hours is confirmed, use the remaining time for hardening and evaluation.
-Prepare a repository link and 60-second progress video for each required
-check-in; confirm the actual schedule with the organizers.
+- send the exact Payment Mission operation and provider identities;
+- request read-only evidence and preserve unknown outcomes;
+- return a typed observation with source, freshness, coverage and meaning;
+- require the current Payment Mission authority before any new effect; and
+- keep purchase, provider refund and any claim payout as separate operations.
 
-## Selected direction and remaining dependencies
+Do not give the recovery model a wallet, signing callback or unrestricted
+payment callback. Do not treat the human-signed Arc test transfer as the
+USDC-to-USD settlement adapter. Arc and a future Base or provider route have
+different chain, token and finality rules.
 
-- Use native USDC on Base, bounded grants, approved USD supplier payout and
-  separately funded protection for eligible post-payment losses.
-  Stripe/card payment selection is superseded; no blockchain deployment exists yet.
-- Demonstrate a separately funded reserve; evaluate an authorized partner for
-  agreed live risk bearing/replenishment. No reserve, partner or policy is live.
-- Exact guarantee triggers, amount limits, price and initial live jurisdiction.
-- Which merchant, delivery verifier, dispute operator and conversion providers
-  accept the selected arrangement; exact US operating/control responsibilities.
+## Production gates
 
-The architecture and simulator can proceed while these decisions are resolved.
-Live financial promises depend on the payer, terms and permissions actually
-being ready.
+Before real funds, demonstrate:
 
-## Recent repository work to preserve
+- authenticated users and reviewed beneficiary onboarding;
+- production signing and key custody outside the model;
+- concurrent budget reservation and grant conservation;
+- expiry, revocation and signature-replay ordering;
+- provider idempotency lifetime and unknown-outcome reconciliation;
+- late returns, duplicate callbacks and transaction replacement;
+- payee-evidence identity, integrity, freshness and completeness;
+- monitoring, audit export and operational escalation; and
+- reviewed custody, money-transmission, tax, privacy and sanctions obligations.
 
-The main branch now includes a separate Gemini decision-stability experiment
-and an evidence adjudicator under `second/`. The Gemini results preserve
-separate archived and partial runs, including the earlier 150-response sample.
-Inspect each run's configuration and completion counts before quoting its
-results. These measurements do not establish a production error rate or
-replace the proposed app planner.
-The adjudicator evaluates evidence for research recovery; it is not a claims
-operation or a funded reimbursement service. Preserve these additions when
-integrating the Recovery Lab and current product documents.
+A guarantee or reimbursement requires separate terms, decision authority and
+funded capital. The payment agent cannot approve its own claim. Do not call the
+product insured or promise automatic recovery until those roles exist.
+
+## Validate the business problem
+
+Interview financial-operations, support-automation or payment teams. Capture:
+
+1. one recent agent or payment failure;
+2. the evidence needed before an operator would retry or close it;
+3. the current investigation time and escalation path; and
+4. whether a reviewed payment plan plus linked receipt would change adoption.
+
+Start with a shadow pilot that cannot issue live actions. Track completed
+plans, missing facts, blocked authorizations, unknown outcomes, unsupported
+conclusions, operator time, integration effort and added latency. A small
+sample cannot establish a rare-loss rate, market size or guarantee price.
+
+Use the buyer questions in [FINAL_PRESENTATION.md](FINAL_PRESENTATION.md) for
+the recovery side and the investor questions in
+[MVP_PRESENTATION.md](MVP_PRESENTATION.md) for Payment Mission.
+
+## Defer until one domain works
+
+Defer broad merchant coverage, recurring mandates, tax calculation or filing,
+insurance coverage decisions, autonomous custody, escrow and a paid guarantee.
+Tickets remain a useful future domain adapter in
+[CONCERT_APP_BLUEPRINT.md](CONCERT_APP_BLUEPRINT.md), but the current interface
+must continue to use one universal mission flow.
+
+The supplied schedules disagree. Until the organizer confirms a deadline, keep
+the conservative recording and upload buffers in
+[CHECKPOINTS.md](CHECKPOINTS.md). This document does not assert that a
+submission, customer interview or provider agreement has occurred.

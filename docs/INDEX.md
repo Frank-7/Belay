@@ -1,37 +1,44 @@
 # Belay project documents
 
-Read these in order. Product plans describe proposed work, not live capabilities.
+Belay now has two complementary local products. The investor pitch leads with
+the Payment Mission MVP: a plain-language request becomes an exact reviewed
+authorization, simulated payment and linked receipt. The Recovery Desk handles
+the different problem of investigating an interrupted action whose outcome is
+uncertain. Distinguish both from recorded demonstrations and future live
+financial integrations.
 
 | Document | Status | Purpose |
 |---|---|---|
-| [Public website](WEBSITE.md) | GitHub Pages site | Preview, build and publish the product introduction and recorded demo |
 | [Payment Mission MVP](PURCHASE_SIMULATOR.md) | Current runnable investor product | Open-ended request composer, reviewed authority, simulated payment, backend audit and scoped receipt |
-| [MVP presentation](MVP_PRESENTATION.md) | Current presentation plan | Three-minute walkthrough, 60-second pitch and judge questions |
-| [MVP master plan](MVP_MASTER_PLAN.md) | Ticket-focused architecture foundation | Agent interactions, USD supplier payment, evidence, reserve-backed remedies, partners and acceptance tests |
-| [PR #10 payment review](PR10_PAYMENT_REVIEW.md) | Teammate integration review | Verified main compatibility, one reproduced wallet lifecycle defect, reusable recovery components and remaining product layers |
-| [Autonomous app architecture](AUTONOMOUS_APP_ARCHITECTURE.md) | Current product direction | Advance delegation, protected execution and connected services |
-| [USDC settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md) | Selected v0.3 payment plan | Base grants, USD supplier payouts, fund locations, protection reserve and recovery |
-| [Internal payment protocol](INTERNAL_PAYMENT_PROTOCOL.md) | Proposed USDC implementation contract | Backend API roles and mapping to guarded contract actions |
-| [Integration guide](INTEGRATION.md) | Repository boundaries and extension contract | How the existing runtime, adjudicator, lab and proposed services fit |
-| [Subscription and guarantee proposal](SUBSCRIPTION_GUARANTEE.md) | Internal proposal only | Customer offer, potential remedies, loss prevention and economics |
-| [Recovery and guarantee decision](RECOVERY_AND_GUARANTEE_DECISION.md) | Selected architecture | Refunds, blockchain limits and who should carry losses |
-| [Next stage](NEXT_STAGE.md) | Build and validation plan | Deliverables, dependencies and acceptance criteria |
-| [Recovery Lab](PROTOTYPE.md) | Implemented local simulation | Run the existing demonstration and understand its limits |
-| [Recovery Desk and evaluation](DEMO.md) | Implemented recorded demo; optional model adapter | Inspect evidence-backed recovery and compare bounded recovery agents |
-| [Repository review](REVIEW.md) | Known engineering findings | Unresolved research-runtime defects and evidence limits |
-| [Evidence adjudicator](SECOND.md) | Existing research code on main | Validates evidence for ambiguous research actions; not a guarantee claims service |
-| [Concert blueprint](CONCERT_APP_BLUEPRINT.md) | Earlier design | Ticketing research; its per-purchase approval policy is superseded |
+| [Mission presentation](MVP_PRESENTATION.md) | Current pitch | Three-minute walkthrough, 60-second pitch and investor questions |
+| [Integration guide](INTEGRATION.md) | Current implementation boundaries | Run both local products and understand their separate state, authority and evidence paths |
+| [PR #10 integration record](PR10_PAYMENT_REVIEW.md) | Merged Recovery Desk review | Reusable recovery components, resolved lifecycle finding and remaining payment-adapter boundaries |
+| [Test-wallet setup](TEST_WALLET.md) | Human-signed test-network demo | Configure MetaMask, obtain test tokens and understand Arc receipt verification |
+| [Final Recovery Desk presentation](FINAL_PRESENTATION.md) | Prepared supporting pitch | Recovery-focused script, judge questions and buyer questions |
+| [Next stage](NEXT_STAGE.md) | Current execution plan | Harden the pitch, connect one real payment domain and reuse Recovery Desk safely |
+| [Checkpoints](CHECKPOINTS.md) | Submission plan | Recording buffers, milestones and evidence discipline |
+| [Public website](WEBSITE.md) | GitHub Pages | Build and publish the static introduction and recorded walkthroughs |
+| [Repository review](REVIEW.md) | Updated findings | Fixed runtime defects, evidence checks and remaining production limits |
+| [Recovery Desk and evaluation](DEMO.md) | Recorded demo and bounded comparison | Inspect crash recordings and run the optional model evaluation |
+| [Evidence adjudicator](SECOND.md) | Research foundation | Validate evidence for ambiguous actions; not a payment or claims authority |
+| [Recovery Lab](PROTOTYPE.md) | Legacy local simulation | Earlier separate SQLite prototype retained for baseline comparison |
+| [Autonomous app architecture](AUTONOMOUS_APP_ARCHITECTURE.md) | Broader production architecture | Advance delegation, protected execution and connected services |
+| [USDC settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md) | Proposed live payment plan | Base grants, USD payee payouts, fund locations and recovery boundaries |
+| [Internal payment protocol](INTERNAL_PAYMENT_PROTOCOL.md) | Proposed service contract | Backend API roles and mapping to guarded payment actions |
+| [MVP master plan](MVP_MASTER_PLAN.md) | Ticket-focused architecture foundation | Payment, evidence, reserve-backed remedies, partners and acceptance tests |
+| [Subscription and guarantee proposal](SUBSCRIPTION_GUARANTEE.md) | Future internal proposal | Potential terms and remedies; no active subscription or funded guarantee |
+| [Recovery and guarantee decision](RECOVERY_AND_GUARANTEE_DECISION.md) | Earlier architecture decision | Payment rails, recovery and possible future loss protection |
+| [Concert blueprint](CONCERT_APP_BLUEPRINT.md) | Deferred vertical design | Ticketing research retained as one future domain adapter |
 | [AP2 learnings](AP2_PODCAST_LEARNINGS.md) | Research notes | Protocol roles, signing and adoption boundaries |
 | [Stripe learnings](STRIPE_COMMERCE_LEARNINGS.md) | Research notes | Payment options and integration constraints |
-| [Earlier card payment protocol](PAYMENT_PROTOCOL_CARD_REFERENCE.md) | Superseded design | Preserved comparison; Stripe/card settlement is not the selected product architecture |
-| [Earlier USDC merchant-wallet design](USDC_ESCROW_REFERENCE.md) | Superseded v0.2 design | Historical contract escrow; supplier no longer needs a crypto wallet or its own conversion account |
+| [Earlier card protocol](PAYMENT_PROTOCOL_CARD_REFERENCE.md) | Superseded design | Preserved card-settlement comparison |
+| [Earlier merchant-wallet design](USDC_ESCROW_REFERENCE.md) | Superseded v0.2 design | Historical contract escrow and merchant conversion assumptions |
 
-The Payment Mission MVP can shape requests for invoices, bills, premiums,
-taxes, subscriptions, transfers, tickets and other purchases. It does not
-execute those real services. The runnable code does not include live billing,
-tax filing, insurance coverage, subscriptions, claims, reimbursements, ticket
-booking, bank connectivity, a deployed blockchain contract, USDC conversion,
-AP2 integration or a connected purchasing model.
-The optional model in the Recovery Desk proposes evidence and claims only.
-No guarantee is offered by this repository. Its original experiment results
-are synthetic research results, not customer loss rates or guarantee pricing data.
+The Payment Mission MVP shapes invoices, bills, premiums, taxes,
+subscriptions, transfers, tickets and other purchases, but does not execute
+those real services. Its model, money and provider edges are simulated. The
+Recovery Desk can use an optional model to propose evidence interpretations;
+it cannot sign or autonomously send its Arc Testnet wallet transfer. The
+repository offers no guarantee, insurance, reimbursement, tax filing, bank
+connection, production USDC conversion or live purchasing integration.
+Research outcomes are controlled measurements, not customer loss rates.

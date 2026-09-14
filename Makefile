@@ -1,4 +1,4 @@
-.PHONY: help test test-second test-prototype test-purchase-simulator test-recovery test-evidence test-live-experiment prototype purchase-simulator \
+.PHONY: help test test-second test-prototype test-purchase-simulator test-recovery test-evidence test-live-experiment prototype purchase-simulator desk test-desk \
         demo recovery-demo evaluate-recovery \
         example matrix revocation adjudication analyze checkdocs viewer all clean reset-results
 
@@ -10,8 +10,10 @@ help:
 	@echo "make test-second adjudicator safety and stale recovery checks"
 	@echo "make test-prototype  portable Recovery Lab tests"
 	@echo "make prototype      start the local Recovery Lab on port 8765"
-	@echo "make purchase-simulator customer and backend payment-mission MVP on port 8777"
+	@echo "make purchase-simulator customer and backend Payment Mission MVP on port 8777"
 	@echo "make test-purchase-simulator portable mission and legacy purchase tests"
+	@echo "make desk           start the Recovery Desk on port 8766"
+	@echo "make test-desk      operator workflow, wallet evidence and boundaries"
 	@echo "make test-recovery offline model, evaluation and demo checks"
 	@echo "make test-evidence portable evidence source and order checks"
 	@echo "make test-live-experiment offline decision parser and retry checks"
@@ -47,6 +49,16 @@ purchase-simulator:
 test-purchase-simulator:
 	$(PY) -m unittest discover -s tests -p "test_mission_control.py" -v
 	$(PY) -m unittest discover -s tests -p "test_purchase_simulator.py" -v
+
+desk:
+	$(PY) -m recovery_app.server --port 8766
+
+test-desk:
+	$(PY) tests/test_recovery_app.py
+	$(PY) tests/test_arc.py
+	$(PY) tests/test_recovery_holdout.py
+	$(PY) tests/test_operator_export.py
+	node --test tests/test_recovery_app_ui.mjs tests/test_wallet_ui.mjs
 
 test-evidence:
 	$(PY) tests/test_evidence_boundaries.py
@@ -95,7 +107,7 @@ checkdocs:
 viewer:
 	$(PY) viewer/build_viewer.py
 
-all: test test-second test-prototype test-purchase-simulator test-recovery test-live-experiment example matrix revocation adjudication analyze checkdocs viewer
+all: test test-second test-prototype test-purchase-simulator test-recovery test-desk test-live-experiment example matrix revocation adjudication analyze checkdocs viewer
 	@echo ""
 	@echo "done. open viewer/trace.html"
 

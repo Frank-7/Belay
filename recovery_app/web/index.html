@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f5ef" />
+    <meta name="description" content="Find out what an interrupted AI action actually did. Belay brings intent, evidence and a safe next step into one recovery desk." />
+    <title>Recovery Desk · Belay</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="app.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">Skip to recovery workspace</a>
+    <header class="site-header">
+      <a class="brand" href="https://frank-7.github.io/Belay/" aria-label="Belay home">
+        <svg viewBox="0 0 36 40" aria-hidden="true"><path d="M12 5v29h8c12 0 12-15 0-15H12m0 0h7c11 0 11-14 0-14h-7" /></svg>
+        belay<span>.</span>
+      </a>
+      <span class="header-divider" aria-hidden="true"></span>
+      <span class="product-name">Recovery Desk</span>
+      <span class="mode-pill" id="mode-label">Connecting</span>
+      <a class="source-link" href="https://github.com/Frank-7/Belay" target="_blank" rel="noreferrer">View source <span aria-hidden="true">↗</span></a>
+    </header>
+
+    <main class="page-shell">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> A SAFETY LINE FOR AI ACTIONS</p>
+          <h1 id="page-title">Did it go through?</h1>
+          <p class="intro-copy">The agent stopped. The action might not have.<br />Find the evidence, understand the outcome, choose the next step.</p>
+        </div>
+        <div class="intro-note"><span class="note-number" aria-hidden="true">↳</span><p>When the answer is uncertain,<br /><strong>make the uncertainty useful.</strong></p></div>
+      </section>
+
+      <div id="mode-notice" class="mode-notice" role="note">Connecting to your Recovery Desk…</div>
+      <div id="error" class="error-banner" role="alert" hidden></div>
+      <p id="announcement" class="sr-only" role="status" aria-live="polite"></p>
+
+      <section id="workspace" class="workspace" aria-label="Recovery workspace">
+        <aside class="incident-sidebar" aria-label="Incident selection">
+          <div class="sidebar-heading"><h2>Your desk <span id="incident-count">0</span></h2><button id="refresh" class="icon-button" type="button" aria-label="Refresh incidents" title="Refresh incidents">↻</button></div>
+          <div id="incident-list" class="incident-list"><p class="muted small">Loading incidents…</p></div>
+          <div class="scenario-heading"><p class="eyebrow">OPEN A DEMO INCIDENT</p><p class="muted small">Choose the interruption you want to investigate.</p></div>
+          <div id="scenario-list" class="scenario-list"></div>
+        </aside>
+
+        <div class="case-area">
+          <div id="empty-state" class="empty-state">
+            <div class="empty-icon" aria-hidden="true">↳</div>
+            <h2>A clear next step starts here.</h2>
+            <p>Open an incident to see what was requested, inspect the evidence, and resolve only what the record supports.</p>
+            <p class="muted small">The local scenarios use a simulated provider. No real money moves.</p>
+          </div>
+          <article id="incident-detail" hidden aria-labelledby="incident-title">
+            <header class="case-heading">
+              <div><p id="incident-reference" class="eyebrow"></p><h2 id="incident-title"></h2><p id="incident-description" class="case-description"></p></div>
+              <span id="incident-status" class="status-badge"></span>
+            </header>
+            <ol id="progress" class="progress" aria-label="Recovery progress"></ol>
+            <div class="case-columns">
+              <div class="decision-column">
+                <section class="intent-card" aria-labelledby="intent-heading">
+                  <div class="section-label"><span>01</span><h3 id="intent-heading">The original request</h3></div>
+                  <p id="intent-summary" class="intent-summary"></p>
+                  <dl id="intent-facts" class="intent-facts"></dl>
+                  <p id="provider-note" class="provider-note"></p>
+                </section>
+                <section class="investigation-card" aria-labelledby="investigation-heading">
+                  <div class="section-label"><span>02</span><h3 id="investigation-heading">What does the evidence say?</h3></div>
+                  <p class="muted">Build a proposed explanation from the available records. Belay checks the references before a resolution can be applied.</p>
+                  <div id="investigation-controls" class="investigation-controls">
+                    <label class="agent-label" for="agent">Investigator<select id="agent"></select></label>
+                    <button id="investigate" class="button primary" type="button">Investigate evidence <span aria-hidden="true">↗</span></button>
+                  </div>
+                  <p id="agent-note" class="small muted"></p>
+                  <div id="proposal" class="proposal" hidden></div>
+                </section>
+                <section id="decision-card" class="decision-card" aria-labelledby="decision-heading" hidden>
+                  <div class="section-label"><span>03</span><h3 id="decision-heading">A supported next step</h3></div>
+                  <div id="decision-content"></div>
+                  <div id="decision-actions" class="decision-actions"></div>
+                </section>
+              </div>
+              <aside class="evidence-column" aria-label="Evidence and activity">
+                <section class="evidence-section" aria-labelledby="evidence-heading">
+                  <div class="rail-heading"><h3 id="evidence-heading">Evidence on the desk</h3><span id="evidence-count" class="count-badge">0</span></div>
+                  <p class="small muted">Inspect the source behind each claim.</p>
+                  <div id="evidence-list"></div>
+                </section>
+                <section class="activity-section" aria-labelledby="activity-heading"><h3 id="activity-heading">Activity</h3><ol id="timeline" class="timeline"></ol></section>
+                <details class="audit-details"><summary>Receipt &amp; audit record</summary><div id="receipt-content"></div><button id="load-receipt" class="button secondary small-button" type="button">Inspect receipt</button></details>
+                <div class="permission-control"><p id="permission-note" class="small muted"></p><button id="revoke" class="text-button" type="button">Revoke permission to act</button></div>
+              </aside>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <details id="wallet-section" class="wallet-section" hidden>
+        <summary><span><span class="eyebrow">OPTIONAL · PUBLIC TESTNET</span><strong>See a transfer on a real test network.</strong></span><span class="wallet-summary-action">Try the wallet demo <span aria-hidden="true">↗</span></span></summary>
+        <p class="wallet-intro">Your wallet signs a small test transfer. Belay records the intent and checks its receipt. Test tokens have no monetary value; this demo does not hold funds for you.</p>
+        <div id="wallet-panel"></div>
+      </details>
+    </main>
+    <footer class="site-footer"><p><strong>Belay</strong> · Keep the intent. Follow the evidence.</p><p id="footer-mode">Research preview</p></footer>
+    <noscript><p class="noscript">Enable JavaScript to use the Recovery Desk.</p></noscript>
+  </body>
+</html>
