@@ -13,15 +13,18 @@ evidence of an uncertain outcome. The agent signs with its own delegated key.
 It never receives the user's private signing key.
 
 The selected payment direction is now USDC on Base, with a proposed payment
-contract holding funded orders under agreed delivery/refund rules. Buyers
-and sellers use their own approved conversion-provider accounts at the fiat
-edges. Stripe is not a dependency of this plan. This supersedes both the earlier
+contract controlling bounded orders and approved USD payout dispatch. A payment
+partner converts USDC and pays the supplier's bank; the supplier need not hold
+USDC or open an exchange account. A separate funded reserve backs eligible
+post-payment customer remedies. Stripe is not a dependency. This supersedes the
 per-purchase approval default and the later card-first settlement decision.
 
 The [internal payment protocol](INTERNAL_PAYMENT_PROTOCOL.md) specifies API
 boundaries and guarded commands. The [USDC settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md)
 specifies wallets, prefunded grants, contract state, conversion providers,
-delivery evidence and dispute rules. It is proposed, not a deployed integration.
+delivery evidence and dispute rules. The [MVP master plan](MVP_MASTER_PLAN.md)
+joins agent interactions, supplier compatibility, receipt/evidence and protection
+into one build outline. All of these are proposed, not deployed integrations.
 
 ## System responsibilities
 
@@ -48,7 +51,8 @@ flowchart TD
 | Protected signer | Protocol-specific signing with managed keys; no raw key access for the model |
 | Execution worker | Stable action identity, saved intent, provider submission and supported retries |
 | Adapters | Merchant access, wallet/RPC submission, conversion-provider capabilities and consistency rules |
-| Settlement contract | Funded grant limits, order escrow, agreed allocation rules and beneficiary withdrawals |
+| Settlement contract | Funded grant limits, temporary order holds, approved payout dispatch and actual returned funds |
+| Protection reserve | Separately funded coverage reservations, authorized claim payments and recovery accounting |
 | Delivery and dispute services | Pinned evidence verification and separate decisions for challenged orders |
 | Recovery service | Canonical-chain reconciliation, uncertain transaction recovery, refund allocation and conversion/payout status |
 
@@ -76,16 +80,18 @@ identity constraints. The model never receives the owner's key or arbitrary
 wallet transfer access. A separate deterministic policy validator checks
 off-chain item requirements; chain hashes alone cannot prove their meaning.
 
-Evaluate [Coinbase Onramp/Offramp](https://docs.cdp.coinbase.com/onramp/introduction/welcome)
-for eligible funding/cash-out and [Circle Mint](https://developers.circle.com/circle-mint)
-for qualifying business merchants. Access, supported routes and operating
-responsibilities must be established. Funding a mission may require initial
-provider/user verification; do not promise autonomous fiat replenishment.
+Evaluate an approved customer-funding provider and a BVNK-shaped USDC-to-USD
+payout adapter, with exact customer/beneficiary permissions. Existing consumer
+off-ramp access alone does not establish third-party supplier payouts. Funding
+a mission may require provider/user verification; do not promise unattended
+fiat replenishment. Provider facts and alternatives are in the master plan.
 
-The merchant accepts a signed order with funded contract escrow and agreed
-delivery/dispute terms. Track chain confidence, allocation, withdrawal,
-delivery and bank payout separately. Automatic eligible release follows those
-terms; it does not require a routine buyer click for each purchase.
+The merchant accepts a normal USD order/invoice using its supported payment
+method. The default prototype pays before delivery. Waiting until delivery is
+an optional arrangement that requires merchant agreement. Track held funds,
+external dispatch, conversion, bank payout, delivery and customer compensation
+separately. Post-payment protection is funded from capital, not a recalled
+blockchain transaction.
 
 [Ticketmaster Discovery](https://developer.ticketmaster.com/products-and-docs/apis/discovery-api/v2/)
 provides event information and purchase links. Direct booking requires
@@ -103,13 +109,16 @@ access. No such access is established here. The first checkout demo is simulated
    chain, contract, order and nonce. A changed quote requires validation again.
 5. If the result is unknown, retain its reservation and reconcile the same
    operation. A lookup returning no record need not prove no purchase occurred.
-6. Record canonical outcomes and verify fulfillment. Release/refund allocation,
-   USDC withdrawal and later fiat conversion are separate guarded actions.
+6. Record canonical outcomes and verify fulfillment. Return held funds when
+   possible; eligible post-payment remedies pass through separate claims and
+   reserve controls. Supplier recovery and customer reimbursement are distinct.
 
 Check current revocation before new submissions. On-chain ordering determines
 whether an order precedes a revocation transaction. Revocation blocks new
 orders and releases unused grant credit; it does not recall committed order
-escrow. Reconciliation and support continue under appropriate permissions.
+funds after they have been dispatched to the payout provider. Still-held funds
+can follow their cancellation/refund rules. Reconciliation and support continue
+under appropriate permissions.
 
 Persist grants and versions, missions, offers, exact action payloads,
 operation IDs, quote hashes, budget reservations, execution attempts,
@@ -119,11 +128,14 @@ raw signing secrets, and keep private delivery evidence off-chain.
 
 ## Where a proposed guarantee belongs
 
-The guarantee service consumes execution evidence after an incident. It does
+The claims service separates supplier-failure protection from the agent-error
+guarantee and consumes evidence after an incident. It does
 not relax purchase checks or give the planner access to reimbursement funds.
 Keep subscription entitlement, guarantee terms, incident eligibility,
 recoveries and claim payments in separate records. The operating app and
-payment rails remain the same. See [the proposal](SUBSCRIPTION_GUARANTEE.md).
+payment rails remain the same. A prompt reimbursement after USD payout requires
+available protection capital even if later insurer/supplier recovery is planned.
+See [the proposal](SUBSCRIPTION_GUARANTEE.md).
 
 ## Current implementation boundary
 
@@ -138,7 +150,7 @@ must pass through the same authority, budget and execution service. Its
 research journal and the lab's SQLite records are not interchangeable. See
 [the integration guide](INTEGRATION.md).
 
-The model planner, on-chain grants/escrow, production signers, domain/conversion
+The model planner, on-chain grants/reserve, production signers, domain/conversion
 adapters, customer accounts and guarantee service are proposed. Start with
 one web application, one worker and isolated local/testnet contract tests.
 Production requires contract review, durable deployment, account isolation,

@@ -33,8 +33,9 @@ mock functions with fictional credentials. No external APIs are contacted.
 **Project status:** the runnable application below is a local recovery
 simulation. The current product plan is a broader autonomous task app with
 advance delegation and [USDC settlement on Base](docs/USDC_SETTLEMENT_ARCHITECTURE.md).
-The proposed contract holds funded orders under agreed delivery/refund rules;
-approved conversion providers connect wallets to fiat. Subscriptions and a
+The proposed payment partner converts USDC and pays suppliers in USD; a separate
+reserve backs eligible post-payment remedies. Read the [MVP master plan](docs/MVP_MASTER_PLAN.md)
+and [presentation outline](docs/MVP_PRESENTATION.md). Subscriptions and a
 limited customer guarantee remain proposals; there is no deployed contract,
 live coverage, bank connection or ticket checkout. The simulator above still
 demonstrates the earlier fictional payment-provider flow.

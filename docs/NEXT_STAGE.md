@@ -4,6 +4,8 @@
 
 The repository contains the local Recovery Lab, Purchase Simulator and the
 selected [USDC settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md).
+The [MVP master plan](MVP_MASTER_PLAN.md) and [presentation script](MVP_PRESENTATION.md)
+now specify the complete agent, USD merchant payment and funded-protection flow.
 The contract, chain adapters and fiat conversions are proposed; these documents
 do not activate coverage, subscription billing or a payment integration.
 Use [the index](INDEX.md) to distinguish implemented work from plans.
@@ -11,14 +13,15 @@ Use [the index](INDEX.md) to distinguish implemented work from plans.
 ## First build increment
 
 Extend the two-panel purchase demonstration with the USDC contract workflow:
-owner funding, bounded mission grant, merchant-signed quote, order escrow,
-delivery attestation, challenge/dispute, allocation and withdrawal. Keep concert
-tickets as the example and use fictional assets/providers first.
+owner funding, bounded mission grant, exact order, conversion quote, USD supplier
+payout, receipt/evidence, separate claim decision and reserve reimbursement.
+Keep concert tickets as the example and use fictional assets/providers first.
 
-Done means: a 42 USDC order debits a 100 USDC grant once; duplicate/replayed
+Done means: a two-ticket $200 order debits the quoted USDC from a $300-limit mission once; duplicate/replayed
 requests cannot debit it again; wrong items/merchant and excessive costs are
-blocked; no delivery refunds remaining escrow; contested delivery uses the
-pinned resolver and timeout; restart preserves unknown operations. Show USD
+blocked; still-held funds can be returned; eligible loss after USD payout is
+paid from separately visible protection capital; contested evidence goes to
+review; restart preserves unknown operations. Show USD
 conversion and bank payout separately from token settlement. Label the current
 simulator's earlier provider flow accurately until this extension is built.
 
@@ -31,15 +34,22 @@ grants, token-transfer failure, missing receipts, transaction replacement and
 reorganization recovery. Mock ticket delivery and conversion providers until
 their actual integrations are approved. No real funds in these increments.
 
-Next, establish one merchant and the buyer/seller conversion routes. Live use
+Next, establish one merchant's accepted USD payment method and an approved
+buyer-funded conversion/payout route. The seller needs no crypto account. Live use
 requires reviewed contract code, accepted release/dispute terms, delivery
 evidence access and approved operating responsibilities. The full gates are
 in [the settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md).
 
-A separate guarantee simulation can follow. It must distinguish returning
-escrow from paying additional compensation and deduct prior recoveries. An
+A separate agent-error case is part of the presentation. It must distinguish returning
+still-held purchase funds from paying additional compensation and deduct prior recoveries. An
 unknown purchase is not automatically a loss; actual claims remain unavailable
 until payer, funding and terms are established.
+
+Reuse the teammate's draft [PR #10](https://github.com/Frank-7/Belay/pull/10)
+as the payment-outcome investigation slice after addressing the finalized-revert
+dead end documented in [the payment review](PR10_PAYMENT_REVIEW.md). Adapt it
+through typed provider observations; do not turn its read-only recovery model
+into the autonomous spender. Preserve both application test suites when merging.
 
 ## Commercial validation in parallel
 
@@ -48,7 +58,7 @@ until payer, funding and terms are established.
 | Interview frequent delegators | A recent failed purchase/task, real impact and current workaround |
 | Test the offer | Willingness to delegate and pay at a clearly disclosed cap; compare service-only and guarantee propositions |
 | Confirm financial structure | Named payer, reviewed terms, funded obligations and approved launch scope |
-| Confirm provider access | Merchant accepts USDC/escrow terms; delivery source, conversion routes and recovery behavior are verified |
+| Confirm provider access | Accepted USD order/payment method; authorized customer-to-supplier conversion/payout route; delivery and recovery evidence |
 | Observe a controlled pilot | Eligible actions, net losses, unresolved outcomes, support cost and repeat use |
 
 Do not invent demand or broad market statistics from interviews that have not
@@ -70,10 +80,11 @@ check-in; confirm the actual schedule with the organizers.
 
 ## Selected direction and remaining dependencies
 
-- Use native USDC on Base, prefunded grants and contract release/refund rules.
+- Use native USDC on Base, bounded grants, approved USD supplier payout and
+  separately funded protection for eligible post-payment losses.
   Stripe/card payment selection is superseded; no blockchain deployment exists yet.
-- Belay supplies the app and its service-fee remedy. Pursue a licensed partner
-  for transaction-loss protection; no partner or policy is secured.
+- Demonstrate a separately funded reserve; evaluate an authorized partner for
+  agreed live risk bearing/replenishment. No reserve, partner or policy is live.
 - Exact guarantee triggers, amount limits, price and initial live jurisdiction.
 - Which merchant, delivery verifier, dispute operator and conversion providers
   accept the selected arrangement; exact US operating/control responsibilities.

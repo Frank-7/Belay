@@ -1,5 +1,13 @@
 # Repository integration guide
 
+For the teammate's draft Recovery Desk and Arc Testnet increment, see
+[PR #10 payment review](PR10_PAYMENT_REVIEW.md). It is compatible with current
+main at `cffe7ac` but conflicts with this simulator branch in seven shared
+build/documentation files. Keep its read-only chain recovery separate from the
+proposed protected executor, USD payout and compensation modules. Its refund
+slot schema needs an explicit adapter before representing USDC base units,
+USD payouts or claims; network identifiers cannot be relabeled across Arc/Base.
+
 ## What works together today
 
 The repository combines a portable local Recovery Lab, the recorded Recovery
@@ -80,7 +88,12 @@ a dossier also requires its bound journal state to remain current.
 [INTERNAL_PAYMENT_PROTOCOL.md](INTERNAL_PAYMENT_PROTOCOL.md) develops this
 boundary into proposed USDC API/adapter contracts. The
 [settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md) defines on-chain
-grants, escrow, release/refund allocation, withdrawals and fiat conversion.
+grants, temporary order holds, protected dispatch, withdrawals, a separate
+protection reserve and external fiat conversion/payout records.
+The current v0.3 default is USD supplier prepayment through an approved partner;
+eligible post-payment reimbursements use a separate protection reserve. Supplier
+crypto wallets/signatures are not required by the main flow. See the complete
+[MVP master plan](MVP_MASTER_PLAN.md) before adapting the older demo traces.
 These `/internal/v1` routes and blockchain functions are not implemented by
 the existing lab or simulator. Preserve their current fictional workflows.
 
@@ -100,6 +113,8 @@ The record passed across that boundary must retain:
   replacement transaction lineage, block hash and observed finality.
 - Pinned delivery/dispute policy, fixed beneficiaries, allocation/withdrawal
   states and independent conversion-provider/payout records.
+- Net USD supplier amount, verified bank beneficiary reference, source USDC
+  cap/fees, reserve exposure, coverage version, claim and recovery identities.
 
 An adapter declares its actual capabilities and retry rules. A success response
 needs evidence tied to the original operation and exact inputs. A failed
@@ -147,6 +162,8 @@ The USDC extension additionally requires grant conservation, signature replay
 protection, expiry/revocation ordering, release/refund exclusivity, failed-token
 withdrawals, resolver timeouts, gas failure and reorg tests. The research
 adjudicator is not a production delivery verifier or an authorized arbitrator.
+It also requires conservation across held/dispatched funds and reserve claims,
+late bank returns, protection expiry and no duplicate remedy for the same loss.
 
 Known original-runtime defects remain documented in [REVIEW.md](REVIEW.md).
 Neither the separate lab suite nor an architectural diagram proves that
