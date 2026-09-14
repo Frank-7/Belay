@@ -1,14 +1,24 @@
 # Belay MVP: agents buy, merchants receive dollars, customers can recover
 
+> **Current scope — September 14, 2026:** Belay's AI Apps product centers on
+> Recovery Desk. The Purchase Simulator is its fictional commerce use case and
+> now reuses a typed, read-only recovery investigator. This document preserves
+> the future commerce design; Base contracts, approved USD payout providers and
+> funded protection remain external dependencies. The implemented wallet path
+> is human-signed Arc Testnet, separate from the simulated USD payout. See
+> [INTEGRATION.md](INTEGRATION.md) for what runs today.
+
+
 Status: selected v0.3 architecture and presentation plan. September 13, 2026.
 This is a build specification, not a live service, funded protection offer or
 claim of provider access. Existing runnable demos still use fictional money.
 
-The teammate's draft [PR #10](https://github.com/Frank-7/Belay/pull/10) adds an
-optional user-signed Arc Testnet evidence path. Reuse its recovery core, subject
-to [this integration review](PR10_PAYMENT_REVIEW.md); it does not implement USD
-payouts or compensation. Keep that testnet adapter distinct from the proposed
-Base contract prototype.
+[PR #10](https://github.com/Frank-7/Belay/pull/10) supplies the operator
+Recovery Desk and human-signed Arc Testnet evidence path. Its finalized-revert
+lifecycle issue from [the historical review](PR10_PAYMENT_REVIEW.md) is fixed.
+The integrated purchase flow reuses its typed evidence core for fictional USD
+payout investigation; live USD settlement and compensation remain outside that
+testnet adapter. Keep Arc distinct from the proposed Base contract prototype.
 
 ## 1. The product, in simple words
 

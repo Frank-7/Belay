@@ -1,187 +1,182 @@
 # Repository integration guide
 
-For the teammate's draft Recovery Desk and Arc Testnet increment, see
-[PR #10 payment review](PR10_PAYMENT_REVIEW.md). It is compatible with current
-main at `cffe7ac` but conflicts with this simulator branch in seven shared
-build/documentation files. Keep its read-only chain recovery separate from the
-proposed protected executor, USD payout and compensation modules. Its refund
-slot schema needs an explicit adapter before representing USDC base units,
-USD payouts or claims; network identifiers cannot be relabeled across Arc/Base.
+The primary AI Apps product is **Belay Recovery Desk**: an operator investigates
+what an interrupted agent action did and records a supported outcome. The
+**Purchase Simulator** makes the same problem tangible for a customer funding
+USDC while a merchant accepts USD. Its uncertain payouts now use Recovery
+Desk's typed, read-only evidence component inside the purchase service.
 
-## What works together today
+## Components and boundaries
 
-The repository combines a portable local Recovery Lab, the v0.3 protected
-Purchase Simulator, the recorded Recovery Desk, the research evidence
-adjudicator and the live decision experiments. All components are checked in
-the same CI workflow. Each application owns its state and demonstrates a
-different boundary; none is a production adapter around another component.
-
-| Component | Entry point | State and boundary |
+| Component | Entry point | Actual behavior |
 |---|---|---|
-| Research runtime | `worker.py`, `belay/runtimes/anchored.py` | Research journal, permission store and synthetic services; POSIX crash experiments |
-| Evidence adjudicator | `second/adjudicate.py`, `second/apply.py` | Research dossiers and evidence; may complete a verified absent effect through a callback |
-| Recovery Desk | `experiments/recovery_demo.py`, `viewer/build_viewer.py` | Recorded POSIX crash scenarios using the research runtime and adjudicator; browser controls only inspect recordings |
-| Optional recovery model | `second/live_agent.py` | OpenAI proposes evidence pointers and claims; deterministic validation and the guarded executor retain control |
-| Live decision experiment | `experiments/run_live_agent.py` | Optional API-backed measurement and committed results; not the lab's decision engine |
-| Recovery Lab | `python -m prototype.server` | Separate SQLite application/provider stores and loopback HTTP; scripted decisions and fictional money |
-| Protected Purchase Simulator v0.3 | `python -m purchase_simulator.server` | Separate SQLite application and provider records; bounded ticket grant, deterministic policy, fictional USDC-to-USD settlement, USD merchant payout, delivery evidence, reserve accounting, claims and exact-operation recovery |
-| Live autonomous USDC app and guarantee | Architecture and proposal documents | Future contracts, custody/provider integrations and funded terms; no deployed blockchain, live purchases, subscriptions, active coverage or real reimbursements |
+| Local Recovery Desk | `python -m recovery_app.server --port 8766` | Persistent incidents, research JSONL journal, bounded `second/` evidence validation, refresh, guarded resolution and receipts. |
+| Optional recovery model | `second/live_agent.py` | Configured OpenAI model proposes evidence pointers and a cited verdict; deterministic validation and operator/executor control remain separate. |
+| Local refund provider | `services/ledger.py` through `recovery_app/engine.py` | Real local SQLite writes with fictional amounts and constructed interruptions; creating an incident is not an OS-crash trial. |
+| Arc Testnet adapter | `recovery_app/arc.py`, browser wallet module | A person signs capped test-USDC transfers in MetaMask; the server reads and verifies the original transaction. |
+| Purchase Simulator | `python -m purchase_simulator.server --port 8777` | Fictional grants, USDC funding, USD payouts, delivery, claims and reserve accounting in separate application/provider SQLite stores. |
+| Purchase recovery bridge | `purchase_simulator/recovery.py` → `recovery_app/purchase.py` | Typed deterministic investigation of the saved purchase and original provider observation; no ledger, signer or payout callback enters the evidence core. |
+| Research runtime | `worker.py`, `belay/runtimes/anchored.py` | Journal, permission store, synthetic external services and POSIX SIGKILL experiments. |
+| Research evidence adjudicator | `second/adjudicate.py`, `second/apply.py` | Research dossiers and guarded completion of verified absent local refund effects; this completion callback is not a purchase payment interface. |
+| Recorded demonstrations | `recovery_app/export.py`, `experiments/recovery_demo.py`, `viewer/build_viewer.py` | Static operator scenarios and recorded real-crash research traces; browser controls only inspect saved results. |
+| GitHub Pages | `site/`, `scripts/build_site.py` | Product introduction and recordings; no Python API or model credentials. |
+| Legacy Recovery Lab | `python -m prototype.server --port 8765` | Earlier separate SQLite implementation for baseline comparison. |
+| Future protected commerce | Architecture/proposal documents | Base contracts, approved conversion/payout providers, merchant integrations and funded protection; none is a live service. |
 
-Keep lab data under `.belay-prototype/` or another isolated directory. Do not
-point it at research evidence or treat its database as the JSONL research
-journal. Preserve committed `results/` when validating documentation; they
-are research evidence rather than application state.
+The integrated implementation fixes the review's two defects: finalized Arc
+reverts can close as failed without sending, and purchase dispatch uncertainty
+survives a provider/app commit gap. Auto play stops at uncertainty while explicit
+investigation and reconciliation remain available. The original seven shared
+conflicts concerned CI, `.gitignore`, Makefile, README and the index/integration/
+next-stage documents. Both applications, test targets, state exclusions and
+research results are retained. [The historical review](PR10_PAYMENT_REVIEW.md)
+keeps the original reproduction and reviewed revision for context.
 
-The Purchase Simulator uses `.belay-purchase-simulator/` and port 8777, with
-no imports from the research or Recovery Lab execution engines. Its
-`belay.purchase.v0.3` state keeps customer USDC, an order hold, provider transit,
-merchant USD, protection cash, coverage commitments and claim payments
-separate. The deterministic policy and fictional provider are also separate
-modules, while admission, ledger and claim transitions share one local SQLite
-transaction boundary. Stable identities prevent a lost provider reply from
-creating a second payout.
+## Run locally
 
-Only browser-to-loopback requests are actual HTTP. Internal service calls use
-invented `belay://` or `.invalid` traces. No token is transferred, no currency
-is converted and no bank or reserve is connected. The records are deliberately
-simplified and are neither AP2 messages nor deployed blockchain contracts. See
-[PURCHASE_SIMULATOR.md](PURCHASE_SIMULATOR.md) for scenarios and limitations.
-
-## Run and test
-
-From a clone with Python 3.10 or newer:
+From a clone with Python 3.10 or newer, start each server in its own terminal:
 
 ```bash
-python -m prototype.server --port 8765
-python -m unittest discover -s tests -p "test_prototype.py" -v
+python -m recovery_app.server --port 8766
 python -m purchase_simulator.server --port 8777
-python -m unittest discover -s tests -p "test_purchase_simulator.py" -v
-node --check purchase_simulator/web/app.js
+```
+
+Open `http://127.0.0.1:8766` for Recovery Desk or
+`http://127.0.0.1:8777` for the purchase use case. On Windows,
+double-click `Start-Belay-Simulator.cmd` to launch the latter; leave its
+terminal open. Its isolated data directory is
+`.belay-purchase-simulator/demo-v4/`.
+
+Default state directories are `.belay-recovery/`,
+`.belay-purchase-simulator/` and `.belay-prototype/`. Use `--data-dir` for an
+isolated run and one server per application data directory. The Recovery Desk
+has a process ownership lock; the purchase app serializes writes through SQLite
+and its engine lock. Neither loopback development server is an authenticated
+hosted service. Run from a clone: the existing distribution does not package
+these web applications and assets.
+
+The deterministic demos need no credentials. To enable the optional Recovery
+Desk model, set `OPENAI_API_KEY` and an explicit `OPENAI_MODEL` in the server
+environment. Each investigation permits at most two model requests and no
+automatic retries. Requests may incur charges. The model receives bounded
+evidence, never signing material, payment credentials or an execution callback.
+The purchase investigator is deterministic and makes no model request.
+
+```bash
+python -m unittest discover -s tests -p "test_recovery_app.py"
+python -m unittest discover -s tests -p "test_arc.py"
+python -m unittest discover -s tests -p "test_purchase*.py"
+node --test tests/test_purchase_simulator_ui.mjs
 python tests/test_evidence_boundaries.py
 python tests/test_live_agent.py
 python tests/test_evaluate_recovery.py
+python tests/test_recovery_holdout.py
 python experiments/check_docs.py
+python experiments/evaluate_recovery.py --audit-unvalidated --out tmp-runs/recovery-evaluation.json
+python experiments/recovery_holdout.py --out tmp-runs/recovery-holdout.json
 ```
 
-Both application servers bind to `127.0.0.1`; they are local development
-demonstrations. Use one server per application data directory. No external
-payment credentials are needed. The applications run from a clone; the
-existing distribution described by `pyproject.toml` does not package either
-web application or its assets.
+The raw-claim audit is classification only and never executes an unvalidated
+dossier. Optional model comparison uses
+`python experiments/evaluate_recovery.py --agent openai --model MODEL_ID`.
+Both agents receive identical isolated cases and evidence limits; this is not
+an equal-compute comparison. Full contract and recorded crash tests need Linux,
+macOS or WSL for POSIX signals. Preserve committed `results/`: they are
+historical research evidence, not app state. CI checks committed documentation
+before generating, validating and uploading fresh experiment artifacts.
 
-On POSIX with Make available, `make prototype` starts the lab,
-`make test-prototype` runs its tests, and `make all` includes both the lab and
-recovery suites alongside the existing research checks. `make test-evidence`
-runs portable order/source isolation regressions. `make test-recovery` also
-runs the adapter, evaluation and recorded demo checks. `make test` and `make test-second`
-remain the research contract and evidence-adjudicator suites. The full crash
-and adjudication experiments require POSIX. CI tests the lab on Windows and
-Linux and the research suites on Linux and macOS.
+## Evidence and authority
 
-Use `make recovery-demo` on POSIX to record the Recovery Desk, then open
-`viewer/trace.html`. See [DEMO.md](DEMO.md) for the optional model and
-`make evaluate-recovery` for an offline comparison. The model never receives
-payment credentials or an execution callback.
+The research evidence store restricts files to its root. A model requests at
+most 16 pointers. Deterministic context checks cover at most eight advertised
+sources, a manifest and exact-order query for each. Each source has a 1 MiB and
+1,000-record limit. Unreadable or over-budget evidence yields abstention.
+Cited observations must actually have been fetched. Context can veto an omitted
+contradiction but cannot supply missing support on a model's behalf. Local file
+provenance and claimed coverage are assumptions, not authenticated merchant
+attestations or consensus.
 
-CI checks committed results against documentation before experiments run.
-It then asserts the fresh results and uploads those same results with the
-standalone viewer. Do not restore committed results before these assertions
-or the artifact upload.
+Applying a research dossier requires the original intent, current halted
+journal and unchanged evidence. Reporting a proven commitment sends nothing.
+Completing a verified absent local refund rechecks permission immediately before
+the simulated call. That research completion path is not exposed to purchases.
 
-The shared evidence store restricts sources to files inside its evidence root.
-The recovery adapter restricts pointers to advertised sources, their manifests
-and exact current-order selectors. Absence validation requires the exact order identity;
-a similarly prefixed order is not evidence for the current action. Reapplying
-a dossier also requires its bound journal state to remain current.
+## How purchase recovery uses the core
 
-## Boundary for the proposed autonomous app
+The bridge retains the original mission/run, order, operation, grant digest,
+beneficiary, exact intent and separate currency fields. USDC amounts are integer
+six-decimal base units; USD amounts are integer cents. It does not put USD
+payouts, claims or arbitrary token units into the research `amount_cents` refund
+slot. No fictional chain identifier or Arc/Base conversion is invented.
 
-[INTERNAL_PAYMENT_PROTOCOL.md](INTERNAL_PAYMENT_PROTOCOL.md) develops this
-boundary into proposed USDC API/adapter contracts. The
-[settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md) defines on-chain
-grants, temporary order holds, protected dispatch, withdrawals, a separate
-protection reserve and external fiat conversion/payout records.
-The current v0.3 default is USD supplier prepayment through an approved partner;
-eligible post-payment reimbursements use a separate protection reserve. Supplier
-crypto wallets/signatures are not required by the main flow. See the complete
-[MVP master plan](MVP_MASTER_PLAN.md) before adapting the older demo traces.
-The Purchase Simulator now implements local state-machine equivalents for that
-flow, including a 1:1 zero-fee conversion fixture and seeded reserve. It does
-not implement the proposed `/internal/v1` services, a chain transaction,
-provider compliance, bank settlement or legally funded coverage.
+`Engine.investigate` checks the requested revision and reads the original
+provider operation. The typed core checks that observation and returns a
+`paid`, `unknown` or `conflict` finding with evidence digests and reasons.
+It cannot convert funds, complete a payout, change a ledger or approve a claim.
+Reconciliation runs in the purchase executor, checks the source revision,
+operation and intent, rereads the provider, requires an unchanged evidence
+digest and validates the exact settlement before accounting for it once.
 
-The production app should expose one controlled action submission boundary. The
-planner supplies a proposal; the authority service validates it and the
-executor records and performs the permitted operation. This is an extension
-contract, not a claim that the simulator's in-process Python boundaries provide
-production isolation.
+Before the first provider submission, the application commits an immutable
+dispatch record and an unknown state while retaining the customer's order hold.
+Acceptance accounting is a second durable transition. After a crash, recovery
+reads the same operation before quote/grant expiry, changed terms or cancellation
+can release the hold. A matching received operation moves the hold to provider
+transit once; a matching paid operation can reconcile the existing USD payout.
+An empty, unreadable or conflicting record leaves funds reserved and never
+authorizes a resubmission. Older unjournaled provider operations block release
+and require manual review. A changed permission still blocks a genuinely new
+dispatch; it cannot recall a provider's already accepted operation.
 
-The record passed across that boundary must retain:
+The purchase simulator's provider, rate `1 USDC = $1.00`, zero fees, signatures,
+tickets and reserve are fixtures. Its `.invalid` traces describe conceptual
+service calls, not external network integrations. Customer funds, merchant USD,
+reserve cash, coverage commitments, claims and economic-loss identities stay
+separate. A reserve remedy is an additional fictional payment; it does not
+reverse USD already paid to the merchant. See [PURCHASE_SIMULATOR.md](PURCHASE_SIMULATOR.md).
 
-- User, mission and stable operation identity, kept separate from a provider's
-  request/receipt identifiers.
-- Grant version, allowed action, provider and credential reference.
-- Exact immutable intent, quote/version/hash, amount and currency.
-- Reserved budget, submission status and verified provider evidence.
-- Chain, token and contract identity, grant/order slot, signer/nonce,
-  replacement transaction lineage, block hash and observed finality.
-- Pinned delivery/dispute policy, fixed beneficiaries, allocation/withdrawal
-  states and independent conversion-provider/payout records.
-- Net USD supplier amount, verified bank beneficiary reference, source USDC
-  cap/fees, reserve exposure, coverage version, claim and recovery identities.
+## Test-wallet demonstration
 
-An adapter declares its actual capabilities and retry rules. A success response
-needs evidence tied to the original operation and exact inputs. A failed
-connection or empty lookup does not automatically establish absence. Provider
-idempotency scope and lifetime must be respected across restarts.
-For chain adapters, contract-enforced operation uniqueness and canonical-state
-reconciliation complement the local journal. RPC receipt arrival is not
-finality; removed events must be unwound from the derived view after a reorg.
+The implemented wallet path is Arc Testnet, chain ID `5042002`, and Circle's
+test-USDC token, with amounts 0.01–1.00 in 0.01 increments. MetaMask holds the
+person's key; Belay stores public intent and transaction evidence. A faucet
+balance, network access and the person's signature are external dependencies.
+Neither server nor model signs or sends a replacement transfer. See
+[TEST_WALLET.md](TEST_WALLET.md).
 
-Do not make both the model and an adjudicator independent executors. If
-`second/` is adapted, read validated findings through a reviewed translation
-layer. Keep its production completion callback behind the same authority,
-budget, intent and idempotency controls. Do not expose `apply_dossier` with
-an unrestricted payment callback to the app's agent.
+Successful receipt recovery verifies chain, token, sender, recipient, amount,
+transaction identity, Transfer event and canonical finalized block. A verified
+finalized revert can close as failed, preserving its hash and test-gas
+disclosure; it sends nothing and is not evidence of an absent request. Starting
+another transfer requires a new intent and explicit signature. Missing,
+unfinalized or inconsistent evidence keeps the original incident unresolved.
+The RPC and network remain trust assumptions; this is not a light-client proof.
 
-Research evidence fixtures are not authenticated merchant reports. Any
-production evidence adapter must establish source identity, integrity,
-completeness and freshness, then bind the observation to the correct
-operation. A correct research verdict does not establish live bank authority.
+The proposed Base route has different chain/token/finality/provider requirements.
+Changing a label cannot migrate Arc evidence to Base or create a USD payout.
+The current transfer tuple and supplied original hash are not cryptographic
+per-order attribution. Production designs must establish stronger operation
+correlation and replacement-transaction lineage as appropriate to the provider.
 
-## Boundary for a guarantee
+## Future provider and protection boundaries
 
-Provider recovery and customer compensation use different authorizations.
-The recovery service reconciles orders/payments and requests available
-remedies. The claims service reads that evidence and the customer's active
-terms, calculates eligible unrecovered loss and sends the claim to its
-designated decision maker and payer. Its payout record must not be confused
-with the original purchase or merchant refund.
+[MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md),
+[USDC_SETTLEMENT_ARCHITECTURE.md](USDC_SETTLEMENT_ARCHITECTURE.md) and
+[INTERNAL_PAYMENT_PROTOCOL.md](INTERNAL_PAYMENT_PROTOCOL.md) preserve the future
+commerce proposal: approved customer-USDC conversion, USD merchant settlement,
+bounded execution and separate funded remedies. No provider account or sandbox
+credentials are configured, so a real provider integration remains deferred.
 
-The purchasing model cannot approve its own reimbursement. The v0.3 simulator
-shows this separation with distinct case, economic-loss and payout identities,
-an independent claim transition and a seeded fictional reserve. It deduplicates
-the local payment for one loss, but it does not supply subscription entitlement,
-financial-loss assessment, insurance authority or real claim funding. The
-current research adjudicator supplies none of those production authorities
-either.
+Before live use, establish an accepted merchant order/payment method, approved
+conversion route, beneficiary controls, authenticated evidence and explicit
+idempotency/finality semantics. Test revocation, deadlines, concurrent budgets,
+crash gaps, duplicate callbacks, delayed evidence and transaction replacement.
+Future chain contracts require their own reviewed invariants and deployment
+process; this simulator supplies no contract-level enforcement.
 
-## Migration gates
-
-Before calling a future integration ready, demonstrate policy rejection,
-concurrent budget reservation, expired/revoked authority, provider challenges,
-crash recovery, delayed evidence and duplicate callbacks with the chosen
-provider. Preserve unknown outcomes when evidence is insufficient. Verify
-the exact adapter and payment/mandate profile; do not infer compatibility
-from similar names or fields.
-
-The USDC extension additionally requires grant conservation, signature replay
-protection, expiry/revocation ordering, release/refund exclusivity, failed-token
-withdrawals, resolver timeouts, gas failure and reorg tests. The research
-adjudicator is not a production delivery verifier or an authorized arbitrator.
-It also requires conservation across held/dispatched funds and reserve claims,
-late bank returns, protection expiry and no duplicate remedy for the same loss.
-
-Known original-runtime defects remain documented in [REVIEW.md](REVIEW.md).
-Neither the separate lab suite nor an architectural diagram proves that
-the research runtime or a future live app is production-ready.
+Purchase recovery and customer compensation require separate authorizations.
+A claims service must assess eligible unrecovered loss against actual terms,
+prior recoveries and funded capacity; the purchasing model cannot approve its
+own reimbursement. The local reserve fixture supplies no subscription
+entitlement, insurance authority or real funding. A local audit receipt is
+evidence of the application's decision, not a financial guarantee.

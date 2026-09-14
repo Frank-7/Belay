@@ -1,5 +1,14 @@
 # Belay internal payment protocol v0.3: USDC to USD
 
+> **Current scope — September 14, 2026:** Belay's AI Apps product centers on
+> Recovery Desk. The Purchase Simulator is its fictional commerce use case and
+> now reuses a typed, read-only recovery investigator. This document preserves
+> the future commerce design; Base contracts, approved USD payout providers and
+> funded protection remain external dependencies. The implemented wallet path
+> is human-signed Arc Testnet, separate from the simulated USD payout. See
+> [INTEGRATION.md](INTEGRATION.md) for what runs today.
+
+
 Status: current proposed interface, September 13, 2026; not implemented.
 The user selected blockchain/USDC settlement. The former card design is
 preserved in [PAYMENT_PROTOCOL_CARD_REFERENCE.md](PAYMENT_PROTOCOL_CARD_REFERENCE.md).

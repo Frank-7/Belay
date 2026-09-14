@@ -1,10 +1,10 @@
 # Belay
 
-**Durable side effects for nondeterministic agents.**
+**Find out what an interrupted AI action actually did, and what can safely happen next.**
 
 **[Visit the Belay website](https://frank-7.github.io/Belay/)** for an
-interactive introduction, the recorded Recovery Desk, and inspectable evidence.
-The public site runs on GitHub Pages; the Recovery Lab below runs locally.
+interactive introduction, recorded recovery walkthroughs, and inspectable evidence.
+The public site runs on GitHub Pages; the live Recovery Desk runs locally.
 See [website build and deployment](docs/WEBSITE.md) to develop the site.
 
 To belay is to secure the rope before the climber moves. The protection goes
@@ -13,42 +13,111 @@ the contract: *belay* also means stop.
 
 ---
 
-## Try the protected-purchase MVP
+## Start the Recovery Desk
 
-The **Purchase Simulator** shows the customer experience beside the backend
-execution of a fictional concert-ticket purchase. Authorize exactly two tickets
-within a 300 USDC grant, then follow deterministic policy, a simulated
-USDC-to-USD conversion, the merchant's $200 USD payout, delivery evidence and a
-separately funded customer remedy. Inspect every state, ledger movement and
-request/response from one investor-ready walkthrough.
+Belay is an **AI Apps prototype for an operator investigating an uncertain
+action**. Open an incident, ask the evidence assistant for an explanation,
+inspect the validator's checks, then record a supported outcome or request
+the specific evidence still missing. The assistant never holds payment keys
+or authorizes its own proposal.
+
+From this clone, with Python 3.10 or newer:
+
+```bash
+python -m recovery_app.server --port 8766
+# Open http://127.0.0.1:8766
+```
+
+The app shares the research JSONL journal, evidence validator and guarded
+application path. Local demo scenarios include a lost acknowledgment,
+confirmed absence, stale reports, conflicting sources and revoked permission.
+They make real local SQLite writes with a controlled interruption; they are
+not new OS-crash trials. The deterministic baseline needs no credentials.
+Set `OPENAI_API_KEY` and an explicit `OPENAI_MODEL` in the server environment
+to enable the real model proposer. Each investigation makes at most two
+model requests; provider failures remain visible and do not trigger payment
+or model retries. The interface labels which proposer actually ran.
+
+**Public blockchain option:** connect MetaMask to Arc Testnet, fund it with
+free test USDC from Circle, and approve a 0.01–1.00 test-USDC transfer. Belay
+saves its intent before the wallet request and recovers the finalized receipt
+without sending again. A verified reverted transfer can be closed as failed
+without sending; another transfer needs a new intent and explicit signature. Wallet keys stay in MetaMask; this is human-authorized
+testnet recovery, not autonomous custody, escrow or real-dollar settlement.
+See [free test-wallet setup and guarantees](docs/TEST_WALLET.md).
+
+GitHub Pages includes a **recorded operator walkthrough** using this same UI;
+it cannot run Python, make model requests or initiate a wallet transfer.
+See [integration boundaries](docs/INTEGRATION.md),
+[final demo and pitch](docs/FINAL_PRESENTATION.md), and
+[next-stage plan](docs/NEXT_STAGE.md).
+
+```bash
+python tests/test_recovery_app.py
+python tests/test_arc.py
+python experiments/evaluate_recovery.py --out tmp-runs/recovery-evaluation.json
+python experiments/recovery_holdout.py --out tmp-runs/recovery-holdout.json
+```
+
+These reports separate useful resolutions, false resolutions, refusals and
+abstentions. The frozen adversarial suite is classification-only and becomes
+regression evidence after publication; repeated fixtures are not new holdout
+incidents. No customer time savings or live-model improvement is assumed.
+
+## Explore the commerce use case
+
+The **Purchase Simulator** applies the same recovery principle to a merchant
+that accepts dollars: a fictional customer authorizes exactly two $100 tickets,
+200 USDC funds a conversion provider, and the merchant receives $200 USD.
+Payment, delivery and reimbursement remain separate outcomes. A separately
+seeded fictional reserve illustrates a remedy after non-delivery; it does not
+reverse the merchant's payment or establish live protection.
+
+Run this second application alongside the Recovery Desk:
 
 ```bash
 python -m purchase_simulator.server --port 8777
 # Open http://127.0.0.1:8777
 ```
 
-See [purchase simulator instructions](docs/PURCHASE_SIMULATOR.md).
-The browser talks to a real local server and persists the run in SQLite. The
-agent, USDC transfer, conversion provider, bank payout, ticket delivery,
-protection reserve, signatures and credentials are fictional local fixtures.
-No model, wallet, blockchain, merchant, bank, insurer or external API is
-connected.
+On Windows, double-click [Start-Belay-Simulator.cmd](Start-Belay-Simulator.cmd)
+and leave its terminal open. The launcher uses an isolated
+`.belay-purchase-simulator/demo-v4/` data directory.
 
-The seven scenarios demonstrate successful delivery, lost payout-response
-reconciliation, supplier non-delivery after payment, a quantity violation
-blocked before money moves, a labeled historical agent error, cancellation
-before dispatch and abstention on conflicting evidence. The demo keeps customer
-funds, merchant USD and reserve capital separate; paying a post-payout remedy
-does not pretend to reverse the merchant's original payment.
+The purchase service now calls Recovery Desk's **typed, read-only payout
+investigator**. An unknown payout can be inspected under its original operation
+ID; the deterministic executor checks the saved intent and fresh provider
+evidence before reconciling its local ledger. USDC uses six-decimal base units
+and USD uses cents; the bridge does not disguise a purchase as a research refund.
+Dispatch uncertainty is saved before provider contact, so a crash or expired
+quote cannot return funds that the provider may already have received. Missing
+evidence keeps the hold reserved and never triggers another submission.
 
-**Project status:** the v0.4 investor experience runs on the durable
-`belay.purchase.v0.3` simulation schema. The live product remains a proposal:
-there is no deployed contract,
-custody, exchange or bank connection, merchant integration, active coverage,
-insurance policy, subscription or real ticket checkout. Read the
-[MVP master plan](docs/MVP_MASTER_PLAN.md),
-[USDC settlement architecture](docs/USDC_SETTLEMENT_ARCHITECTURE.md) and
-[presentation outline](docs/MVP_PRESENTATION.md).
+All purchase providers, money, signatures, tickets, model decisions and reserve
+capital are local fixtures. The optional MetaMask adapter above remains an
+actual Arc Testnet integration in the Recovery Desk; the purchase simulator
+does not connect it to a USD payout provider.
+
+See [the purchase walkthrough](docs/PURCHASE_SIMULATOR.md),
+[commerce MVP proposal](docs/MVP_MASTER_PLAN.md),
+[USDC-to-USD architecture proposal](docs/USDC_SETTLEMENT_ARCHITECTURE.md),
+[proposed payment interfaces](docs/INTERNAL_PAYMENT_PROTOCOL.md), and
+[commerce presentation](docs/MVP_PRESENTATION.md).
+Base contracts, provider onboarding, bank settlement, subscription billing and
+funded protection remain future work. Belay's hackathon direction remains
+**AI Apps: explain and safely recover uncertain agent actions**.
+
+```bash
+python -m unittest discover -s tests -p "test_purchase*.py"
+node --test tests/test_purchase_simulator_ui.mjs
+```
+
+## Earlier Recovery Lab
+
+The earlier runnable application below is a separate local recovery
+simulation. The hackathon now centers on the Recovery Desk above. Broader
+autonomous task, subscription and guarantee documents are future proposals;
+there is no live coverage, bank connection or ticket checkout.
 Start with the [document index](docs/INDEX.md),
 [current architecture](docs/AUTONOMOUS_APP_ARCHITECTURE.md), and
 [next-stage plan](docs/NEXT_STAGE.md).
@@ -76,8 +145,8 @@ provider, or a successful request.
 This is a separate implementation of the pattern using SQLite, not a
 production wrapper around the research runtime below. See
 [prototype instructions and boundaries](docs/PROTOTYPE.md) and the
-[repository evaluation](docs/REVIEW.md), including two reproduced recovery
-defects in the original runtime and limits of its reported metrics.
+[repository evaluation](docs/REVIEW.md), including the history of two runtime
+defects fixed by PR7 and the remaining limits of reported metrics.
 The original SIGKILL experiments still require POSIX.
 
 ## The problem
@@ -137,8 +206,8 @@ anchored:  anchor ──▶ decide ──▶ call under anchor ──▶ 💀 �
 
 These are the original committed synthetic experiment results. They are not
 customer loss rates, production guarantees or inputs sufficient to price
-customer reimbursement. See [the review](docs/REVIEW.md) for reproduced
-runtime defects and limitations of the grader and overhead measurements.
+customer reimbursement. See [the review](docs/REVIEW.md) for fixed historical
+defects and remaining limitations of the grader and overhead measurements.
 
 960 trials, each a real SIGKILL at a named instruction boundary, graded
 against an external ledger rather than against the runtime's own report.
@@ -154,10 +223,13 @@ Order value $50.
 Permission revoked while the workflow was down: both replay runtimes issued
 a refund under a revoked scope **16 / 16** times. Anchored refused 16 / 16.
 
-Cost of the guarantee: about 0.4 extra fsyncs per workflow (~12%), and an
-escalation rate of **0% on any service offering idempotency keys or a
-lookup**, rising to 60% on a service offering neither — where CONTRACT.md
-§4 proves no runtime can do better.
+Recorded accounting: about 0.4 extra fsyncs per workflow (~12%); this omits
+work performed by killed workers before an outcome file was written and is
+not full-workflow overhead. **With persisted decisions**, the tested
+cooperative providers had 0% escalation, rising to 60% on the opaque provider.
+Inline decisions still escalate on cooperative providers. These are selected
+synthetic conditions, and the current grader does not cover every credit-slot
+invariant; see CONTRACT.md and docs/REVIEW.md for the precise scope.
 
 That 60% is a halt, and a halt is a dead end: a human gets handed a hex
 string. `second/` is an agent that debugs the halted agent — it searches

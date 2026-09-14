@@ -1,5 +1,14 @@
 # Belay: plain-language MVP presentation
 
+> **Current scope — September 14, 2026:** Belay's AI Apps product centers on
+> Recovery Desk. The Purchase Simulator is its fictional commerce use case and
+> now reuses a typed, read-only recovery investigator. This document preserves
+> the future commerce design; Base contracts, approved USD payout providers and
+> funded protection remain external dependencies. The implemented wallet path
+> is human-signed Arc Testnet, separate from the simulated USD payout. See
+> [INTEGRATION.md](INTEGRATION.md) for what runs today.
+
+
 Presentation script for the proposed v0.3 architecture. All example purchases,
 provider replies, coverage and money are fictional. This is not a live bank,
 merchant, blockchain or insurance demonstration.

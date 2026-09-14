@@ -1,5 +1,17 @@
 # PR #10 review: recovery component and payment architecture fit
 
+> **Status update — September 14, 2026:** This is the historical review of
+> PR #10 at the head named below. The integrated implementation now closes
+> verified finalized reverts as failed without sending, preserves purchase
+> dispatch uncertainty across the provider/app commit gap, and connects the
+> Purchase Simulator to Recovery Desk through a typed read-only investigator.
+> The seven original shared-file conflicts are resolved by preserving both
+> applications and their checks. See [INTEGRATION.md](INTEGRATION.md) and
+> [NEXT_STAGE.md](NEXT_STAGE.md) for current boundaries. The original findings,
+> reproduction, test counts and no-action statements below describe that review
+> session; they are retained as history, not current missing-work claims.
+
+
 Reviewed September 13, 2026: [Add AI Apps Recovery Desk and MetaMask testnet recovery](https://github.com/Frank-7/Belay/pull/10).
 Head: `1b056c096b0bab1844a93bd18a77186dfec0ec93`.
 Current main/base: `cffe7ac229cd0d2883b5ac336420b126d291990d`.

@@ -1,5 +1,14 @@
 # Belay v0.3: USDC funding, USD merchant payment, funded recovery
 
+> **Current scope — September 14, 2026:** Belay's AI Apps product centers on
+> Recovery Desk. The Purchase Simulator is its fictional commerce use case and
+> now reuses a typed, read-only recovery investigator. This document preserves
+> the future commerce design; Base contracts, approved USD payout providers and
+> funded protection remain external dependencies. The implemented wallet path
+> is human-signed Arc Testnet, separate from the simulated USD payout. See
+> [INTEGRATION.md](INTEGRATION.md) for what runs today.
+
+
 Status: current proposed payment architecture, September 13, 2026. No live
 contract, USD payout partner or protection reserve is established. The earlier
 merchant-wallet escrow design is preserved in [USDC_ESCROW_REFERENCE.md](USDC_ESCROW_REFERENCE.md).

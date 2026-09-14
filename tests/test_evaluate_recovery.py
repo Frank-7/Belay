@@ -45,6 +45,36 @@ def mock_model():
 
 
 class EvaluationTests(unittest.TestCase):
+    def test_precision_coverage_unknown_and_budget_are_explicit(self):
+        report = evaluate(cases=24)
+        result = report["summary"]["by_agent"]["heuristic"]
+        self.assertEqual(result["resolution_precision"], 1.0)
+        self.assertEqual(result["useful_resolution_coverage"], 8 / 24)
+        self.assertEqual(result["refusal_rate"], 2 / 24)
+        self.assertEqual(result["expected_unknown_cases"], 14)
+        self.assertEqual(result["unknown_abstention_rate"], 1.0)
+        self.assertEqual(result["answerable_cases"], 10)
+        self.assertEqual(report["shared_evidence_budget"]["context_sources"], 8)
+        self.assertTrue(all(row["evidence_fetch_attempts"] <= 32 for row in report["cases"]))
+        self.assertIsNone(result["estimated_cost_usd"])
+
+    def test_unvalidated_comparison_is_read_only_and_shows_false_classification(self):
+        class AlwaysAbsent:
+            def propose_pointers(self, view):
+                return [f"{source}:manifest" for source in view["evidence_sources_available"]]
+
+            def conclude(self, view, observations):
+                return Claim("absent", [obs.digest for obs in observations])
+
+        report = evaluate({"unguarded_claim": AlwaysAbsent}, cases=2, audit_unvalidated=True)
+        result = report["summary"]["by_agent"]["unguarded_claim"]
+        self.assertEqual(result["false_resolutions"], 0)
+        self.assertEqual(result["unvalidated_shadow"]["factually_false"], 1)
+        self.assertFalse(result["unvalidated_shadow"]["executed"])
+        for row in report["cases"]:
+            self.assertEqual(row["ledger_before_cents"], row["ledger_after_cents"])
+            self.assertEqual(row["action"], "none")
+
     def test_default_covers_resolution_uncertainty_and_revocation_without_network(self):
         with patch.dict(os.environ, {"SECOND_OVERCONFIDENCE_P": "1", "SECOND_LAZINESS_P": "1"}):
             report = evaluate()

@@ -11,6 +11,27 @@ The browser talks to a real loopback Python server and the server persists state
 in SQLite. Everything beyond that boundary is a fixture: there is no live model,
 wallet, blockchain, exchange, bank, merchant, ticket system, insurer or money.
 
+## Recovery Desk integration
+
+This is the commerce use case for Belay's AI Apps Recovery Desk. Use the main
+operator app on port 8766 and this purchase walkthrough on port 8777. The
+purchase service calls `purchase_simulator/recovery.py` and
+`recovery_app/purchase.py` to investigate the exact USD payout without executing
+anything. It preserves mission/order/operation identity, USDC base units and
+USD cents; it does not use a refund completion callback for purchases.
+
+Dispatch intent and unknown state are durable before provider submission. The
+order hold stays reserved until exact acceptance evidence is reconciled, even
+if a crash, expired quote or cancellation occurs. Successful dispatch therefore
+records preparation and acceptance as two durable revisions. Missing evidence
+permits only further inspection, not a release or another submission.
+
+At uncertainty, **Auto play** stops and the explicit investigation/reconciliation
+controls remain available. The read-only finding names its source revision and
+evidence digest. The executor rereads that evidence before accounting for the
+original payout once. A finalized Arc test transfer is a separate Recovery Desk
+capability; it does not pay this simulator's USD merchant.
+
 ## Run
 
 From a repository clone with Python 3.10 or newer:
@@ -95,7 +116,7 @@ The simulator keeps different assets and obligations separate:
 | Field | Meaning |
 |---|---|
 | Customer available | USDC the customer can still use in this fictional run |
-| Order hold | Customer USDC admitted for this exact order but not yet dispatched |
+| Order hold | Customer USDC reserved for the exact order, including an uncertain dispatch until provider acceptance is reconciled |
 | Provider in transit | USDC sent to the conversion fixture and not yet reflected as merchant USD |
 | Merchant received | USD cents recorded as paid to the merchant |
 | Protection reserve cash | Separate fictional USDC available to fund eligible remedies |
@@ -157,25 +178,28 @@ reference. Private keys never appear because the demo has none. The shopping
 agent is scripted fixture behavior and this repository does not connect the
 conversation's language model to the app.
 
-The simulator remains isolated from the research runtime, the legacy Recovery
-Lab and the teammate Recovery Desk work. It does not alter their journals,
-databases or reported experiment results. The broader live architecture still
-requires reviewed contracts, provider approval, authenticated users, custody
-and compliance decisions, real evidence adapters, funded terms and operational
-controls.
+The simulator shares Recovery Desk's typed read-only purchase investigator
+through an explicit adapter. Its executor and SQLite state remain separate
+from the research runtime, Recovery Desk incident journal and legacy Recovery
+Lab. It does not alter their databases or reported experiment results. The
+broader live architecture still requires reviewed contracts, provider approval,
+authenticated users, custody and compliance decisions, real evidence adapters,
+funded terms and operational controls.
 
 ## Verify
 
 ```bash
-python -m unittest discover -s tests -p "test_purchase_simulator.py" -v
+python -m unittest discover -s tests -p "test_purchase*.py" -v
 node --check purchase_simulator/web/app.js
 node --test tests/test_purchase_simulator_ui.mjs
 ```
 
 The Python suite uses temporary databases and no remote services. It checks the
 scenario outcomes, asset conservation, reserve accounting, policy rejection,
-stable-operation recovery, duplicate claim prevention, persisted schema and
-loopback HTTP boundary. CI runs it on Windows and Linux.
+stable-operation recovery, duplicate claim prevention, persisted schema,
+provider/app commit gaps, unknown holds after expiry, typed read-only
+investigation, evidence changes and the loopback HTTP boundary. CI runs these
+portable application checks on Windows and Linux.
 
 ## Local API
 
@@ -184,7 +208,8 @@ loopback HTTP boundary. CI runs it on Windows and Linux.
 | `GET /api/config` | — | Read schema version, scenarios, assumptions and fictional credentials |
 | `POST /api/runs` | `scenario`, integer `budget_cents`, `quantity: 2` | Create a bounded fictional mission; the cents-shaped input is projected to six-decimal demo USDC units |
 | `GET /api/runs/{id}` | — | Read the persisted run, separate balances, provider observation, claims and trace |
-| `POST /api/runs/{id}/advance` | integer `expected_revision` | Execute one permitted transition |
+| `POST /api/runs/{id}/advance` | integer `expected_revision` | Advance the permitted workflow; initial dispatch commits preparation before provider acceptance |
+| `POST /api/runs/{id}/investigate` | integer `expected_revision` | Read the exact payout evidence through Recovery Desk; no run, ledger or provider mutation |
 | `POST /api/runs/{id}/verify` | integer `expected_revision` | Compatibility route from the earlier card demo; v0.3 has no bank challenge and returns HTTP 409 without changing the run |
 
 A stale revision returns HTTP 409 with the current run in `current`. The UI
