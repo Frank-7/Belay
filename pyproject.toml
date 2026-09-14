@@ -40,7 +40,10 @@ build-backend = "setuptools.build_meta"
 # The runtime applications are importable. `experiments/`, `tests/` and `worker.py`
 # are not packaged: they are meant to be run from a clone, because the
 # harness spawns worker.py by path.
-packages = ["belay", "belay.runtimes", "services", "second", "purchase_simulator"]
+packages = [
+    "belay", "belay.runtimes", "services", "second",
+    "purchase_simulator", "purchase_simulator.web",
+]
 
 [tool.setuptools.package-data]
 purchase_simulator = ["web/*.html", "web/*.css", "web/*.js"]
