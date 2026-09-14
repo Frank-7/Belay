@@ -156,6 +156,19 @@ class ArcTests(unittest.TestCase):
         self.data["finalized"] = None
         self.assert_unknown()
 
+    def test_reverted_transaction_cannot_close_a_different_or_older_intent(self):
+        for field, value in {"hash": FINAL_HASH, "from": RECIPIENT,
+                             "input": prepare_transaction(SENDER, RECIPIENT, 200_000)["data"]}.items():
+            with self.subTest(field=field):
+                self.data = evidence()
+                self.data["receipt"].update(status="0x0", logs=[])
+                self.data["transaction"][field] = value
+                self.assert_unknown()
+        self.data = evidence()
+        self.data["receipt"].update(status="0x0", logs=[])
+        self.expected["min_block_number"] = 101
+        self.assert_unknown()
+
     def test_no_event_or_duplicate_event_cannot_confirm_payment(self):
         log = copy.deepcopy(self.data["receipt"]["logs"][0])
         for logs in ([], [log, log]):

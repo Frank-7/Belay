@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { beforeEach, test } from 'node:test';
 
 const source = await readFile(new URL('../recovery_app/web/wallet.js', import.meta.url), 'utf8');
-const { transferWithWallet, attachTransaction, checkResolvedTransfer, parseAmount } = await import(
+const { transferWithWallet, attachTransaction, checkResolvedTransfer, parseAmount, mountWallet } = await import(
   'data:text/javascript;base64,' + Buffer.from(source).toString('base64')
 );
 const sender = '0x' + '1'.repeat(40);
@@ -37,7 +37,9 @@ beforeEach(() => {
     if (path === `/api/incidents/${id}`) {
       assert.ok(!options.method || options.method === 'GET');
       assert.equal(options.credentials, 'same-origin');
-      return {ok: mode !== 'unavailable', json: async () => ({id, provider: 'arc', status: mode})};
+      return {ok: mode !== 'unavailable', json: async () => ({id, provider: 'arc',
+        status: mode === 'closed-failure' ? 'resolved' : mode,
+        ...(mode === 'closed-failure' ? {outcome: {result: 'failed', action: 'closed_failed_transaction'}} : {})})};
     }
     assert.equal(options.method, 'POST');
     assert.equal(options.headers['Content-Type'], 'application/json');
@@ -106,12 +108,35 @@ test('starting another transfer requires a fresh read of a resolved wallet incid
   assert.deepEqual(calls, [`/api/incidents/${id}`]);
 });
 
-test('unresolved, failed or unavailable incidents cannot unlock another transfer', async () => {
+test('unresolved, unrecorded failure or unavailable incidents cannot unlock another transfer', async () => {
   for (const status of ['prepared', 'unresolved', 'needs_evidence', 'ready', 'failed', 'unavailable']) {
     mode = status;
     await assert.rejects(checkResolvedTransfer(id));
   }
   assert.ok(calls.every(call => call === `/api/incidents/${id}`));
+});
+
+test('a recorded finalized failure unlocks only an explicit form reset with no wallet call', async () => {
+  mode = 'closed-failure';
+  const elements = new Map();
+  const container = {innerHTML: '', querySelector: selector => {
+    if (!elements.has(selector)) elements.set(selector, {
+      dataset: {}, value: '', hidden: false, disabled: false, handlers: {},
+      addEventListener(event, handler) {this.handlers[event] = handler;},
+    });
+    return elements.get(selector);
+  }};
+  const wallet = mountWallet({container, config: {}});
+  wallet.selectIncident(id);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(elements.get('.wallet-new').disabled, false);
+  assert.equal(elements.get('.wallet-send').disabled, true);
+  assert.equal(elements.get('.wallet-attach-form').hidden, true);
+  await elements.get('.wallet-new').handlers.click();
+  assert.equal(elements.get('.wallet-recovery').hidden, true);
+  assert.equal(elements.get('.wallet-connect').disabled, false);
+  assert.equal(elements.get('.wallet-send').disabled, true, 'A fresh wallet connection and signature are still required');
+  assert.deepEqual(calls, [`/api/incidents/${id}`, `/api/incidents/${id}`]);
 });
 
 test('amount parser permits exact cents and enforces the one-test-USDC cap', () => {

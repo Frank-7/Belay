@@ -4,7 +4,7 @@ import test from "node:test";
 
 // Load the browser's dependency-free ES module without adding a package.json.
 const source = readFileSync(new URL("../recovery_app/web/app.js", import.meta.url), "utf8");
-const {createApi, createDeskController, canApply} = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const {createApi, createDeskController, canApply, incidentStatusLabel} = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 
 function deferred() {
   let resolve, reject;
@@ -90,6 +90,22 @@ test("unsupported, already resolved and stale proposals cannot be applied from t
   assert.equal(await h.controller.act("resolve", {proposal_id: "first-proposal"}), false);
   assert.equal(h.requests.filter(request => request.method === "post").length, 0);
   assert.equal(canApply(incident("first"), true), false);
+});
+
+test("a recorded failed outcome is terminal without implying a successful transfer", async () => {
+  const h = harness();
+  const proposal = {id: "failed-proposal", verdict: "failed", kind: "arc_finalized_failure", can_apply: true};
+  await selectCase(h, incident("failed-transfer", 1, {provider: "arc", status: "ready", proposal}));
+  const resolution = h.controller.act("resolve", {proposal_id: proposal.id});
+  h.requests.at(-1).resolve(incident("failed-transfer", 2, {
+    provider: "arc", status: "resolved", proposal: {...proposal, can_apply: false},
+    outcome: {result: "failed", action: "closed_failed_transaction"},
+  }));
+  await resolution;
+  assert.equal(incidentStatusLabel(h.controller.state.selected), "Failed transaction recorded");
+  assert.equal(canApply(h.controller.state.selected), false);
+  assert.equal(await h.controller.act("resolve", {proposal_id: proposal.id}), false);
+  assert.equal(h.requests.filter(item => item.method === "post").length, 1);
 });
 
 test("an older refresh cannot erase a newly created incident", async () => {

@@ -42,6 +42,10 @@ SCENARIOS = [
      "description": "There is no reliable outcome record. Identify the evidence needed to decide."},
 ]
 SCOPE = "payments:refund"
+FAILED_TRANSACTION = "closed_failed_transaction"
+FAILED_NOTE = ("The original transaction finalized with reverted execution. The test-USDC transfer "
+               "failed; test gas may have been spent. No replacement was sent. A new transfer "
+               "requires a separate intent and your explicit wallet authorization.")
 
 
 class AppError(Exception):
@@ -186,6 +190,22 @@ class Engine:
     def _journal(self, incident):
         return Journal(str(self.data_dir / incident["id"] / "journal.jsonl"), incident["id"])
 
+    def _journal_revision(self, incident):
+        return hashlib.sha256(json.dumps(self._journal(incident).read(), sort_keys=True).encode()).hexdigest()
+
+    @staticmethod
+    def _arc_identity(incident, result):
+        # A later finalized head is expected between investigation and closure.
+        # The included transaction, receipt and canonical block must stay exact.
+        raw = result.get("raw", {})
+        metadata = result.get("metadata", {})
+        identity = {"wallet": incident["wallet"], "status": result["status"],
+                    "transaction": raw.get("transaction"), "receipt": raw.get("receipt"),
+                    "canonical_block": raw.get("canonical_block"),
+                    "chain_id": metadata.get("chain_id"), "transaction_hash": metadata.get("transaction_hash"),
+                    "block_number": metadata.get("block_number"), "block_hash": metadata.get("block_hash")}
+        return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+
     def _perms(self, incident):
         return PermissionStore(str(self.data_dir / incident["id"] / "perms.json"))
 
@@ -272,7 +292,17 @@ class Engine:
         result["revision"] = hashlib.sha256(json.dumps(records, sort_keys=True).encode()).hexdigest()
         result["permission"] = {"active": self._perms(incident).held(SCOPE)}
         closed = next((row for row in reversed(records) if row.get("kind") == "adjudicated"), None)
-        if closed:
+        failed = next((row for row in reversed(records) if row.get("kind") == "wallet_failed"), None)
+        if failed:
+            # The journal is authoritative if the process stopped before the
+            # incident's display state was saved. This is not a refund verdict.
+            result["status"] = "resolved"
+            result["provider_evidence"] = failed["provider_evidence"]
+            result["outcome"] = {"action": FAILED_TRANSACTION, "result": "failed",
+                                 "title": "Failed transaction recorded.", "note": FAILED_NOTE,
+                                 "transaction_hash": failed["transaction_hash"],
+                                 "gas_may_have_been_spent": True, "record": failed}
+        elif closed:
             result["status"] = "resolved"
             if not result.get("outcome"):
                 result["outcome"] = {"action": "closed_from_journal", "note": "A durable resolution was recovered after restart.", "record": closed}
@@ -300,6 +330,8 @@ class Engine:
 
     def _next_steps(self, incident):
         if incident["status"] == "resolved":
+            if (incident.get("outcome") or {}).get("action") == FAILED_TRANSACTION:
+                return [{"title": "Failure recorded; no replacement sent", "detail": "Keep this receipt. Start another test transfer only to create a separate, explicitly authorized wallet request.", "action": None}]
             return [{"title": "Resolution recorded", "detail": "Download the evidence receipt for this incident.", "action": None}]
         if incident["provider"] == "arc":
             if not incident["wallet"].get("transaction_hash"):
@@ -323,6 +355,10 @@ class Engine:
             slots = escalated_slots(str(self.data_dir / incident_id), incident["intent"]["order_id"])
             if len(slots) != 1:
                 raise AppError("A dispatched, unresolved incident is required", 409)
+            if incident["provider"] == "arc" and incident["provider_evidence"]["status"] == "failed":
+                # A verified reverted transaction is a terminal application
+                # outcome, never ABSENT and never permission to retry a refund.
+                return self._propose_arc_failure(incident)
             try:
                 delegate = self._agent(agent_name)
             except ValueError as exc:
@@ -343,12 +379,37 @@ class Engine:
                 "claim": recorder.claim, "agent": agent_name, "metrics": metrics,
                 "latency_ms": round((time.perf_counter() - started) * 1000, 2),
                 "dossier": dossier.as_dict(), "evidence_revision": _fingerprint(evidence),
+                "journal_revision": self._journal_revision(incident),
                 "can_apply": dossier.resolved,
             }
+            if incident["provider"] == "arc":
+                incident["proposal"]["arc_identity"] = self._arc_identity(incident, incident["provider_evidence"])
             incident["status"] = "needs_evidence" if dossier.verdict is Verdict.ABSTAIN else "ready"
             self._event(incident, "investigated", "Evidence checked", "; ".join(dossier.validator_notes))
             self._save(incident)
             return self.get(incident_id)
+
+    def _propose_arc_failure(self, incident):
+        evidence = incident["provider_evidence"]
+        incident["proposal"] = {
+            "id": uuid.uuid4().hex, "kind": "arc_finalized_failure", "verdict": "failed",
+            "reasoning": evidence["reason"],
+            "validator_notes": ["The Arc verifier matched the saved intent and exact transaction in a canonical finalized block with receipt status 0.",
+                                "Closure only records the failure. It cannot call a payment provider or wallet."],
+            "citations": [{"pointer": "arc_finalized_receipt:failed", "source": "arc_finalized_receipt",
+                           "label": "Finalized failed transaction", "payload": evidence}],
+            "observations": [], "claim": None, "agent": "Arc deterministic verifier",
+            "metrics": {"provider": "arc", "transport": "read-only RPC", "requests": 0, "estimated_cost_usd": 0},
+            "evidence_revision": _fingerprint(self.data_dir / incident["id"] / "evidence"),
+            "journal_revision": self._journal_revision(incident),
+            "arc_identity": self._arc_identity(incident, evidence), "can_apply": True,
+            "apply_label": "Record the failed transaction.", "button_label": "Record failure without sending",
+            "action_description": FAILED_NOTE,
+        }
+        incident["status"] = "ready"
+        self._event(incident, "investigated", "Finalized failure verified", evidence["reason"])
+        self._save(incident)
+        return self.get(incident["id"])
 
     def resolve(self, incident_id, proposal_id):
         with self._mutex:
@@ -360,6 +421,33 @@ class Engine:
                 raise AppError("Investigate the incident and use its current proposal", 409)
             if proposal["evidence_revision"] != _fingerprint(self.data_dir / incident_id / "evidence"):
                 raise AppError("Evidence changed; investigate again before resolving", 409)
+            if incident["provider"] == "arc":
+                if proposal.get("journal_revision") != self._journal_revision(incident):
+                    raise AppError("The incident record changed; investigate again before resolving", 409)
+                # Do not close from an old RPC snapshot. A fresh read must still
+                # validate the exact same receipt, including canonical finality.
+                current = self._arc_provider().read(incident["wallet"])
+                if (current["status"] not in {"committed", "failed"}
+                        or proposal.get("arc_identity") != self._arc_identity(incident, current)):
+                    incident["proposal"] = None
+                    incident["status"] = "needs_evidence"
+                    incident["provider_evidence"] = current
+                    self._save(incident)
+                    raise AppError("Arc evidence changed or is unavailable; investigate again before resolving", 409)
+                if proposal.get("kind") == "arc_finalized_failure":
+                    if current["status"] != "failed" or proposal["verdict"] != "failed":
+                        raise AppError("A finalized failed transaction is required", 409)
+                    self._journal(incident).append(
+                        "wallet_failed", slot="refund", anchor=incident["intent"]["anchor"],
+                        transaction_hash=incident["wallet"]["transaction_hash"],
+                        proposal_id=proposal["id"], evidence_revision=proposal["evidence_revision"],
+                        journal_revision=proposal["journal_revision"], arc_identity=proposal["arc_identity"],
+                        provider_evidence=current, operator="local-recovery-operator")
+                    incident["status"] = "resolved"
+                    incident["provider_evidence"] = current
+                    self._event(incident, "resolved", "Failed transaction recorded", FAILED_NOTE)
+                    self._save(incident)
+                    return self.get(incident_id)
             raw = proposal["dossier"]
             shape = raw["proposal"]
             dossier = Dossier(**{**raw, "verdict": Verdict(raw["verdict"]),
@@ -474,6 +562,8 @@ class Engine:
                 raise AppError("A transaction hash must be 0x followed by 64 hexadecimal characters")
             transaction_hash = transaction_hash.lower()
             incident = self._load(incident_id)
+            if self.get(incident_id)["status"] == "resolved":
+                raise AppError("This incident already has a durable resolution", 409)
             dispatched = any(row.get("kind") == "wallet_dispatch" for row in self._journal(incident).read())
             if incident["provider"] != "arc" or not dispatched:
                 raise AppError("No wallet request was started for this incident", 409)
@@ -503,4 +593,5 @@ class Engine:
                                 "chain_id": incident["wallet"]["chain_id"],
                                 "ts": time.time()})
         # A finalized matching receipt can show commitment. Silence never proves absence.
-        self._source(incident, "arc_finalized_receipt", records, {"kind": "lossy", "drop_rate": 1})
+        _write(self.data_dir / incident["id"] / "evidence" / "arc_finalized_receipt.json",
+               {"records": records, "coverage": {"kind": "lossy", "drop_rate": 1}, "provider_evidence": result})

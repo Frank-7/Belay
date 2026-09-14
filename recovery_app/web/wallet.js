@@ -153,7 +153,7 @@ export function mountWallet({ container, config: _config, onIncident = () => {} 
       <button type="button" class="wallet-review">Review saved incident</button>
       <p class="wallet-copy">If the browser closed before saving the hash, find the original transaction in MetaMask and attach it here. Attaching a hash only reads evidence.</p>
       <form class="wallet-attach-form"><label>Original transaction hash<input class="wallet-hash" name="hash" placeholder="0x…" autocomplete="off" spellcheck="false" required></label><button type="submit">Attach original hash</button></form>
-      <p class="wallet-copy">After this incident is resolved, you can explicitly authorize a new transfer. The original incident stays in your desk.</p>
+      <p class="wallet-copy">After a successful or finalized failed outcome is recorded, you can explicitly authorize a new transfer. The original incident stays in your desk. Failed transactions may still spend test gas.</p>
       <button type="button" class="wallet-new" disabled>Start another test transfer</button>
     </div>
     <details class="wallet-details"><summary>How this demonstration works</summary><p>The transfer is real activity on a public test network; the tokens have no financial value. Belay saves the intent before the wallet opens, then leaves the receipt unrecorded to demonstrate recovery. This deliberate interruption is not a claim that MetaMask crashed. Missing evidence never triggers another transfer.</p><p>Use two test accounts you control. Fund the sender at Circle's faucet: select USDC and Arc Testnet. Leave some test USDC for gas. The wallet signature authorizes this one transfer; it grants Belay no spending allowance.</p></details>`;
@@ -171,6 +171,7 @@ export function mountWallet({ container, config: _config, onIncident = () => {} 
     query('.wallet-send').disabled = busy || !sender || attempted;
     query('.wallet-connect').disabled = busy || attempted;
     query('.wallet-new').disabled = busy || priorStatus !== 'resolved';
+    query('.wallet-attach-form').hidden = priorStatus === 'resolved';
   };
   query('.wallet-connect').addEventListener('click', async () => {
     busy = true; updateButtons();

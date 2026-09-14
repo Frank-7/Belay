@@ -127,8 +127,21 @@ Reject an outstanding prompt inside MetaMask itself. A later wallet signature
 is a direct user authorization, not an autonomous Belay action.
 
 An exact transaction that finalized with `status: 0` is reported as failed:
-execution reverted, although test gas may have been consumed. Belay does not
-silently create a replacement. [Arc transaction lifecycle][7]
+execution reverted, although test gas may have been consumed. Choose **Record
+failure without sending** to close that investigation. Belay rechecks the exact
+receipt and canonical finality before recording a durable failed outcome; it
+does not classify the request as absent or call a payment provider. The receipt
+keeps the transaction hash, original chain evidence, and gas disclosure.
+[Arc transaction lifecycle][7]
+
+Here, a `resolved` incident means its investigation is closed. Its payment
+outcome is still `failed`, and the UI says **Failed transaction recorded**.
+After closure, **Start another test transfer** resets the form only after a
+fresh server check. A new intent and another explicit MetaMask signature are
+required, even when sender, recipient and amount are unchanged. A missing,
+unfinalized or unavailable receipt keeps the old incident unresolved and does
+not unlock another identical request. Restarting the app or submitting the
+same closure twice never repeats the transfer.
 
 ## What the verifier checks
 

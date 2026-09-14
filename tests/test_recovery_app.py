@@ -13,12 +13,48 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from recovery_app.arc import (  # noqa: E402
+    CHAIN_HEX,
+    TOKEN_ADDRESS,
+    ArcEvidenceProvider,
+    transfer_data,
+)
 from recovery_app.engine import AppError, Engine  # noqa: E402
 from recovery_app.server import make_server  # noqa: E402
 
 SENDER = "0x" + "12" * 20
 RECIPIENT = "0x" + "34" * 20
 HASH = "0x" + "56" * 32
+
+
+class FinalizedRevert(ArcEvidenceProvider):
+    """Exercise the real Arc verifier with an offline, mutable chain fixture."""
+
+    def __init__(self):
+        super().__init__(self.rpc)
+        self.finalized = 102
+        self.block_hash = "0x" + "78" * 32
+        self.available = True
+        self.calls = []
+
+    def rpc(self, method, params):
+        self.calls.append(method)
+        if method == "eth_chainId":
+            return CHAIN_HEX
+        if method == "eth_getBlockByNumber":
+            if params[0] == "latest":
+                return {"number": "0x64", "hash": "0x" + "ab" * 32}
+            if params[0] == "finalized":
+                return {"number": hex(self.finalized), "hash": "0x" + "cd" * 32}
+            return {"number": "0x65", "hash": self.block_hash}
+        common = {"from": SENDER, "to": TOKEN_ADDRESS, "blockNumber": "0x65", "blockHash": self.block_hash}
+        if method == "eth_getTransactionByHash":
+            return {**common, "hash": HASH, "chainId": CHAIN_HEX, "value": "0x0",
+                    "input": transfer_data(RECIPIENT, 10_000)}
+        if method == "eth_getTransactionReceipt":
+            return {**common, "transactionHash": HASH, "status": "0x0", "logs": [],
+                    "gasUsed": "0x5208", "effectiveGasPrice": "0x1"} if self.available else None
+        raise AssertionError("Unexpected RPC method: " + method)
 
 
 class FakeArc:
@@ -177,6 +213,118 @@ class RecoveryAppTests(unittest.TestCase):
             self.assertEqual(incident["proposal"]["verdict"], "abstain")
             with self.assertRaises(AppError):
                 self.engine.resolve(incident["id"], incident["proposal"]["id"])
+
+    def reverted_wallet(self):
+        self.engine._arc = FinalizedRevert()
+        incident = self.wallet()
+        self.engine.dispatch_wallet(incident["id"])
+        self.engine.attach_transaction(incident["id"], HASH)
+        return self.engine.investigate(incident["id"], "heuristic")
+
+    def test_finalized_revert_closes_without_effect_and_allows_separately_authorized_intent(self):
+        incident = self.reverted_wallet()
+        self.assertEqual(incident["proposal"]["verdict"], "failed")
+        self.assertNotIn("dossier", incident["proposal"])
+        self.assertTrue(incident["proposal"]["can_apply"])
+        with self.assertRaisesRegex(AppError, "identical test transfer"):
+            self.wallet()
+        self.engine.revoke(incident["id"])
+        with patch.object(self.engine, "_simulation_commit", side_effect=AssertionError("must not send")), \
+                patch("recovery_app.engine.apply_dossier", side_effect=AssertionError("not a refund verdict")):
+            final = self.engine.resolve(incident["id"], incident["proposal"]["id"])
+        self.assertEqual(final["status"], "resolved")
+        self.assertEqual(final["outcome"]["result"], "failed")
+        self.assertEqual(final["outcome"]["transaction_hash"], HASH)
+        self.assertTrue(final["outcome"]["gas_may_have_been_spent"])
+        receipt = self.engine.receipt(incident["id"])
+        closure = [row for row in receipt["journal"] if row["kind"] == "wallet_failed"]
+        self.assertEqual(len(closure), 1)
+        self.assertEqual(closure[0]["provider_evidence"]["raw"]["receipt"]["gasUsed"], "0x5208")
+        self.assertFalse(any(row["kind"] == "adjudicated" for row in receipt["journal"]))
+        replacement = self.wallet()
+        self.assertNotEqual(replacement["id"], incident["id"])
+        self.assertEqual(replacement["status"], "prepared")
+        self.assertFalse(replacement["wallet"]["dispatched"])
+        self.engine.dispatch_wallet(replacement["id"])
+        with self.assertRaisesRegex(AppError, "already assigned"):
+            self.engine.attach_transaction(replacement["id"], HASH)
+        self.assertFalse(any(method.startswith("eth_send") for method in self.engine._arc.calls))
+
+    def test_failed_closure_survives_interrupted_display_write_and_cannot_repeat(self):
+        incident = self.reverted_wallet()
+        with patch.object(self.engine, "_save", side_effect=OSError("interrupted after durable closure")):
+            with self.assertRaises(OSError):
+                self.engine.resolve(incident["id"], incident["proposal"]["id"])
+        self.engine.close()
+        self.engine = Engine(self.directory.name, arc_provider=FinalizedRevert())
+        restored = self.engine.get(incident["id"])
+        self.assertEqual(restored["status"], "resolved")
+        self.assertEqual(restored["outcome"]["result"], "failed")
+        self.assertEqual(restored["provider_evidence"]["metadata"]["transaction_hash"], HASH)
+        self.assertFalse(restored["proposal"]["can_apply"])
+        with self.assertRaises(AppError):
+            self.engine.resolve(incident["id"], incident["proposal"]["id"])
+        with self.assertRaises(AppError):
+            self.engine.attach_transaction(incident["id"], HASH)
+        with self.assertRaises(AppError):
+            self.engine.dispatch_wallet(incident["id"])
+        self.assertEqual(self.wallet()["status"], "prepared")
+
+    def test_failed_closure_binds_local_evidence_and_journal_revision(self):
+        incident = self.reverted_wallet()
+        path = Path(self.directory.name) / incident["id"] / "evidence" / "arc_finalized_receipt.json"
+        path.write_text(path.read_text() + "\n")
+        with self.assertRaisesRegex(AppError, "Evidence changed"):
+            self.engine.resolve(incident["id"], incident["proposal"]["id"])
+        incident = self.engine.investigate(incident["id"], "heuristic")
+        self.engine._journal(incident).append("operator_note", note="record changed since investigation")
+        with self.assertRaisesRegex(AppError, "incident record changed"):
+            self.engine.resolve(incident["id"], incident["proposal"]["id"])
+        self.assertNotEqual(self.engine.get(incident["id"])["status"], "resolved")
+
+    def test_failed_closure_rechecks_fresh_availability_finality_and_receipt_identity(self):
+        incident = self.reverted_wallet()
+        for change in ("unavailable", "unfinalized", "different_block"):
+            with self.subTest(change=change):
+                self.engine._arc = FinalizedRevert()
+                incident = self.engine.investigate(incident["id"], "heuristic")
+                if change == "unavailable":
+                    self.engine._arc.available = False
+                elif change == "unfinalized":
+                    self.engine._arc.finalized = 100
+                else:
+                    self.engine._arc.block_hash = "0x" + "ef" * 32
+                with self.assertRaisesRegex(AppError, "Arc evidence changed"):
+                    self.engine.resolve(incident["id"], incident["proposal"]["id"])
+                current = self.engine.get(incident["id"])
+                self.assertEqual(current["status"], "needs_evidence")
+                self.assertIsNone(current["proposal"])
+                with self.assertRaisesRegex(AppError, "identical test transfer"):
+                    self.wallet()
+
+    def test_revert_without_finality_remains_unknown_and_later_head_does_not_invalidate_receipt(self):
+        incident = self.reverted_wallet()
+        self.engine._arc.finalized = 100
+        incident = self.engine.investigate(incident["id"], "heuristic")
+        self.assertEqual(incident["proposal"]["verdict"], "abstain")
+        with self.assertRaises(AppError):
+            self.engine.resolve(incident["id"], incident["proposal"]["id"])
+        self.engine._arc.finalized = 102
+        incident = self.engine.investigate(incident["id"], "heuristic")
+        self.engine._arc.finalized = 105
+        final = self.engine.resolve(incident["id"], incident["proposal"]["id"])
+        self.assertEqual(final["outcome"]["result"], "failed")
+        self.assertEqual(final["provider_evidence"]["metadata"]["finalized_block_number"], 105)
+
+    def test_committed_arc_closure_also_requires_a_current_verified_receipt(self):
+        incident = self.wallet()
+        self.engine.dispatch_wallet(incident["id"])
+        self.engine.attach_transaction(incident["id"], HASH)
+        incident = self.engine.investigate(incident["id"], "heuristic")
+        self.arc.status = "unknown"
+        with self.assertRaisesRegex(AppError, "Arc evidence changed"):
+            self.engine.resolve(incident["id"], incident["proposal"]["id"])
+        self.assertEqual(self.engine.get(incident["id"])["status"], "needs_evidence")
 
     def test_identical_pending_wallet_intents_cannot_compete_for_one_receipt(self):
         self.wallet()

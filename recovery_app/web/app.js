@@ -19,6 +19,11 @@ export function statusLabel(status) {
   return ({prepared: "Ready for wallet approval", unresolved: "Needs investigation", pending: "Outcome uncertain", uncertain: "Outcome uncertain", unknown: "More evidence needed", held: "More evidence needed", needs_evidence: "More evidence needed", ready: "Ready for review", investigated: "Ready for review", resolved: "Resolved", completed: "Completed", closed: "Resolved", closed_from_evidence: "Verified from evidence", committed: "Transfer confirmed", confirmed: "Transfer confirmed", refused: "Permission revoked", revoked: "Permission revoked", failed: "Action failed"})[status] ?? String(status || "Outcome uncertain").replaceAll("_", " ");
 }
 
+export function incidentStatusLabel(incident) {
+  if (isResolved(incident) && incident.outcome?.result === "failed") return "Failed transaction recorded";
+  return statusLabel(incident.permission?.active === false && !isResolved(incident) ? "revoked" : incident.status);
+}
+
 export function createApi({fetcher = globalThis.fetch, recorded = false, fixtures = null} = {}) {
   async function request(path, options = {}) {
     if (recorded) {
@@ -227,6 +232,7 @@ function timeLabel(value) {
   return Number.isNaN(date.getTime()) ? text(value) : date.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", second: "2-digit"});
 }
 function verdictTitle(verdict) {
+  if (verdict === "failed") return "The transaction finalized, but failed.";
   return ({committed: "The action already happened.", present: "The action already happened.", not_committed: "The record supports a new attempt.", absent: "The record supports a new attempt.", unknown: "The evidence is not enough yet.", abstain: "The evidence is not enough yet.", refused: "Permission has been withdrawn.", conflict: "These records need further review.", inconsistent: "These records need further review."})[verdict] || text(verdict || "Review the proposed explanation").replaceAll("_", " ");
 }
 function addFact(parent, label, value) {if (value === undefined || value === null || value === "") return; const row = append(parent, "div"); append(row, "dt", label); append(row, "dd", value);}
@@ -239,6 +245,7 @@ function sourceName(item, index) {
   return text(item.id ?? `Evidence ${index + 1}`);
 }
 function explanationFor(incident, proposal) {
+  if (proposal.kind === "arc_finalized_failure") return "The exact transaction reverted in a finalized block. Record its failure without sending anything. Test gas may have been spent; another transfer needs a separate request and your wallet approval.";
   if (proposal.verdict === "committed") return incident.provider === "arc" ? "A finalized receipt matches the approved transfer. Recording this result will not request another wallet signature." : "The provider record contains a matching refund for this order. Recording the result will not send a second refund.";
   if (proposal.verdict === "absent") return "A complete statement covers the request and contains no matching refund. Completing the original request still requires current permission.";
   const notes = list(proposal.validator_notes ?? proposal.notes).join(" ").toLowerCase();
@@ -299,7 +306,7 @@ export function mountDesk(controller, root = document) {
       append(button, "span", incident.title || incident.scenario || "Recovery incident", "incident-item-title");
       const meta = append(button, "span", undefined, "incident-item-meta");
       append(meta, "span", "", `mini-dot${isResolved(incident) ? " resolved" : ""}`);
-      append(meta, "span", statusLabel(incident.permission?.active === false && !isResolved(incident) ? "revoked" : incident.status));
+      append(meta, "span", incidentStatusLabel(incident));
       button.addEventListener("click", () => controller.select(incident.id));
       if (focusedIncident === incident.id) button.focus({preventScroll: true});
     });
@@ -335,8 +342,8 @@ export function mountDesk(controller, root = document) {
     $("incident-reference").textContent = `${incident.provider === "arc" ? "ARC TESTNET" : "RECOVERY INCIDENT"} / ${incident.id.slice(0, 10)}`;
     $("incident-title").textContent = incident.title || "An interrupted action";
     $("incident-description").textContent = incident.description || (incident.provider === "arc" ? "Inspect the wallet transaction before deciding what happened." : "The request was saved, but its outcome needs to be established.");
-    $("incident-status").textContent = statusLabel(incident.permission?.active === false && !isResolved(incident) ? "revoked" : incident.status);
-    $("incident-status").className = `status-badge${isResolved(incident) ? " good" : incident.permission?.active === false || ["refused", "revoked", "failed"].includes(incident.status) ? " bad" : ""}`;
+    $("incident-status").textContent = incidentStatusLabel(incident);
+    $("incident-status").className = `status-badge${incident.outcome?.result === "failed" ? " bad" : isResolved(incident) ? " good" : incident.permission?.active === false || ["refused", "revoked", "failed"].includes(incident.status) ? " bad" : ""}`;
     const stage = isResolved(incident) ? 3 : proposal ? 2 : 1;
     $("progress").replaceChildren();
     ["Intent saved", "Outcome uncertain", "Evidence reviewed", "Decision recorded"].forEach((label, index) => {
@@ -357,6 +364,7 @@ export function mountDesk(controller, root = document) {
     $("investigate").textContent = state.busy === "investigate" ? "Investigating…" : proposal ? "Investigate again ↗" : "Investigate evidence ↗";
     $("agent").disabled = disabled || state.recorded || isResolved(incident);
     $("agent-note").textContent = state.recorded ? "The investigator and its result below were recorded during this run." : agentId === "openai" ? "A configured model proposes an explanation. Deterministic validation controls what can be applied." : "Evidence rules are a deterministic baseline. Select a configured model to compare an AI proposal.";
+    if (proposal?.kind === "arc_finalized_failure") $("agent-note").textContent = "The deterministic Arc verifier established this failed outcome. No model call or payment action was needed.";
     const renderKey = `${incident.id}:${incident.revision ?? ""}:${JSON.stringify([incident.evidence, proposal, incident.timeline, incident.provider_evidence, incident.permission])}`;
     if (renderKey !== lastRenderKey) {
       if (!lastRenderKey.startsWith(`${incident.id}:`)) expandedEvidence.clear();
