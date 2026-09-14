@@ -1,117 +1,140 @@
-# Next stage: one useful AI Apps recovery platform
+# Next stage: one connected payment mission
 
-Belay remains in **AI Apps**. Keep one value proposition:
+Belay is competing in **AI Apps**. The current pitch has one product promise:
 
-> Help an operator determine what an interrupted agent action actually did,
-> and what can safely happen next.
+> Authorize an exact agent action, then explain and safely recover its outcome
+> when a payment reply is uncertain.
 
-Recovery Desk is the primary application. The Purchase Simulator is its
-commerce use case: a customer can fund USDC while a merchant accepts USD through
-a conversion/payout provider. The current purchase flow is fictional; it does
-not establish custody, real USD settlement or funded customer protection.
+Payment Mission demonstrates that promise through the commerce journey.
+Both `belay.mission.v0.1` and the preserved `belay.purchase.v0.3` walkthrough
+use distinct typed adapters over Recovery Desk's shared read-only payment
+validator. The separate Recovery Desk app supplies the optional model
+investigation and human-signed Arc Testnet demonstration.
 
-## Implemented integration
+No interviews, willingness to pay, provider access or customer incident rates
+are established by this repository.
 
-The local Recovery Desk combines persistent incidents, research journals,
-evidence explanations, deterministic contradiction checks, current permission
-checks and guarded receipts. Its six cases cover lost acknowledgment,
-unsubmitted refund, stale evidence, conflicting sources, revoked permission
-and missing evidence. An optional OpenAI proposer remains separate from the
-validator and executor.
+## Implemented now
 
-The Purchase Simulator now calls the typed deterministic Recovery Desk
-investigator for uncertain payouts. Original operation, mission, order,
-beneficiary, exact intent, USDC base units and USD cents remain explicit.
-Investigation reads evidence only. Its executor checks the current source
-revision and fresh provider snapshot before recording an existing payout once.
-Payment, delivery, supplier recovery and reserve reimbursement are separate.
-
-The PR review fixes are implemented:
-
-- An exact finalized Arc revert can close as a failed transfer without sending.
-  A separate transfer still needs a new intent and explicit MetaMask signature.
-- The purchase application persists dispatch uncertainty before provider I/O.
-  A crash, expired quote/grant or later cancellation cannot free a possibly
-  accepted hold. Missing evidence remains unknown and never triggers a retry.
-- Auto play stops at uncertainty while explicit investigation/reconciliation
-  stays usable. Both applications and research checks remain part of the
-  integrated build; the shared documentation keeps their boundaries clear.
-
-The original seven conflicts were in CI, `.gitignore`, Makefile, README,
-`docs/INDEX.md`, `docs/INTEGRATION.md` and this file. The
-[historical payment review](PR10_PAYMENT_REVIEW.md) retains its original
-reproduction; those historical findings are not a statement that the current
-fixes are still missing.
-
-The 24-case evaluator reports precision, useful resolution coverage, refusal,
-unknown handling, latency and model usage. The separate frozen 12-case boundary
-suite is classification-only. Repeated published fixtures are regression
-evidence, not new blind incidents. Historical `results/` and documented
-measurement caveats remain intact.
-
-## Complete the demonstration
-
-| Priority | Completion criterion | Dependency or current limit |
+| Product | Working local path | Boundary |
 |---|---|---|
-| Operator journey | Create an incident, inspect evidence, resolve safely or explain what is missing, export the receipt. | Local implementation and offline regression coverage exist. |
-| Commerce recovery | Show the USD-only merchant case, lose its payout reply, investigate and reconcile the original operation without another payout. | Provider, purchase and all reserve capital remain fixtures. |
-| AI contribution | Compare the configured model with the heuristic on the same cases; report differences or no benefit. | Explicit model credentials/quota and a preserved configuration; no live-model run is claimed here. |
-| Public testnet proof | A person signs a small Arc transfer and recovers its original outcome; retain the explorer link and test-money label. | MetaMask signature, faucet availability and network access; no actual transfer is claimed by offline tests. |
-| Presentation | Record one 60-second AI Apps story with a difficult recovery decision and one measured next improvement. | Use the prepared script and correctly label recorded, simulated and actual testnet evidence. |
+| Payment Mission MVP | Open-ended request, editable plan, exact authorization, simulated USDC hold and USD payout, read-only lost-reply investigation, explicit reconciliation and receipt | Deterministic local fixtures; no model, wallet, chain, bank, payee or real money is connected |
+| v0.3 purchase walkthrough at `/purchase/` | Durable dispatch-attempt record, reserved hold, exact-operation investigation, evidence-bound reconciliation and delivery/claim scenarios | Separate ticket state, shared payment evidence checks; fictional provider and reserve |
+| Recovery Desk | Persistent incidents, bounded optional model proposal, deterministic evidence validation, guarded operator resolution and audit export | Local refund fixture; no autonomous payment key or live remedy |
+| Arc test wallet | Human-signed capped test-USDC transfer and read-only finalized-receipt verification | Arc Testnet only; separate from Payment Mission settlement |
+| Research runtime | Anchored side-effect experiments and recorded crash demonstrations | Synthetic measurements; POSIX crash harness |
 
-Use [FINAL_PRESENTATION.md](FINAL_PRESENTATION.md) for the main operator pitch
-and [MVP_PRESENTATION.md](MVP_PRESENTATION.md) for the commerce scenario. Keep a
-recording/upload buffer before the next confirmed deadline and freeze new
-features before presenting. [CHECKPOINTS.md](CHECKPOINTS.md) preserves the
-supplied schedule discrepancies. These documents do not claim that a video,
-submission, organizer message or customer interview has been sent.
+## Freeze for the investor pitch
 
-## Next external integration
+1. Run one invoice mission with a lost payout reply: request, authorization,
+   uncertainty, evidence, explicit reconciliation, then receipt. Show that the
+   original provider attempt count remains one.
+2. Start one incomplete tax or insurance request and show that the payee,
+   amount or required reference stays blank until supplied.
+3. Keep the main interface in plain language. Use the technical audit only to
+   answer questions about authority, money movement and retries.
+4. Rehearse from a fresh `mission-v1` data directory and keep a local recording
+   as a fallback.
+5. Run the targeted Python and JavaScript suites, documentation consistency
+   check and full repository lint before freezing the branch.
 
-Choose one merchant with an accepted USD payment method and one approved
-customer-funded USDC conversion/payout route. Confirm the provider's sandbox
-access, supported chain, beneficiary identity, operation idempotency, evidence
-freshness and settlement finality before implementing against it.
+The example prompts and lost-reply toggle exercise the same composer, authority
+and state machine. Keep the older purchase walkthrough accessible for deeper
+delivery and reserve questions.
 
-**Provider sandbox work is deferred:** no provider account or credentials are
-configured. Do not substitute an invented successful API call or use real
-funds to complete this dependency. The local typed adapter and failure tests
-are the contract for that future integration. Keep the working Arc Testnet
-adapter until a separate chain/provider implementation is actually available.
+## First connected pilot
 
-The future Base grant/contract, restricted executor and conversion proposal is
-preserved in [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md),
-[USDC_SETTLEMENT_ARCHITECTURE.md](USDC_SETTLEMENT_ARCHITECTURE.md) and
-[INTERNAL_PAYMENT_PROTOCOL.md](INTERNAL_PAYMENT_PROTOCOL.md). Contract tests,
-signer isolation, replacement/reorg handling and authenticated external
-evidence are independent future requirements. There is no automatic Arc/Base
-migration and no production isolation implied by Python module boundaries.
+Choose one invoice or bill-payment provider with a documented sandbox. A
+successful increment must replace one fictional edge end to end:
 
-Live protection requires an identified payer, funded obligations, actual
-eligibility terms and independent claim authority. Returning still-held funds,
-recovering from a supplier and paying a new reserve remedy are different
-actions. An unknown payout is not automatically an eligible loss. See
-[SUBSCRIPTION_GUARANTEE.md](SUBSCRIPTION_GUARANTEE.md) and
-[RECOVERY_AND_GUARANTEE_DECISION.md](RECOVERY_AND_GUARANTEE_DECISION.md).
+1. An authenticated user or agent submits a request without sending payment
+   credentials to the model.
+2. The planner returns a structured proposal; unknown payee, amount and
+   reference fields remain unset.
+3. The user reviews one exact payment and the authority service records the
+   beneficiary, amount, purpose, operation identity and expiry.
+4. A regulated provider accepts the fixed instruction, converts or sources the
+   required funds and pays the verified USD destination.
+5. Belay reconciles a lost or delayed response under the original operation
+   identity before it permits any retry.
+6. The invoice or biller adapter reports authoritative posting evidence, which
+   the receipt distinguishes from payment-provider evidence.
 
-## Validate the buyer and measurable value
+Done means a controlled interruption after provider acceptance cannot create a
+second payment, a stale browser action cannot alter the plan, and an empty
+provider lookup remains unknown. A provider sandbox result is still not live
+money or customer validation.
 
-The initial buyer hypothesis is a support-automation or financial-operations
-team handling uncertain agent actions. A commerce operator is a concrete
-adjacent test of the same need. Interviews remain a human task; the repository
-does not establish demand, willingness to pay or customer incident rates.
+## Reuse Recovery Desk safely
 
-Ask for a recent incident, the current workaround and the evidence needed
-before authorizing another action. Use the questions in
-[FINAL_PRESENTATION.md](FINAL_PRESENTATION.md). Compare a read-only shadow
-pilot against the operator's existing process, including proper stable-key
-retry and current permission checks. Measure useful resolutions, unsupported
-conclusions, unresolved cases, investigation time, integration effort and
-latency. A small sample cannot establish a rare-loss rate or guarantee price.
+PR #10 is merged. Its Recovery Desk, Arc verifier and finalized-failure
+lifecycle are implemented; `250456f` closed the pre-merge failure dead end.
+Commit `fe23651` applies the same read-only evidence boundary to the legacy
+`belay.purchase.v0.3` payout-reply-lost path. It persists possible dispatch
+before provider I/O, keeps the hold reserved, rejects missing or conflicting
+evidence and reconciles the original paid operation only after a fresh provider
+read.
 
-Defer a generic marketplace, broad merchant coverage, live ticket checkout,
-subscription billing, custody, escrow and insurance until this recovery
-workflow earns use. The earlier concert, delegation, card and merchant-wallet
-documents remain research/proposals in [INDEX.md](INDEX.md). Preserve the
-archived/partial Gemini experiments and each run's actual completion counts;
-they do not measure the purchase planner or production error rates.
+The generalized `belay.mission.v0.1` path now uses a domain-neutral typed
+provider-observation adapter over the same validator. Keep these boundaries
+when replacing its local provider:
+
+- send the exact Payment Mission operation and provider identities;
+- request read-only evidence and preserve unknown outcomes;
+- return a typed observation with source, freshness, coverage and meaning;
+- require the current Payment Mission authority before any new effect; and
+- keep purchase, provider refund and any claim payout as separate operations.
+
+Do not give the recovery model a wallet, signing callback or unrestricted
+payment callback. Do not treat the human-signed Arc test transfer as the
+USDC-to-USD settlement adapter. Arc and a future Base or provider route have
+different chain, token and finality rules.
+
+## Production gates
+
+Before real funds, demonstrate:
+
+- authenticated users and reviewed beneficiary onboarding;
+- production signing and key custody outside the model;
+- concurrent budget reservation and grant conservation;
+- expiry, revocation and signature-replay ordering;
+- provider idempotency lifetime and unknown-outcome reconciliation;
+- late returns, duplicate callbacks and transaction replacement;
+- payee-evidence identity, integrity, freshness and completeness;
+- monitoring, audit export and operational escalation; and
+- reviewed custody, money-transmission, tax, privacy and sanctions obligations.
+
+A guarantee or reimbursement requires separate terms, decision authority and
+funded capital. The payment agent cannot approve its own claim. Do not call the
+product insured or promise automatic recovery until those roles exist.
+
+## Validate the business problem
+
+Interview financial-operations, support-automation or payment teams. Capture:
+
+1. one recent agent or payment failure;
+2. the evidence needed before an operator would retry or close it;
+3. the current investigation time and escalation path; and
+4. whether a reviewed payment plan plus linked receipt would change adoption.
+
+Start with a shadow pilot that cannot issue live actions. Track completed
+plans, missing facts, blocked authorizations, unknown outcomes, unsupported
+conclusions, operator time, integration effort and added latency. A small
+sample cannot establish a rare-loss rate, market size or guarantee price.
+
+Use the buyer questions in [FINAL_PRESENTATION.md](FINAL_PRESENTATION.md) for
+the recovery side and the investor questions in
+[MVP_PRESENTATION.md](MVP_PRESENTATION.md) for Payment Mission.
+
+## Defer until one domain works
+
+Defer broad merchant coverage, recurring mandates, tax calculation or filing,
+insurance coverage decisions, autonomous custody, escrow and a paid guarantee.
+Tickets remain a useful future domain adapter in
+[CONCERT_APP_BLUEPRINT.md](CONCERT_APP_BLUEPRINT.md), but the current interface
+must continue to use one universal mission flow.
+
+The supplied schedules disagree. Until the organizer confirms a deadline, keep
+the conservative recording and upload buffers in
+[CHECKPOINTS.md](CHECKPOINTS.md). This document does not assert that a
+submission, customer interview or provider agreement has occurred.

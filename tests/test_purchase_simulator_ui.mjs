@@ -1,287 +1,324 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { runInNewContext } from "node:vm";
+import vm from "node:vm";
 
-const html = readFileSync(
-  new URL("../purchase_simulator/web/index.html", import.meta.url),
-  "utf8",
-);
-const script = readFileSync(
-  new URL("../purchase_simulator/web/app.js", import.meta.url),
-  "utf8",
-);
-const css = readFileSync(
-  new URL("../purchase_simulator/web/style.css", import.meta.url),
-  "utf8",
-);
+const html = readFileSync(new URL("../purchase_simulator/web/index.html", import.meta.url), "utf8");
+const script = readFileSync(new URL("../purchase_simulator/web/app.js", import.meta.url), "utf8");
+const css = readFileSync(new URL("../purchase_simulator/web/style.css", import.meta.url), "utf8");
 
-test("investor story leads with one synchronized customer and backend simulation", () => {
-  assert.match(html, /Let an agent buy[\s\S]*Keep every decision accountable/);
-  assert.match(html, /Customer on the left[\s\S]*Infrastructure on the right/);
-  assert.match(html, /CUSTOMER SEES/);
-  assert.match(html, /BELAY PROVES/);
-  assert.match(html, /Safe local simulation[\s\S]*No live chain, money, bank, merchant, wallet, coverage, model, or tickets/);
-  assert.match(html, /Fictional local software demonstration · No financial product or live coverage/);
+test("product accepts one free-text mission without a canned scenario picker", () => {
+  assert.match(html, /Tell your AI what to pay[\s\S]*Belay makes it safe/);
+  assert.match(html, /id="request-input"[\s\S]*maxlength="1200"[\s\S]*required/);
+  assert.match(html, /Build my payment plan/);
+  assert.match(html, /id="example-list"/);
+  assert.doesNotMatch(html, /id="scenario"|Choose the test|scenario-console/);
+  assert.match(html, /id="simulate-lost-reply"/);
+  assert.match(html, /href="\/purchase\/"/);
+  assert.doesNotMatch(script, /\/api\/runs|non_delivery_paid|budget_cents/);
 });
 
-test("backend exposes trust, state, request, response, money, proof, and history surfaces", () => {
+test("review includes an editable payment type and every money-moving field", () => {
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(ids).size, ids.length, "HTML IDs must be unique");
   for (const id of [
-    "customer-panel", "backend-panel", "customer-now", "backend-now",
-    "buyer-balance", "held-balance", "provider-balance", "merchant-balance",
-    "reserve-cash", "current-control", "current-money-effect", "current-proof",
-    "current-retry", "policy-score", "control-groups", "funding-state",
-    "conversion-state", "payout-state", "order-state", "delivery-state",
-    "protection-state", "request-payload", "response-payload", "balance-changes",
-    "latest-ledger-key", "proof-stack", "trace-list", "event-select", "return-live",
-  ]) {
-    assert.ok(ids.includes(id), `missing two-sided simulator surface #${id}`);
+    "plan-form", "plan-category", "plan-description", "plan-payee", "plan-amount",
+    "plan-maximum", "plan-reference", "plan-due-date", "save-plan",
+    "authorize-payment", "authorization-card",
+  ]) assert.ok(ids.includes(id), `missing payment review surface #${id}`);
+  for (const category of ["purchase", "invoice", "bill", "tax", "insurance", "ticket", "subscription", "transfer"]) {
+    assert.match(html, new RegExp(`<option value="${category}">`));
   }
-  for (const label of ["CONTROL", "STATE / MONEY CHANGE", "PROOF CREATED", "SAFE REPLAY"]) {
-    assert.match(html, new RegExp(`>${label}<`));
-  }
+  assert.match(script, /category: \$\("plan-category"\)\.value/);
+  assert.match(script, /"plan-category"[\s\S]*\/details`, \{ expected_revision: mission\.revision, fields \}/);
+  assert.match(html, /Belay never guesses the payee or amount/);
+  assert.match(html, /Authorize &amp; pay now/);
 });
 
-test("controls are accessible and mobile swaps synchronized sides instead of stacking both", () => {
-  assert.match(html, /class="skip-link" href="#simulator"/);
-  assert.match(html, /aria-describedby="scenario-description"/);
-  assert.match(html, /role="progressbar"[^>]*aria-valuemin="0"[^>]*aria-valuemax="13"[^>]*aria-valuenow="0"[^>]*aria-valuetext="Ready"/);
-  for (const id of ["start", "play", "next", "reset", "view-customer", "view-backend", "return-live"]) {
-    assert.match(html, new RegExp(`<button[^>]*id="${id}"[^>]*type="(?:submit|button)"`));
-  }
-  assert.match(html, /role="tablist" aria-label="Simulation side"/);
-  assert.match(css, /\.workspace\[data-mobile-view="customer"\] \.backend-panel/);
-  assert.match(css, /\.workspace\[data-mobile-view="backend"\] \.customer-panel/);
+test("pre-authorization view identifies the fictional recipient and fixed demo economics", () => {
+  for (const id of ["beneficiary-id", "beneficiary-status"]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(script, /plan\.payee_id/);
+  assert.match(script, /fictional_local_fixture/);
+  assert.match(html, /Resets to 25,000 USDC/);
+  assert.match(html, /1 USDC = \$1 USD/);
+  assert.match(html, /Demo fee[\s\S]*\$0\.00/);
+});
+
+test("six visible policy groups account for all fifteen backend checks", () => {
+  const backendCheckNames = [
+    "User approved", "Plan unchanged", "Grant signature valid", "Payee matches",
+    "Amount matches", "Within maximum", "Exact funds ready", "Reference ready",
+    "Payee reviewed", "USDC source", "USD destination", "One-time scope",
+    "Grant active", "Operation fixed", "Signed instruction matches",
+  ];
+  for (const name of backendCheckNames) assert.match(script, new RegExp(`"${name}"`));
+  assert.equal((script.match(/\{ label: .*? names: \[/g) || []).length, 6);
+  assert.match(script, /policy\?\.allowed === false && groups\.every/);
+  assert.match(script, /passed === 15 && backendChecks\.length === 15/);
+  assert.match(css, /\.check-item\.failed/);
+});
+
+test("proofs and receipt render backend evidence instead of UI counters", () => {
+  assert.match(script, /Original request digest[\s\S]*mission\.request_digest/);
+  assert.match(script, /Versioned payment plan[\s\S]*mission\.plan_revision/);
+  for (const id of [
+    "receipt-payee", "receipt-amount", "receipt-reference", "receipt-id",
+    "receipt-limit", "receipt-date", "receipt-operation", "receipt-provider",
+    "receipt-attempts", "receipt-authorization", "receipt-confirmation", "receipt-scope",
+  ]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(script, /receipt\.payment\?\.provider_reference/);
+  assert.match(script, /receipt\.payment\?\.attempt_count/);
+  assert.match(script, /receipt\.authorization_digest/);
+  assert.match(script, /receipt\.domain_outcome/);
+});
+
+test("customer and backend panes expose the same event, safe retry, money, and terminal state", () => {
+  for (const id of [
+    "customer-panel", "backend-panel", "backend-actor", "backend-action",
+    "backend-explanation", "backend-proof", "backend-retry", "sync-label",
+    "money-customer-value", "money-hold-value", "money-provider-value",
+    "money-payee-value", "state-payload", "request-payload", "response-payload",
+    "ledger-list", "event-list",
+  ]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(script, /event\?\.backend\?\.proof/);
+  assert.match(script, /event\?\.backend\?\.safe_retry/);
+  assert.match(html, /Safe retry[\s\S]*id="backend-retry"/);
+  assert.match(html, /Safe replay[\s\S]*id="safe-retry"/);
+  assert.match(script, /Final linked state/);
+  assert.match(script, /returned · no payout/);
+  assert.match(script, /review_required/);
+  assert.match(script, /mission\?\.status === "needs_details"/);
+});
+
+test("workflow uses revisioned APIs and a presentation-speed automatic run", () => {
+  assert.match(script, /api\("\/api\/mission\/config"\)/);
+  assert.match(script, /api\("\/api\/missions\/analyze", \{[\s\S]*demo_outcome:/);
+  assert.match(script, /\/authorize`, \{ expected_revision: mission\.revision \}/);
+  assert.match(script, /\/advance`, \{ expected_revision: mission\.revision \}/);
+  assert.match(script, /const AUTO_DELAY_MS = 1900/);
+  assert.match(script, /setTimeout\(\(\) => advanceOne\(true\), AUTO_DELAY_MS\)/);
+  assert.match(script, /provider_payment\?\.attempt_count/);
+});
+
+test("mobile navigation is sticky, keyboard-operable, and returns to the customer", () => {
+  assert.match(html, /role="tablist"[\s\S]*aria-orientation="horizontal"/);
+  assert.match(html, /id="view-customer"[^>]*role="tab"[^>]*aria-controls="customer-panel"[^>]*tabindex="0"/);
+  assert.match(html, /id="view-backend"[^>]*role="tab"[^>]*aria-controls="backend-panel"[^>]*tabindex="-1"/);
+  assert.match(script, /setAttribute\("role", "tabpanel"\)/);
+  assert.match(script, /\["ArrowLeft", "ArrowRight", "Home", "End"\]/);
+  assert.match(script, /setMobileView\("customer"\);[\s\S]*scrollIntoView/);
+  assert.match(script, /\$\("technical-audit"\)\.open = false;[\s\S]*setMobileView\("customer"\)/);
+  assert.match(css, /\.product-navigation \{ position: sticky/);
+  assert.match(css, /\.mobile-tabs button \{ min-height: 44px/);
+  assert.match(css, /\.field input, \.field select \{[^}]*min-height: 44px/);
   assert.match(css, /@media \(max-width: 960px\)/);
   assert.match(css, /@media \(max-width: 720px\)/);
-  assert.match(css, /prefers-reduced-motion: reduce/);
-  assert.match(css, /:focus-visible/);
 });
 
-test("browser follows one local event timeline and renders backend truth safely", () => {
-  assert.match(script, /api\("\/api\/config"\)/);
-  assert.match(script, /api\("\/api\/runs"/);
-  assert.match(script, /budget_cents: 30_000/);
-  assert.match(script, /expected_revision: run\.revision/);
-  assert.match(script, /event\?\.user_message/);
-  assert.match(script, /event\?\.accounts_after/);
-  assert.match(script, /event\?\.balance_changes/);
-  assert.match(script, /event\?\.ledger_keys/);
-  assert.match(script, /provider_observation/);
-  assert.match(script, /read_only_lookup_by_operation_id|Reconcile paid operation/);
-  assert.match(script, /request-payload/);
-  assert.match(script, /response-payload/);
-  assert.match(script, /selectedButton\.offsetTop/);
-  assert.match(script, /non_delivery_paid/);
+test("demo remains safe, accessible, and renders untrusted values as text", () => {
+  assert.match(html, /class="skip-link" href="#mission"/);
+  assert.match(html, /Never enter real SSNs, tax IDs, cards, bank details, API keys, wallet seeds, or policy credentials/);
+  assert.match(html, /Fictional local product demonstration · No financial product, live payment, guarantee, or coverage/);
+  assert.match(css, /\.workspace\[data-mobile-view="customer"\] \.backend-panel/);
+  assert.match(css, /\.workspace\[data-mobile-view="backend"\] \.customer-panel/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
+  assert.match(css, /:focus-visible/);
   assert.doesNotMatch(script, /\.innerHTML\s*=/);
   assert.match(script, /document\.createTextNode/);
 });
 
-// Execute the actual browser handlers against a small DOM and controlled clock.
-// These tests cover the paused state, not just the presence of a guard in source.
-async function browserHarness(initialRun, replies = []) {
-  let document;
-  class Node {
-    constructor() {
-      this.children = [];
-      this.handlers = {};
-      this.dataset = {};
-      this.style = {};
-      this.attributes = {};
-      this.disabled = false;
-      this.value = "";
-      this.textContent = "";
-      this.classes = new Set();
-      this.classList = {
-        toggle: (name, enabled) => enabled ? this.classes.add(name) : this.classes.delete(name),
-        contains: (name) => this.classes.has(name),
-      };
-    }
-    append(...nodes) { this.children.push(...nodes); }
-    replaceChildren(...nodes) { this.children = nodes; }
-    get lastElementChild() { return this.children.at(-1); }
-    addEventListener(name, fn) { this.handlers[name] = fn; }
-    setAttribute(name, value) { this.attributes[name] = value; }
-    querySelector() { return new Node(); }
-    querySelectorAll() { return []; }
-    focus() { document.activeElement = this; }
-    scrollTo() {}
+// Execute the shipped browser handlers with a minimal DOM and controlled network.
+// No function is extracted or replaced: assertions observe requests and rendered controls.
+class BrowserNode {
+  constructor() {
+    this.handlers = new Map(); this.attributes = new Map(); this.children = [];
+    this.value = ""; this.textContent = ""; this.hidden = false; this.disabled = false;
+    this.checked = false; this.dataset = {}; this.classList = { toggle() {}, add() {} };
   }
-  const nodes = new Map([...html.matchAll(/\bid="([^"]+)"/g)].map((match) => [match[1], new Node()]));
-  document = {
-    getElementById: (id) => { assert.ok(nodes.has(id), `missing DOM node ${id}`); return nodes.get(id); },
-    createElement: () => new Node(),
-    createTextNode: (value) => Object.assign(new Node(), { textContent: value }),
-    createDocumentFragment: () => new Node(),
-    querySelector: () => new Node(),
-    querySelectorAll: () => [],
-    addEventListener() {},
-    activeElement: null,
+  addEventListener(type, handler) { this.handlers.set(type, handler); }
+  append(...nodes) { this.children.push(...nodes); }
+  replaceChildren(...nodes) { this.children = nodes; }
+  setAttribute(key, value) { this.attributes.set(key, value); }
+  removeAttribute(key) { this.attributes.delete(key); }
+  querySelectorAll() { return []; }
+  closest() { return this; }
+  focus() {}
+  scrollIntoView() {}
+  reportValidity() { return true; }
+}
+const missionId = "a".repeat(32);
+const intentDigest = `sha256:${"b".repeat(64)}`;
+function snapshot(extra = {}) {
+  return {
+    id: missionId, revision: 7, plan_revision: 1, operation_id: "operation-original",
+    recovery_intent_digest: intentDigest, request_text: "Pay $20 to Acme", user_message: "Payout reply lost",
+    status: "payout_unknown", stage: "payout_unknown", terminal: false,
+    can_advance: false, can_authorize: false, can_investigate: true, demo_outcome: "payout_reply_lost",
+    plan: { category: "transfer", payee: "Acme", amount_usd_cents: 2000, maximum_usd_cents: 2000,
+      payee_id: "demo-acme", beneficiary_status: "fictional_local_fixture", review_notes: [] },
+    grant: { expires_at: 1900000000 }, events: [], states: {},
+    money: { customer_available_usdc_units: 24980000000, payment_hold_usdc_units: 0,
+      provider_in_transit_usdc_units: 20000000, payee_received_usd_cents: 0 },
+    ...extra,
   };
-  const requests = [];
-  const timers = new Map();
+}
+function finding(extra = {}) {
+  return {
+    schema_version: "belay.payment.investigation.v1",
+    run_id: missionId, revision: 7, operation_id: "operation-original", intent_digest: intentDigest,
+    evidence_digest: `sha256:${"c".repeat(64)}`, verdict: "paid", can_reconcile: true,
+    summary: "Original operation paid the authorized USD amount.",
+    checks: [{ label: "Exact operation and amounts", passed: true }], observations: [], citations: [], ...extra,
+  };
+}
+async function flush() { for (let i = 0; i < 16; i++) await Promise.resolve(); }
+async function browserHarness(savedMission = snapshot()) {
+  const nodes = new Map([...html.matchAll(/\bid="([^"]+)"/g)].map((match) => [match[1], new BrowserNode()]));
+  const calls = [], pending = [], timers = new Map(), storage = new Map();
   let timerId = 0;
-  runInNewContext(script, {
-    document,
-    localStorage: { getItem: () => initialRun.id, setItem() {}, removeItem() {} },
-    requestAnimationFrame: (fn) => fn(),
-    setTimeout: (fn) => { timers.set(++timerId, fn); return timerId; },
+  if (savedMission) storage.set("belay.payment-mission.v1", savedMission.id);
+  const context = {
+    console, Intl, Date, Map, Set, Number, String, Boolean, JSON, Error,
+    document: { getElementById: (id) => {
+      assert.ok(nodes.has(id), `Script requested missing HTML element ${id}`); return nodes.get(id);
+    }, createElement: () => new BrowserNode(), createTextNode: (text) => ({ textContent: text }),
+    querySelectorAll: () => [], addEventListener() {} },
+    window: { matchMedia: () => ({ matches: false }), addEventListener() {} },
+    localStorage: { getItem: (key) => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) },
+    setTimeout: (fn, delay) => { const id = ++timerId; timers.set(id, { fn, delay }); return id; },
     clearTimeout: (id) => timers.delete(id),
-    fetch: async (path, options) => {
-      requests.push({ path, options });
-      const response = path === "/api/config"
-        ? { scenarios: [{ id: "timeout_reconcile", label: "Unknown payout" }], credentials: [] }
-        : options?.method === "POST" ? replies.shift() : initialRun;
-      assert.ok(response, `unexpected request ${path}`);
-      return { ok: true, json: async () => response };
+    fetch: (path, options = {}) => {
+      const body = options.body ? JSON.parse(options.body) : undefined;
+      calls.push({ path, body });
+      if (path === "/api/mission/config") return Promise.resolve({ ok: true, json: async () => ({ examples: [] }) });
+      if (!options.method && savedMission && path === `/api/missions/${savedMission.id}`) {
+        return Promise.resolve({ ok: true, json: async () => structuredClone(savedMission) });
+      }
+      return new Promise((resolve) => pending.push({ path, body, resolve }));
     },
-  });
-  const settle = () => new Promise((resolve) => setImmediate(resolve));
-  await settle();
+  };
+  vm.runInNewContext(script, context, { filename: "purchase_simulator/web/app.js" });
+  await flush();
   return {
-    nodes, requests, timers, settle,
-    // Invoke the registered handler even when disabled, to cover a queued click.
-    click: async (id) => { await nodes.get(id).handlers.click(); await settle(); },
+    nodes, calls, pending, timers,
+    postCount: () => calls.filter((call) => call.body !== undefined).length,
+    async click(id, type = "click") {
+      const promise = nodes.get(id).handlers.get(type)?.({ preventDefault() {} });
+      await flush(); return { done: promise };
+    },
+    async reply(payload, status = 200) {
+      const request = pending.shift(); assert.ok(request, "Expected pending HTTP request");
+      request.resolve({ ok: status < 400, status, json: async () => structuredClone(payload) }); await flush();
+    },
+    async tick() {
+      const entry = [...timers].find(([, timer]) => timer.delay === 1900);
+      assert.ok(entry, "Expected automatic advance timer"); timers.delete(entry[0]); entry[1].fn(); await flush();
+    },
   };
 }
 
-function playbackRun(extra = {}) {
-  return {
-    id: "a".repeat(32), scenario: "timeout_reconcile", revision: 7,
-    operation_id: "purchase-operation-1",
-    step: 7, stage: "payout_unknown", title: "Payout acknowledgment missing",
-    payout_state: "unknown", terminal: false, can_advance: true, manual_review: false,
-    events: [], ...extra,
-  };
-}
-
-test("a restored unknown payout disables autoplay and keeps explicit reconciliation available", async () => {
-  const h = await browserHarness(playbackRun(), [playbackRun({ revision: 8, payout_state: "paid" })]);
-  assert.equal(h.nodes.get("play").disabled, true);
-  assert.equal(h.nodes.get("play").attributes["aria-pressed"], "false");
-  assert.equal(h.nodes.get("next").disabled, false);
-  assert.match(h.nodes.get("next").children[0].textContent, /Reconcile/);
-  await h.click("play");
-  assert.equal(h.timers.size, 0);
-  assert.equal(h.nodes.get("next").disabled, false);
-  await h.click("next");
-  const mutations = h.requests.filter(({ options }) => options?.method === "POST");
-  assert.equal(mutations.length, 1);
-  assert.deepEqual(JSON.parse(mutations[0].options.body), { expected_revision: 7 });
-  assert.equal(h.timers.size, 0, "An explicit reconciliation must not restart autoplay");
+test("runtime: lost-reply mission pauses, investigates without mutation, then explicitly reconciles once", async () => {
+  const h = await browserHarness(null);
+  h.nodes.get("request-input").value = "Pay $20 to Acme";
+  h.nodes.get("simulate-lost-reply").checked = true;
+  await h.click("mission-form", "submit");
+  assert.equal(h.pending[0].body.demo_outcome, "payout_reply_lost");
+  await h.reply(snapshot({ status: "ready", stage: "plan_ready", can_authorize: true, can_investigate: false, grant: null }));
+  await h.click("authorize-payment");
+  await h.reply(snapshot({ status: "authorized", stage: "authorized", can_advance: true, can_investigate: false }));
+  await h.tick();
+  await h.reply(snapshot());
+  assert.equal([...h.timers.values()].filter((timer) => timer.delay === 1900).length, 0);
+  assert.equal(h.nodes.get("recovery-card").hidden, false);
+  assert.equal(h.nodes.get("resume-payment").hidden, true);
+  const before = h.postCount();
+  await h.click("investigate-payment"); await h.click("investigate-payment");
+  assert.equal(h.postCount(), before + 1, "Rapid clicks must share one investigation");
+  assert.deepEqual(h.pending[0].body, { expected_revision: 7 });
+  await h.reply(finding());
+  assert.equal(h.nodes.get("recovery-verdict").textContent, "Payout evidence matches");
+  assert.equal(h.nodes.get("reconcile-payment").hidden, false);
+  assert.equal(h.postCount(), before + 1, "Finding never applies itself");
+  await h.click("reconcile-payment"); await h.click("reconcile-payment");
+  assert.deepEqual(h.pending[0].body, { expected_revision: 7, evidence_digest: finding().evidence_digest });
+  await h.reply(snapshot({ revision: 8, stage: "paid", status: "paid", can_investigate: false, can_advance: true }));
+  await h.tick();
+  await h.reply(snapshot({ revision: 9, stage: "complete", status: "complete", terminal: true, can_investigate: false,
+    receipt: { confirmation: "Payment complete", payee: "Acme", amount_usd_cents: 2000, payment: { attempt_count: 1 } } }));
+  assert.equal(h.nodes.get("receipt-card").hidden, false);
+  assert.equal(h.nodes.get("receipt-attempts").textContent, "1");
+  assert.equal(h.calls.filter((call) => call.path.endsWith("/reconcile")).length, 1);
 });
 
-test("automatic progression stops when a response becomes uncertain, including a queued timer", async () => {
-  const h = await browserHarness(playbackRun({ payout_state: "submitted", stage: "payout_submitted" }), [playbackRun({ revision: 8 })]);
-  await h.click("play");
-  assert.equal(h.timers.size, 1);
-  const queuedAdvance = [...h.timers.values()][0];
-  await queuedAdvance();
-  assert.equal(h.nodes.get("play").disabled, true);
-  assert.equal(h.nodes.get("next").disabled, false);
-  assert.equal(h.timers.size, 0);
-  await queuedAdvance();
-  assert.equal(h.requests.filter(({ options }) => options?.method === "POST").length, 1);
-});
-
-test("manual review cannot be resumed with autoplay", async () => {
-  const h = await browserHarness(playbackRun({ payout_state: "paid", manual_review: true, can_advance: false, terminal: true }));
-  assert.equal(h.nodes.get("play").disabled, true);
-  await h.click("play");
-  assert.equal(h.timers.size, 0);
-  assert.equal(h.requests.filter(({ options }) => options?.method === "POST").length, 0);
-});
-
-test("uncertain original dispatch can still be reconciled without a payout finding", async () => {
-  const h = await browserHarness(playbackRun({ step: 4, stage: "dispatch_unknown", funding_state: "dispatch_unknown" }));
-  assert.equal(h.nodes.get("play").disabled, true);
-  assert.equal(h.nodes.get("next").disabled, false);
-  assert.match(h.nodes.get("next").children[0].textContent, /Reconcile original dispatch/);
-  assert.equal(h.nodes.get("recovery-investigation").hidden, true);
-});
-
-function payoutFinding(extra = {}) {
-  return {
-    schema_version: "belay.purchase.investigation.v1",
-    run_id: "a".repeat(32), revision: 7, operation_id: "purchase-operation-1",
-    verdict: "paid", can_reconcile: true, summary: "The original USD payout matches.",
-    checks: [{ label: "Merchant received USD", passed: true }],
-    observations: [{ source: "USD provider receipt", digest: "test-digest", payload: { payout_state: "paid" } }],
-    scope: "Fictional USD payout evidence; no money moved", ...extra,
-  };
-}
-
-test("payout recovery shows read-only findings before allowing one explicit reconciliation", async () => {
-  const h = await browserHarness(playbackRun({ step: 8 }), [payoutFinding(), playbackRun({ revision: 8, step: 9, payout_state: "paid" })]);
-  assert.equal(h.nodes.get("recovery-investigation").hidden, false);
-  assert.equal(h.nodes.get("next").disabled, true);
-  assert.equal(h.nodes.get("investigate").disabled, false);
-  await h.click("next");
-  assert.equal(h.requests.filter(({ options }) => options?.method === "POST").length, 0);
-  await h.click("investigate");
-  assert.equal(h.nodes.get("investigation-verdict").textContent, "Paid");
-  assert.equal(h.nodes.get("investigation-checks").children.length, 1);
-  assert.equal(h.nodes.get("investigation-observations").children.length, 1);
-  assert.equal(h.nodes.get("next").disabled, false);
-  assert.equal(h.nodes.get("play").disabled, true);
-  await h.click("next");
-  assert.equal(h.nodes.get("recovery-investigation").hidden, true);
-  assert.equal(h.nodes.get("investigation-verdict").textContent, "Awaiting evidence check", "Findings cannot survive a changed revision");
-  assert.equal(h.timers.size, 0);
-  const mutations = h.requests.filter(({ options }) => options?.method === "POST");
-  assert.equal(mutations.length, 2);
-  assert.match(mutations[0].path, /\/investigate$/);
-  assert.match(mutations[1].path, /\/advance$/);
-  for (const request of mutations) {
-    assert.deepEqual(JSON.parse(request.options.body), { expected_revision: 7 }, "Never submit a client-controlled verdict to the backend");
+test("runtime: unknown, conflicting and failed-check findings never unlock reconciliation", async () => {
+  for (const result of [finding({ verdict: "unknown", can_reconcile: false }), finding({ verdict: "conflict" }),
+    finding({ verdict: "unknown", can_reconcile: false, evidence_digest: null, checks: [] }),
+    finding({ checks: [{ label: "Authorized amount", passed: false }] }), finding({ checks: [] })]) {
+    const h = await browserHarness();
+    await h.click("investigate-payment"); await h.reply(result);
+    assert.equal(h.nodes.get("reconcile-payment").hidden, true);
+    await h.click("reconcile-payment");
+    assert.equal(h.postCount(), 1, "No reconcile request for insufficient evidence");
   }
 });
 
-test("missing or contradictory payout evidence keeps reconciliation paused", async () => {
-  for (const verdict of ["unknown", "conflict"]) {
-    const h = await browserHarness(playbackRun({ step: 8 }), [payoutFinding({ verdict, can_reconcile: false })]);
-    await h.click("investigate");
-    assert.equal(h.nodes.get("next").disabled, true);
-    assert.equal(h.nodes.get("play").disabled, true);
-    await h.click("next");
-    assert.equal(h.requests.filter(({ options }) => options?.method === "POST").length, 1);
+test("runtime: findings must match the mission, revision, operation and intent", async () => {
+  for (const wrong of [{ run_id: "d".repeat(32) }, { revision: 6 }, { operation_id: "another-payment" },
+    { intent_digest: `sha256:${"e".repeat(64)}` }, { evidence_digest: "missing-digest" }]) {
+    const h = await browserHarness();
+    await h.click("investigate-payment"); await h.reply(finding(wrong));
+    assert.equal(h.nodes.get("recovery-finding").hidden, true);
+    assert.equal(h.nodes.get("reconcile-payment").hidden, true);
+    assert.match(h.nodes.get("product-error").textContent, /does not match/);
   }
 });
 
-test("a finding for a stale revision or another operation cannot unlock reconciliation", async () => {
-  for (const mismatch of [{ revision: 6 }, { run_id: "b".repeat(32) }, { operation_id: "another-payout" }]) {
-    const h = await browserHarness(playbackRun({ step: 8 }), [payoutFinding(mismatch)]);
-    await h.click("investigate");
-    assert.equal(h.nodes.get("next").disabled, true);
-    assert.match(h.nodes.get("error").textContent, /did not match this purchase revision/);
-  }
+test("runtime: missing original authority explains manual review without enabling reconciliation", async () => {
+  const h = await browserHarness(snapshot({ recovery_intent_digest: null }));
+  await h.click("investigate-payment");
+  await h.reply(finding({ verdict: "unknown", can_reconcile: false, operation_id: null,
+    intent_digest: null, evidence_digest: null, checks: [], summary: "The older provider record lacks captured authority. Manual review is required." }));
+  assert.equal(h.nodes.get("recovery-verdict").textContent, "Evidence is incomplete");
+  assert.match(h.nodes.get("recovery-summary").textContent, /Manual review/);
+  await h.click("reconcile-payment");
+  assert.equal(h.postCount(), 1);
 });
 
-test("an invalid saved intent displays its blocked reason without unlocking a payment", async () => {
-  const h = await browserHarness(playbackRun({ step: 8 }), [payoutFinding({
-    operation_id: null, verdict: "unknown", can_reconcile: false,
-    summary: "The saved purchase intent cannot be verified.", checks: [], observations: [],
-  })]);
-  await h.click("investigate");
-  assert.equal(h.nodes.get("next").disabled, true);
-  assert.match(h.nodes.get("investigation-summary").textContent, /saved purchase intent cannot be verified/);
-  assert.equal(h.nodes.get("error").hidden, true);
+test("runtime: stale reconcile conflict reloads current state and requires new evidence", async () => {
+  const h = await browserHarness();
+  await h.click("investigate-payment"); await h.reply(finding());
+  await h.click("reconcile-payment");
+  await h.reply({ error: "Evidence changed", current: snapshot({ revision: 8 }) }, 409);
+  assert.equal(h.nodes.get("reconcile-payment").hidden, true);
+  assert.equal(h.nodes.get("recovery-finding").hidden, true);
+  await h.click("reconcile-payment");
+  assert.equal(h.postCount(), 2);
+  await h.click("investigate-payment");
+  assert.equal(h.pending[0].body.expected_revision, 8);
 });
 
-test("an in-flight investigation cannot be duplicated or reconciled before its response", async () => {
-  let resolve;
-  const pending = new Promise((yes) => { resolve = yes; });
-  const h = await browserHarness(playbackRun({ step: 8 }), [pending]);
-  const firstClick = h.click("investigate");
-  await h.settle();
-  assert.equal(h.nodes.get("investigate").disabled, true);
-  assert.equal(h.nodes.get("next").disabled, true);
-  await h.click("investigate");
-  await h.click("next");
-  assert.equal(h.requests.filter(({ options }) => options?.method === "POST").length, 1);
-  resolve(payoutFinding());
-  await firstClick;
-  assert.equal(h.nodes.get("next").disabled, false);
+test("runtime: investigation errors and uncertain reconciliation never trigger retries", async () => {
+  const h = await browserHarness();
+  await h.click("investigate-payment"); await h.reply({ error: "Provider unreadable" }, 503);
+  assert.equal(h.nodes.get("reconcile-payment").hidden, true);
+  await h.click("investigate-payment"); await h.reply(finding());
+  await h.click("reconcile-payment"); await h.reply({ error: "Connection lost" }, 503);
+  assert.equal(h.nodes.get("reconcile-payment").hidden, true);
+  assert.equal(h.postCount(), 3);
+  assert.equal([...h.timers.values()].filter((timer) => timer.delay === 1900).length, 0);
+  assert.match(h.nodes.get("product-error").textContent, /Investigate again/);
+});
+
+test("runtime: reload and new requests cannot reuse findings from an older session", async () => {
+  const h = await browserHarness();
+  assert.equal(h.postCount(), 0);
+  assert.equal(h.nodes.get("recovery-card").hidden, false);
+  assert.equal(h.nodes.get("reconcile-payment").hidden, true);
+  assert.equal(h.nodes.get("simulate-lost-reply").checked, true);
+  await h.click("investigate-payment"); await h.reply(finding());
+  await h.click("new-mission");
+  await h.click("reconcile-payment");
+  assert.equal(h.postCount(), 1);
+  assert.equal(h.nodes.get("simulate-lost-reply").checked, false);
+  assert.equal(h.nodes.get("product").hidden, true);
 });

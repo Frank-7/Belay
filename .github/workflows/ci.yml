@@ -16,9 +16,28 @@ jobs:
         with:
           node-version: "22"
       - name: History refresh ordering and error handling
-        run: node --test tests/test_prototype_ui.mjs tests/test_recovery_app_ui.mjs tests/test_wallet_ui.mjs tests/test_purchase_simulator_ui.mjs
-      - name: Purchase simulator script syntax
+        run: node --test tests/test_prototype_ui.mjs tests/test_recovery_app_ui.mjs tests/test_wallet_ui.mjs
+      - name: Protected purchase simulator script syntax
         run: node --check purchase_simulator/web/app.js
+      - name: Protected purchase investor UI contract
+        run: node --test tests/test_purchase_simulator_ui.mjs tests/test_purchase_walkthrough_ui.mjs
+
+  installed-apps:
+    name: Installed applications (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build and install the distribution
+        run: python -m pip install --no-deps .
+      - name: Recover both payment domains outside the source import path
+        run: python -I tests/check_installed_apps.py
 
   recovery-app:
     name: Recovery Desk (${{ matrix.os }})
@@ -64,6 +83,12 @@ jobs:
         run: python -m unittest discover -s tests -p "test_prototype.py" -v
       - name: Protected purchase dispatch and reserve accounting
         run: python -m unittest discover -s tests -p "test_purchase_simulator.py" -v
+      - name: General payment missions, bounded authorization and linked receipts
+        run: python -m unittest discover -s tests -p "test_mission_control.py" -v
+      - name: Conservative request parsing and credential redaction
+        run: python -m unittest discover -s tests -p "test_mission_inputs.py" -v
+      - name: Read-only mission evidence and original-payment reconciliation
+        run: python -m unittest discover -s tests -p "test_mission_recovery.py" -v
       - name: Read-only purchase investigation and USD evidence
         run: python tests/test_purchase_recovery.py
       - name: Evidence source and order boundaries (offline)

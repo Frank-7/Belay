@@ -3,8 +3,12 @@
 **Position:** Belay helps an operator determine what an interrupted AI action
 actually did, and what can safely happen next.
 
-Use the local Recovery Desk as the main demonstration. Keep a labeled recording
-as a fallback. A GitHub Pages recording is not a live Python backend.
+This is the Recovery Desk version of the same AI Apps story. For the connected
+commerce journey, use [the Payment Mission pitch](MVP_PRESENTATION.md): exact
+approval, lost reply, evidence, explicit reconciliation and one payment. Both
+paths share the read-only evidence boundary; only Recovery Desk has the optional
+model and human-signed Arc Testnet adapter. Keep a labeled recording as a
+fallback. A GitHub Pages recording is not a live Python backend.
 The team is staying in AI Apps; the application story does not depend on
 another track move.
 

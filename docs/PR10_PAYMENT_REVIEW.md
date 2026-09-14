@@ -1,37 +1,21 @@
-# PR #10 review: recovery component and payment architecture fit
+# PR #10 integration record: Recovery Desk and payment architecture
 
-> **Status update — September 14, 2026:** This is the historical review of
-> PR #10 at the head named below. The integrated implementation now closes
-> verified finalized reverts as failed without sending, preserves purchase
-> dispatch uncertainty across the provider/app commit gap, and connects the
-> Purchase Simulator to Recovery Desk through a typed read-only investigator.
-> The seven original shared-file conflicts are resolved by preserving both
-> applications and their checks. See [INTEGRATION.md](INTEGRATION.md) and
-> [NEXT_STAGE.md](NEXT_STAGE.md) for current boundaries. The original findings,
-> reproduction, test counts and no-action statements below describe that review
-> session; they are retained as history, not current missing-work claims.
-
-
-Reviewed September 13, 2026: [Add AI Apps Recovery Desk and MetaMask testnet recovery](https://github.com/Frank-7/Belay/pull/10).
-Head: `1b056c096b0bab1844a93bd18a77186dfec0ec93`.
-Current main/base: `cffe7ac229cd0d2883b5ac336420b126d291990d`.
+Initially reviewed September 13, 2026:
+[Add AI Apps Recovery Desk and MetaMask testnet recovery](https://github.com/Frank-7/Belay/pull/10).
+The PR merged to main at `184dc9eda32d13dd399b613f398212cdb6f6f18d`.
+Its finalized-failure lifecycle fix is `250456f`.
 
 ## Recommendation
 
-Reuse this as Belay's payment-outcome investigation component. Address the
-confirmed-failure dead end below before calling the test-wallet lifecycle
-complete. The PR is a draft; its description correctly leaves a real user-signed
-testnet demonstration outstanding. Its `ci` and `pages` workflow runs report
-success for the reviewed head.
+Recovery Desk is now Belay's implemented payment-outcome investigation
+component. Keep its read-only chain recovery separate from Payment Mission's
+authority and executor. The pre-merge finding below was fixed before merge; it
+is retained as an engineering record rather than an open blocker.
 
-Main is an ancestor of this head. `git merge-tree --write-tree origin/main HEAD`
-succeeds without conflicts. This establishes Git compatibility with current
-main, not production financial safety. No merge, teammate-branch modification,
-transaction, paid model request or GitHub review/comment was made in this review.
+## Resolved finding
 
-## Actionable finding
-
-**P2 — Close verified reverted transfers without authorizing a retry.**
+**P2 — Close verified reverted transfers without authorizing a retry. Resolved
+in `250456f`.**
 
 In [engine.py line 499](https://github.com/Frank-7/Belay/blob/1b056c096b0bab1844a93bd18a77186dfec0ec93/recovery_app/engine.py#L499),
 `_refresh_arc` creates usable evidence only for `committed`. The Arc verifier
@@ -42,7 +26,8 @@ already recognizes an exact, canonical-finalized receipt with `status: 0` as
 because the old incident remains unresolved. The browser likewise permits a
 form reset only for `resolved` (`wallet.js` lines 95–103).
 
-Reproduced offline with the actual `ArcEvidenceProvider` and the existing
+Before the fix, this was reproduced offline with the actual
+`ArcEvidenceProvider` and the existing
 receipt fixture changed to status zero and no transfer logs. After prepare,
 dispatch, hash attachment and investigation:
 
@@ -53,11 +38,11 @@ Resolve refused: 409 Evidence does not support a resolution
 New explicit same-tuple transfer refused: 409 An identical test transfer is still unresolved.
 ```
 
-Add a journaled, evidence-bound terminal failure that preserves the original
-hash and gas disclosure and sends no money. Permit a separate, explicitly
+The merged fix adds a journaled, evidence-bound terminal failure that preserves
+the original hash and gas disclosure, sends no money and permits a separately
 authorized incident afterward. Missing/pending receipts and ambiguous wallet
-errors must remain unknown; they do not authorize retries. Regression coverage
-should include restart, duplicate closure and stale evidence. This is a
+errors remain unknown; they do not authorize retries. Regression coverage
+includes restart, duplicate closure and stale evidence. This was a
 lifecycle/availability defect, not an observed double payment.
 
 ## Reusable components
@@ -72,6 +57,28 @@ lifecycle/availability defect, not an observed double payment.
 
 The optional LLM proposes evidence interpretations. It is not signer, executor
 or claims payer. Keep that separation in the larger architecture.
+
+## Post-merge legacy purchase integration
+
+Commit `fe23651` adds a separate typed bridge for the ticket simulator's
+`belay.purchase.v0.3` payout-reply-lost path. It persists a dispatch-attempt
+record before provider I/O and keeps the exact order hold reserved when
+acceptance may be unknown. A read-only investigator binds the run, mission,
+order and operation IDs, grant digest, beneficiary, USDC base units, USD cents
+and canonical intent.
+
+The investigator returns `paid`, `unknown` or `conflict`; only exact paid
+evidence sets `can_reconcile`. Missing, unavailable, partial or contradictory
+evidence cannot release funds or authorize another submission. Reconciliation
+re-reads the provider and accounts the original payout once only if the
+evidence is still identical. The API accepts only the current revision at
+`POST /api/runs/{id}/investigate` and does not accept a client verdict.
+
+The generalized `belay.mission.v0.1` flow now has its own domain-neutral typed
+adapter over the shared payment validator. Its UI can investigate a lost reply
+and explicitly reconcile fresh evidence under the original operation identity.
+The v0.3 UI remains available at `/purchase/`. Neither adapter turns Recovery
+Desk into a signer, ledger, provider client, claims service or autonomous executor.
 
 ## Missing product layers
 
@@ -105,19 +112,15 @@ schemas before using them for purchases, bank payouts or claims. Preserve the
 documented assumption that an operator attaches the original hash: another
 same-tuple external transfer is not cryptographically bound to the order.
 
-## Combining with the simulator branch
-
-Merge-tree preview against `codex/purchase-simulator` at `5fa1382`
-reports seven conflicts: `.github/workflows/ci.yml`, `.gitignore`, `Makefile`,
-`README.md`, `docs/INDEX.md`, `docs/INTEGRATION.md`, `docs/NEXT_STAGE.md`.
-The v0.3 architecture documents are included in that preview and need
-preservation during integration.
+## Combining with Payment Mission
 
 Keep both test targets, data-directory exclusions and application entry points.
-Preserve main's fixes and historical research numbers. Describe Recovery Desk
-as implemented recovery, Purchase Simulator as fictional shopping and v0.3 as
-the product specification. Merge shared documents by meaning; choosing one
-whole side would discard content. A combined product merge has not been done.
+Recovery Desk uses port 8766 and `.belay-recovery/`; Payment Mission uses port
+8777 and `.belay-purchase-simulator/`. Preserve main's fixes and historical
+research numbers. Both payment simulations call shared read-only Recovery Desk
+checks through domain-specific typed adapters. Their state and execution remain
+separate from Recovery Desk's incident database and wallet path. Live external
+providers still require their own evidence, authority and crash protocols.
 
 ## Checks performed here
 
@@ -125,7 +128,11 @@ whole side would discard content. A combined product merge has not been done.
 - Evidence boundaries: 19 ran, 17 passed and two Windows symlink tests skipped.
 - Three holdout and three export tests passed.
 - Node: 30 wallet and Recovery Desk frontend tests passed.
-- Reproduced the finalized-revert dead end with an offline RPC fixture.
+- The original review reproduced the finalized-revert dead end; the merged
+  regression suite covers the corrected terminal-failure behavior.
+- The later legacy purchase bridge adds focused tests for provider/application
+  commit gaps, expiry and cancellation hold safety, evidence conflicts,
+  unavailable evidence, exact revisions and no replacement submission.
 - GitHub CI and Pages succeeded for this head. Full POSIX crash tests were not
   rerun locally on Windows; no actual wallet transfer or model call was made.
 

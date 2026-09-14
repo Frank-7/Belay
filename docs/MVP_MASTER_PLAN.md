@@ -1,24 +1,29 @@
 # Belay MVP: agents buy, merchants receive dollars, customers can recover
 
-> **Current scope — September 14, 2026:** Belay's AI Apps product centers on
-> Recovery Desk. The Purchase Simulator is its fictional commerce use case and
-> now reuses a typed, read-only recovery investigator. This document preserves
-> the future commerce design; Base contracts, approved USD payout providers and
-> funded protection remain external dependencies. The implemented wallet path
-> is human-signed Arc Testnet, separate from the simulated USD payout. See
-> [INTEGRATION.md](INTEGRATION.md) for what runs today.
-
-
 Status: selected v0.3 architecture and presentation plan. September 13, 2026.
 This is a build specification, not a live service, funded protection offer or
 claim of provider access. Existing runnable demos still use fictional money.
 
-[PR #10](https://github.com/Frank-7/Belay/pull/10) supplies the operator
-Recovery Desk and human-signed Arc Testnet evidence path. Its finalized-revert
-lifecycle issue from [the historical review](PR10_PAYMENT_REVIEW.md) is fixed.
-The integrated purchase flow reuses its typed evidence core for fictional USD
-payout investigation; live USD settlement and compensation remain outside that
-testnet adapter. Keep Arc distinct from the proposed Base contract prototype.
+**Current MVP note:** this document preserves the deeper ticket and guarantee
+architecture. The runnable investor product now uses one generalized payment
+composer and the `belay.mission.v0.1` flow documented in
+[PURCHASE_SIMULATOR.md](PURCHASE_SIMULATOR.md). It requires one exact payment
+authorization and does not present the failure fixtures below as separate
+customer scenarios.
+
+[PR #10](https://github.com/Frank-7/Belay/pull/10) merged the Recovery Desk and
+optional user-signed Arc Testnet evidence path at `184dc9e`; `250456f` fixed the
+verified-failure lifecycle before merge. Reuse its recovery core as described
+in [the integration record](PR10_PAYMENT_REVIEW.md). It does not implement USD
+payouts or compensation. Keep that testnet adapter distinct from any proposed
+Base contract or regulated settlement provider.
+
+Commit `fe23651` now demonstrates the read-only boundary for the legacy
+`belay.purchase.v0.3` lost-payout path: dispatch uncertainty is persisted
+before provider contact, and exact provider evidence can reconcile the original
+payout without another submission. The generalized `belay.mission.v0.1` path
+now uses a separate domain-neutral intent adapter over the same read-only
+payment validator and exposes investigation before explicit reconciliation.
 
 ## 1. The product, in simple words
 

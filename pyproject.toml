@@ -11,7 +11,6 @@ requires-python = ">=3.10"
 # journal. A reproducibility claim is easier to trust when there is no
 # dependency tree to resolve.
 dependencies = []
-
 keywords = [
     "durable-execution", "agents", "idempotency", "distributed-systems",
     "exactly-once", "crash-recovery", "llm-agents",
@@ -26,6 +25,9 @@ classifiers = [
     "Topic :: System :: Distributed Computing",
 ]
 
+[project.scripts]
+belay-mission = "purchase_simulator.server:main"
+
 [project.optional-dependencies]
 # Only for linting. The experiments and tests need nothing.
 dev = ["ruff>=0.5"]
@@ -35,10 +37,18 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-# `belay` is the importable runtime. `experiments/`, `tests/` and `worker.py`
+# The runtime applications are importable. `experiments/`, `tests/` and `worker.py`
 # are not packaged: they are meant to be run from a clone, because the
 # harness spawns worker.py by path.
-packages = ["belay", "belay.runtimes", "services", "second"]
+packages = [
+    "belay", "belay.runtimes", "services", "second",
+    "purchase_simulator", "purchase_simulator.web", "purchase_simulator.web.purchase",
+    "recovery_app", "recovery_app.web",
+]
+
+[tool.setuptools.package-data]
+purchase_simulator = ["web/*.html", "web/*.css", "web/*.js", "web/purchase/*.html", "web/purchase/*.css", "web/purchase/*.js"]
+recovery_app = ["web/*.html", "web/*.css", "web/*.js"]
 
 [tool.ruff]
 line-length = 88

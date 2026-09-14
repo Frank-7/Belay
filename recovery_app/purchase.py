@@ -13,7 +13,7 @@ import json
 import re
 from dataclasses import asdict, dataclass
 
-from second.evidence import Observation, Pointer
+from recovery_app import payment as payment_evidence
 
 SCHEMA = "belay.purchase.investigation.v1"
 
@@ -77,67 +77,10 @@ class PurchaseIntent:
 
 
 def blocked_finding(run_id, revision, reason):
-    return {
-        "schema_version": SCHEMA, "run_id": run_id, "revision": revision,
-        "operation_id": None, "intent_digest": None, "evidence_digest": None,
-        "verdict": "unknown", "can_reconcile": False, "summary": reason,
-        "checks": [], "observations": [], "citations": [], "intent": None,
-        "provider": "purchase_simulator", "mode": "deterministic",
-        "scope": "Fictional USD payout evidence; no money moved",
-    }
+    return payment_evidence.blocked_finding(run_id, revision, reason,
+                                            schema=SCHEMA, provider="purchase_simulator")
 
 
 def investigate(intent: PurchaseIntent, provider_record: dict | None, *, unavailable=False):
-    """Inspect one exact operation; silence never authorizes a replacement."""
-    result = blocked_finding(intent.run_id, intent.revision,
-                             "The original payout is not confirmed. Keep its outcome unknown.")
-    result.update(operation_id=intent.operation_id, intent_digest=intent.view()["intent_digest"],
-                  intent=intent.view())
-    if unavailable or provider_record is None:
-        result["summary"] = ("The provider could not be read. Keep the funds reserved and inspect the original operation."
-                             if unavailable else "No provider record was found. A missing record does not authorize another payout.")
-        return result
-    try:
-        if not isinstance(provider_record, dict) or len(canonical(provider_record).encode()) > 16_384:
-            raise ValueError("Oversized or invalid provider observation")
-        # Snapshot the observation. Neither caller nor an explanation can edit it.
-        record = json.loads(canonical(provider_record))
-        result["evidence_digest"] = digest(record)
-        observation = Observation(
-            Pointer("purchase_provider", "operation:" + intent.operation_id),
-            {"source": "purchase_provider", "operation": record},
-            "fictional-provider:operation:" + intent.operation_id,
-        )
-        result["observations"] = [{"source": "purchase_provider", **observation.as_dict()}]
-        checks = []
-
-        def check(label, passed):
-            checks.append({"label": label, "passed": bool(passed)})
-
-        check("Original operation", record.get("operation_id") == intent.operation_id)
-        check("Exact saved order, mission and quote", record.get("intent_json") == intent.intent_json)
-        check("Bound merchant beneficiary", record.get("beneficiary_id") == intent.beneficiary_id)
-        check("USDC amount in six-decimal base units", type(record.get("source_usdc_units")) is int
-              and record["source_usdc_units"] == intent.source_usdc_units)
-        check("Separate USD amount in cents", type(record.get("net_usd_cents")) is int
-              and record["net_usd_cents"] == intent.net_usd_cents)
-        reference = record.get("provider_reference")
-        check("Provider receipt identity", isinstance(reference, str)
-              and re.fullmatch(r"[A-Za-z0-9_.:-]{1,160}", reference) is not None)
-        identity_ok = all(item["passed"] for item in checks)
-        check("Funding settled", record.get("funding_state") == "settled")
-        check("Conversion confirmed", record.get("conversion_state") == "converted")
-        check("USD payout confirmed by the fictional provider", record.get("payout_state") == "paid")
-        result["checks"] = checks
-        if not identity_ok or (record.get("payout_state") == "paid" and not all(item["passed"] for item in checks)):
-            result.update(verdict="conflict", summary="Provider evidence disagrees with the saved purchase. Reconciliation is blocked.")
-        elif all(item["passed"] for item in checks):
-            result.update(verdict="paid", can_reconcile=True, citations=[observation.digest],
-                          summary="The original USD payout is confirmed in the fictional provider. Reconcile it without sending again. Delivery and reimbursement remain separate.")
-        else:
-            result["summary"] = "Funding or conversion alone does not confirm the USD payout. Keep the original operation unresolved."
-    except (ValueError, TypeError, OverflowError, RecursionError):
-        result.update(verdict="unknown", can_reconcile=False,
-                      summary="The provider observation could not be read safely. No payout is authorized.",
-                      observations=[], checks=[], citations=[])
-    return result
+    return payment_evidence.investigate(intent, provider_record, unavailable=unavailable,
+                                        schema=SCHEMA, provider="purchase_simulator", domain="purchase")
