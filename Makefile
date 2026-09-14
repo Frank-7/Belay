@@ -10,8 +10,8 @@ help:
 	@echo "make test-second adjudicator safety and stale recovery checks"
 	@echo "make test-prototype  portable Recovery Lab tests"
 	@echo "make prototype      start the local Recovery Lab on port 8765"
-	@echo "make purchase-simulator customer and backend purchase demo on port 8777"
-	@echo "make test-purchase-simulator portable purchase and payment recovery tests"
+	@echo "make purchase-simulator customer and backend payment-mission MVP on port 8777"
+	@echo "make test-purchase-simulator portable mission and legacy purchase tests"
 	@echo "make test-recovery offline model, evaluation and demo checks"
 	@echo "make test-evidence portable evidence source and order checks"
 	@echo "make test-live-experiment offline decision parser and retry checks"
@@ -45,6 +45,7 @@ purchase-simulator:
 	$(PY) -m purchase_simulator.server --port 8777
 
 test-purchase-simulator:
+	$(PY) -m unittest discover -s tests -p "test_mission_control.py" -v
 	$(PY) -m unittest discover -s tests -p "test_purchase_simulator.py" -v
 
 test-evidence:

@@ -4,7 +4,8 @@
 
 **[Visit the Belay website](https://frank-7.github.io/Belay/)** for an
 interactive introduction, the recorded Recovery Desk, and inspectable evidence.
-The public site runs on GitHub Pages; the Recovery Lab below runs locally.
+The public site runs on GitHub Pages; the Payment Mission MVP and Recovery Lab
+below run locally.
 See [website build and deployment](docs/WEBSITE.md) to develop the site.
 
 To belay is to secure the rope before the climber moves. The protection goes
@@ -13,39 +14,35 @@ the contract: *belay* also means stop.
 
 ---
 
-## Try the protected-purchase MVP
+## Try the payment-mission MVP
 
-The **Purchase Simulator** shows the customer experience beside the backend
-execution of a fictional concert-ticket purchase. Authorize exactly two tickets
-within a 300 USDC grant, then follow deterministic policy, a simulated
-USDC-to-USD conversion, the merchant's $200 USD payout, delivery evidence and a
-separately funded customer remedy. Inspect every state, ledger movement and
-request/response from one investor-ready walkthrough.
+The **Belay Payment Mission MVP** turns an open-ended payment request into a
+plan the customer can inspect, correct and authorize. Ask it to pay an invoice,
+bill, insurance premium, tax obligation, subscription, transfer, ticket order
+or another purchase. Belay leaves unknown payees, amounts and required
+references blank. After one exact approval, the customer view and the backend
+control room follow the same durable event through policy checks, a simulated
+USDC hold, a simulated USDC-to-USD payout and a linked receipt.
 
 ```bash
 python -m purchase_simulator.server --port 8777
 # Open http://127.0.0.1:8777
 ```
 
-See [purchase simulator instructions](docs/PURCHASE_SIMULATOR.md).
-The browser talks to a real local server and persists the run in SQLite. The
-agent, USDC transfer, conversion provider, bank payout, ticket delivery,
-protection reserve, signatures and credentials are fictional local fixtures.
-No model, wallet, blockchain, merchant, bank, insurer or external API is
-connected.
+See [MVP instructions and architecture](docs/PURCHASE_SIMULATOR.md). The
+browser talks to a real loopback server and persists each mission, event,
+single-use value movement and provider result in SQLite. The plain-language
+extractor, authorization signature, wallet, USDC transfer, conversion,
+bank payout and payee confirmation are fictional local fixtures. No model,
+blockchain, bank, government agency, insurer, biller, merchant or external API
+is connected. A tax receipt confirms only the simulated payment; an insurance
+receipt confirms only the simulated premium payment.
 
-The seven scenarios demonstrate successful delivery, lost payout-response
-reconciliation, supplier non-delivery after payment, a quantity violation
-blocked before money moves, a labeled historical agent error, cancellation
-before dispatch and abstention on conflicting evidence. The demo keeps customer
-funds, merchant USD and reserve capital separate; paying a post-payout remedy
-does not pretend to reverse the merchant's original payment.
-
-**Project status:** the v0.4 investor experience runs on the durable
-`belay.purchase.v0.3` simulation schema. The live product remains a proposal:
-there is no deployed contract,
-custody, exchange or bank connection, merchant integration, active coverage,
-insurance policy, subscription or real ticket checkout. Read the
+**Project status:** the investor experience uses the durable
+`belay.mission.v0.1` simulation schema. The earlier
+`belay.purchase.v0.3` ticket routes remain for compatibility. A live product
+still requires authenticated users, custody and settlement providers, verified
+payee adapters, compliance review and production cryptography. Read the
 [MVP master plan](docs/MVP_MASTER_PLAN.md),
 [USDC settlement architecture](docs/USDC_SETTLEMENT_ARCHITECTURE.md) and
 [presentation outline](docs/MVP_PRESENTATION.md).

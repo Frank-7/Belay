@@ -4,6 +4,13 @@ Status: selected v0.3 architecture and presentation plan. September 13, 2026.
 This is a build specification, not a live service, funded protection offer or
 claim of provider access. Existing runnable demos still use fictional money.
 
+**Current MVP note:** this document preserves the deeper ticket and guarantee
+architecture. The runnable investor product now uses one generalized payment
+composer and the `belay.mission.v0.1` flow documented in
+[PURCHASE_SIMULATOR.md](PURCHASE_SIMULATOR.md). It requires one exact payment
+authorization and does not present the failure fixtures below as separate
+customer scenarios.
+
 The teammate's draft [PR #10](https://github.com/Frank-7/Belay/pull/10) adds an
 optional user-signed Arc Testnet evidence path. Reuse its recovery core, subject
 to [this integration review](PR10_PAYMENT_REVIEW.md); it does not implement USD

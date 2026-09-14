@@ -1,5 +1,10 @@
 # Belay autonomous app architecture
 
+**Current MVP note:** this is the broader production architecture. The
+investor build generalizes the interface beyond tickets and uses one reviewed
+authorization per payment. See [PURCHASE_SIMULATOR.md](PURCHASE_SIMULATOR.md)
+for the implemented `belay.mission.v0.1` path and its simulation boundary.
+
 ## Product decision
 
 Build one app that completes tasks across supported services under authority

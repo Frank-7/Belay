@@ -1,65 +1,70 @@
 (() => {
   "use strict";
 
-  const $ = (id) => document.getElementById(id);
-  const STORAGE_KEY = "belay-protected-purchase-v04-run";
-  const USDC_SCALE = 1_000_000;
-  const CORE_POLICY_GROUPS = [
-    ["Consent & authority", ["customer_approved", "demo_grant_marker", "grant_not_before", "grant_expiry"]],
-    ["Purchase terms", ["quantity", "maximum_total", "grant_unit_consistency", "event", "date", "venue", "offer_arithmetic", "seat_count", "adjacent_seats"]],
-    ["Merchant identity", ["seller", "payout_beneficiary"]],
-    ["Settlement", ["source_asset", "source_amount", "source_within_grant", "merchant_net", "destination_asset", "demo_fee"]],
-    ["Quote validity", ["quote_not_before", "quote_expiry"]],
-  ];
-  const CHAPTERS = ["authorize", "propose", "control", "settle", "verify", "recover"];
-
-  let run = null;
-  let config = null;
-  let busy = false;
-  let playing = false;
-  let timer = null;
-  let followLatest = true;
-  let selectedEventId = null;
-
-  const usdc = (units, digits = 0) => `${new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: Math.max(digits, 2),
-  }).format(Number(units || 0) / USDC_SCALE)} USDC`;
-
-  const usd = (cents) => new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: Number(cents || 0) % 100 ? 2 : 0,
-  }).format(Number(cents || 0) / 100);
-
-  const human = (value) => String(value ?? "not_started")
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-
-  const accountName = (value) => ({
-    customer_available: "Customer available",
-    order_hold: "Exact order hold",
-    provider_in_transit: "Conversion provider",
-    merchant_received: "Merchant received",
-    protection_reserve: "Protection reserve",
-  })[value] || human(value || "System");
-
-  const safeText = (value) => {
-    if (typeof value === "string") return value;
-    if (value === undefined) return "—";
-    return JSON.stringify(value);
+  const STORAGE_KEY = "belay.payment-mission.v1";
+  const AUTO_DELAY_MS = 1900;
+  const CATEGORY_META = {
+    purchase: { label: "Purchase", reference: "Order or payment note", required: false },
+    invoice: { label: "Invoice", reference: "Invoice number", required: true },
+    bill: { label: "Bill", reference: "Account or bill number", required: true },
+    tax: { label: "Tax payment", reference: "Tax period or notice number", required: true },
+    insurance: { label: "Insurance premium", reference: "Policy number", required: true },
+    ticket: { label: "Tickets or travel", reference: "Order note", required: false },
+    subscription: { label: "Subscription", reference: "Account or plan", required: false },
+    transfer: { label: "Transfer", reference: "Payment note", required: false },
   };
+  const POLICY_GROUPS = [
+    { label: "Your approval is intact", names: ["User approved", "Plan unchanged", "Grant signature valid"] },
+    { label: "Payee and reference match", names: ["Payee matches", "Reference ready", "Payee reviewed"] },
+    { label: "Amount and funds match", names: ["Amount matches", "Within maximum", "Exact funds ready"] },
+    { label: "USDC becomes USD", names: ["USDC source", "USD destination"] },
+    { label: "Approval is active and one-time", names: ["One-time scope", "Grant active"] },
+    { label: "Operation and instruction match", names: ["Operation fixed", "Signed instruction matches"] },
+  ];
+  const $ = (id) => document.getElementById(id);
+  let config = null;
+  let mission = null;
+  let busy = false;
+  let dirty = false;
+  let autoRunning = false;
+  let timer = null;
+  let lastFormRevision = null;
 
-  function element(tag, className, text) {
+  class ApiError extends Error {
+    constructor(message, status, current) {
+      super(message);
+      this.name = "ApiError";
+      this.status = status;
+      this.current = current;
+    }
+  }
+
+  function element(tag, className = "", content = null) {
     const node = document.createElement(tag);
     if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
+    if (content !== null && content !== undefined) {
+      node.append(document.createTextNode(String(content)));
+    }
     return node;
   }
 
-  function showError(message = "") {
-    $("error").textContent = message;
-    $("error").hidden = !message;
+  async function api(path, body) {
+    const options = body === undefined ? {} : {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    };
+    const response = await fetch(path, options);
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new ApiError("The local service returned an unreadable response.", response.status);
+    }
+    if (!response.ok) {
+      throw new ApiError(payload.error || "The local service could not complete this action.", response.status, payload.current);
+    }
+    return payload;
   }
 
   function remember(id) {
@@ -67,7 +72,7 @@
       if (id) localStorage.setItem(STORAGE_KEY, id);
       else localStorage.removeItem(STORAGE_KEY);
     } catch {
-      // Browser persistence is optional.
+      // Private browser modes may disable storage. The current session still works.
     }
   }
 
@@ -79,728 +84,645 @@
     }
   }
 
-  async function api(path, body) {
-    const options = body === undefined
-      ? { cache: "no-store" }
-      : {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      };
-    const response = await fetch(path, options);
-    const result = await response.json();
-    if (!response.ok) {
-      if (result.current) {
-        run = result.current;
-        followLatest = true;
-        selectedEventId = null;
-        render();
-      }
-      throw new Error(result.error || `Local request failed (${response.status}).`);
+  function showError(message = "") {
+    for (const id of ["error", "product-error"]) {
+      $(id).hidden = !message || (id === "product-error" ? !mission : Boolean(mission));
+      $(id).textContent = message;
     }
-    return result;
   }
 
-  function events() {
-    return run?.events || [];
+  function usd(cents) {
+    if (!Number.isInteger(cents)) return "—";
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+  }
+
+  function usdc(units) {
+    if (!Number.isInteger(units)) return "—";
+    return `${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(units / 1_000_000)} USDC`;
+  }
+
+  function dollarsForInput(cents) {
+    return Number.isInteger(cents) ? (cents / 100).toFixed(2) : "";
+  }
+
+  function centsFromInput(value, required) {
+    const cleaned = String(value).trim();
+    if (!cleaned && !required) return null;
+    const parsed = Number(cleaned);
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 25_000) {
+      throw new Error("Enter an amount from $0.01 to $25,000.00.");
+    }
+    return Math.round((parsed + Number.EPSILON) * 100);
   }
 
   function latestEvent() {
-    return events().at(-1) || null;
+    return mission?.events?.at(-1) || null;
   }
 
-  function selectedEvent() {
-    if (!run) return null;
-    if (followLatest) return latestEvent();
-    return events().find((event) => event.id === selectedEventId) || latestEvent();
+  function isEditable() {
+    return Boolean(mission && ["needs_details", "ready"].includes(mission.status));
   }
 
-  function viewStep() {
-    return selectedEvent()?.step ?? run?.step ?? 0;
-  }
-
-  function stopPlayback() {
-    playing = false;
+  function stopAuto() {
+    autoRunning = false;
     if (timer) clearTimeout(timer);
     timer = null;
   }
 
-  function isUnknown() {
-    return run?.payout_state === "unknown";
+  function syncPlanForm(force = false) {
+    if (!mission || (!force && dirty) || lastFormRevision === mission.revision) return;
+    const plan = mission.plan;
+    $("plan-category").value = plan.category;
+    $("plan-description").value = plan.description || "";
+    $("plan-payee").value = plan.payee || "";
+    $("plan-amount").value = dollarsForInput(plan.amount_usd_cents);
+    $("plan-maximum").value = dollarsForInput(plan.maximum_usd_cents);
+    $("plan-reference").value = plan.reference || "";
+    $("plan-due-date").value = plan.due_date || "";
+    lastFormRevision = mission.revision;
+    dirty = false;
   }
 
-  function chapterFor(event) {
-    const stage = event?.stage || run?.stage;
-    if (["mission_authorized", "historical_fixture_loaded", "grant_expired"].includes(stage)) return "authorize";
-    if (["offer_found", "checkout_bound"].includes(stage)) return "propose";
-    if (["policy_blocked", "admitted", "intent_signed", "terms_rejected"].includes(stage)) return "control";
-    if (["cancelled", "usdc_dispatched", "converted", "payout_submitted", "payout_unknown", "merchant_paid", "payout_reconciled", "order_confirmed"].includes(stage)) return "settle";
-    if (["delivery_check", "non_delivery", "review_required", "delivered", "agent_error_detected"].includes(stage)) return "verify";
-    return "recover";
-  }
-
-  function updateButtons() {
-    const actionable = run && !run.terminal && run.can_advance;
-    $("start").disabled = busy || Boolean(run);
-    $("scenario").disabled = busy || Boolean(run);
-    $("play").disabled = busy || !actionable;
-    $("next").disabled = busy || !actionable || playing;
-    $("reset").disabled = busy || !run;
-    $("play").textContent = playing ? "Pause" : "Auto play";
-    $("play").setAttribute("aria-pressed", String(playing));
-    $("next").replaceChildren(
-      document.createTextNode(isUnknown() ? "Reconcile paid operation " : "Next event "),
-      element("span", "", "→"),
-    );
-    $("next").lastElementChild.setAttribute("aria-hidden", "true");
+  function progressIndex() {
+    if (!mission) return -1;
+    if (mission.stage === "complete") return 4;
+    if (mission.stage === "review_required") {
+      return mission.states?.confirmation === "integrity_failed" || mission.provider_payment?.status === "paid" ? 4 : 3;
+    }
+    if (["checked", "held", "signed", "dispatched", "paid", "blocked"].includes(mission.stage)) return 3;
+    if (mission.stage === "authorized") return 2;
+    if (["plan_ready", "needs_details"].includes(mission.stage) || ["ready", "needs_details"].includes(mission.status)) return 1;
+    return 0;
   }
 
   function renderProgress() {
-    const current = run?.step || 0;
-    const maximum = run?.max_step || 13;
-    const percent = run?.terminal ? 100 : Math.min(100, Math.round((current / maximum) * 100));
-    $("progress").setAttribute("aria-valuemax", String(maximum));
-    $("progress").setAttribute("aria-valuenow", String(current));
-    $("progress").setAttribute("aria-valuetext", run ? `Step ${current} of ${maximum}: ${run.title}` : "Ready");
-    $("progress").querySelector("span").style.width = `${percent}%`;
-    $("step-count").textContent = run ? `EVENT ${String(current).padStart(2, "0")} OF ${String(maximum).padStart(2, "0")}` : "READY";
-    $("current-stage").textContent = run?.title || "Authorize the mission to begin";
-    $("stage-dot").dataset.kind = run?.outcome?.kind || "idle";
-
-    const active = CHAPTERS.indexOf(chapterFor(latestEvent()));
-    $("chapter-rail").querySelectorAll("li").forEach((item, index) => {
-      item.classList.toggle("active", Boolean(run) && index === active);
-      item.classList.toggle("complete", Boolean(run) && index < active);
+    const current = progressIndex();
+    const complete = mission?.stage === "complete";
+    const stopped = Boolean(mission?.terminal && !complete);
+    $("progress-steps").querySelectorAll("li").forEach((item, index) => {
+      item.classList.toggle("current", index === current && !complete);
+      item.classList.toggle("done", index < current || (complete && index <= current));
+      item.classList.toggle("failed", stopped && index === current);
+      const label = item.querySelector("span").textContent;
+      const state = stopped && index === current ? "stopped" : index < current || (complete && index <= current) ? "complete" : index === current ? "current" : "waiting";
+      item.setAttribute("aria-label", `${label}: ${state}`);
     });
   }
 
-  function renderScenario() {
-    if (!config) return;
-    const scenario = config.scenarios.find((item) => item.id === $("scenario").value);
-    $("scenario-category").textContent = scenario?.category || "Scenario";
-    $("scenario-trigger").textContent = scenario?.trigger || "Choose a scenario to inspect.";
-    $("scenario-description").textContent = scenario?.description || "Select a scenario to test Belay's controls.";
-    $("scenario-guarantee").textContent = scenario?.guarantee || "The run will show its terminal guarantee.";
-  }
+  function renderStatus() {
+    const event = latestEvent();
+    const pulse = $("status-pulse");
+    pulse.className = "status-pulse";
+    if (mission?.terminal && mission.stage === "complete") pulse.classList.add("complete");
+    else if (mission?.terminal || mission?.stage === "blocked") pulse.classList.add("blocked");
+    else if (autoRunning || busy) pulse.classList.add("running");
 
-  function renderTrace() {
-    const allEvents = events();
-    const latest = latestEvent();
-    if (followLatest || !allEvents.some((event) => event.id === selectedEventId)) {
-      selectedEventId = latest?.id || null;
-    }
-
-    const selected = selectedEventId;
-    const rows = allEvents.map((event) => {
-      const item = element("li");
-      const button = element("button");
-      button.type = "button";
-      button.dataset.eventId = event.id;
-      button.classList.toggle("current", event.id === latest?.id);
-      button.classList.toggle("inspected", event.id === selected);
-      button.setAttribute("aria-label", `Inspect step ${event.step}: ${event.title}`);
-      const number = element("b", "", String(event.step).padStart(2, "0"));
-      const copy = element("div");
-      copy.append(
-        element("strong", "", event.title),
-        element("span", "", `${event.actor} · ${event.method}`),
-      );
-      button.append(number, copy);
-      button.addEventListener("click", () => {
-        followLatest = event.id === latestEvent()?.id;
-        selectedEventId = event.id;
-        render();
-        $("backend-event-card").focus();
-      });
-      item.append(button);
-      return item;
-    });
-    $("trace-list").replaceChildren(...rows);
-    $("event-count").textContent = `${allEvents.length} ${allEvents.length === 1 ? "event" : "events"}`;
-
-    const priorValue = $("event-select").value;
-    $("event-select").replaceChildren(...allEvents.map((event) => {
-      const option = element("option", "", `${String(event.step).padStart(2, "0")} · ${event.title}`);
-      option.value = event.id;
-      return option;
-    }));
-    $("event-select").value = selected || priorValue;
-    $("return-live").hidden = followLatest || !run;
-
-    requestAnimationFrame(() => {
-      const selectedButton = $("trace-list").querySelector("button.inspected");
-      if (selectedButton) {
-        const target = Math.max(0, selectedButton.offsetTop - ($("trace-list").clientHeight / 2));
-        $("trace-list").scrollTop = target;
-      }
-    });
-  }
-
-  function fallbackTechnical(event) {
-    return {
-      layer_id: "orchestrator",
-      layer: human(event?.stage || "orchestration"),
-      control: event?.explanation || "Belay records this transition before the next component can act.",
-      proof: "Versioned event record",
-      money_effect: "See the value map for the current state.",
-      retry_rule: "Money-moving retries preserve the original identity.",
+    const labels = {
+      analyzed: "PAYMENT PLAN",
+      needs_details: "DETAILS NEEDED",
+      plan_ready: "READY TO AUTHORIZE",
+      authorized: "AUTHORIZED",
+      checked: "CHECKS PASSED",
+      held: "FUNDS RESERVED",
+      signed: "INSTRUCTION LOCKED",
+      dispatched: "PAYMENT SENT",
+      paid: "USD DELIVERED",
+      complete: "PAYMENT COMPLETE",
+      blocked: "PAYMENT STOPPED",
+      review_required: "REVIEW REQUIRED",
     };
-  }
-
-  function renderLens() {
-    const event = selectedEvent();
-    const technical = event?.technical || fallbackTechnical(event);
-    $("lens-step").textContent = event ? String(event.step).padStart(2, "0") : "00";
-    $("lens-mode").textContent = followLatest ? "LIVE TIMELINE" : "INSPECTING PAST EVENT";
-    $("lens-title").textContent = event?.title || "The customer grants one bounded mission";
-    $("lens-explanation").textContent = event?.explanation || "Start the run to see one customer action become a controlled backend transaction.";
-    $("customer-now").textContent = event?.user_message || "No purchase has started.";
-    $("backend-now").textContent = event ? `${technical.control} Proof: ${technical.proof}.` : "No infrastructure action yet.";
-  }
-
-  function accountValue(accounts, name, fallback) {
-    return accounts?.[name]?.units ?? fallback;
-  }
-
-  function formatAccountAmount(asset, units) {
-    return asset === "USD_CENTS" ? `${usd(units)} USD` : usdc(units);
-  }
-
-  function renderMoney() {
-    const event = selectedEvent();
-    const accounts = event?.accounts_after;
-    const provider = event?.provider_after;
-    const buyer = accountValue(accounts, "customer_available", run?.buyer?.available_usdc_units ?? 300 * USDC_SCALE);
-    const held = accountValue(accounts, "order_hold", run?.buyer?.held_usdc_units ?? 0);
-    const transit = accountValue(accounts, "provider_in_transit", run?.settlement?.provider_in_transit_usdc_units ?? 0);
-    const merchant = accountValue(accounts, "merchant_received", run?.settlement?.merchant_received_usd_cents ?? 0);
-    const observed = event?.provider_observation?.payout_state === "paid"
-      ? Number(event.provider_observation.net_usd_cents || provider?.net_usd_cents || 20_000)
-      : 0;
-    const unknown = event?.knowledge?.belay === "unknown";
-    const protection = event?.protection_after || run?.protection || {
-      reserve_cash_usdc_units: 1_000 * USDC_SCALE,
-      available_usdc_units: 1_000 * USDC_SCALE,
-      committed_usdc_units: 0,
-      pending_usdc_units: 0,
-      paid_usdc_units: 0,
-    };
-
-    $("buyer-balance").textContent = usdc(buyer);
-    $("customer-wallet").textContent = usdc(buyer);
-    $("held-balance").textContent = usdc(held);
-    $("provider-balance").textContent = unknown
-      ? "Unreconciled"
-      : transit ? usdc(transit) : provider?.conversion_state === "converted" ? "Converted" : "0 USDC";
-    $("provider-note").textContent = unknown
-      ? `Belay book: ${usdc(transit)} in transit`
-      : provider?.conversion_state === "converted" ? "Cleared into USD" : "Awaiting dispatch";
-    $("merchant-balance").textContent = unknown ? `${usd(observed)} observed` : `${usd(merchant)} USD`;
-    $("merchant-note").textContent = unknown ? "Provider truth · not booked yet" : merchant ? "Payout confirmed" : "Merchant payout";
-    $("reserve-cash").textContent = usdc(protection.reserve_cash_usdc_units);
-    $("reserve-summary").textContent = `${usdc(protection.available_usdc_units).replace(" USDC", "")} available · ${usdc(protection.committed_usdc_units).replace(" USDC", "")} committed · ${usdc(protection.pending_usdc_units).replace(" USDC", "")} pending · ${usdc(protection.paid_usdc_units).replace(" USDC", "")} paid`;
-
-    const changedAccounts = new Set((event?.balance_changes || []).map((change) => change.account));
-    const nodeMap = {
-      "buyer-node": [buyer, "customer_available"],
-      "hold-node": [held, "order_hold"],
-      "provider-node": [transit, "provider_in_transit"],
-      "merchant-node": [merchant || observed, "merchant_received"],
-    };
-    Object.entries(nodeMap).forEach(([id, [amount, account]]) => {
-      $(id).classList.toggle("has-value", Number(amount) > 0);
-      $(id).classList.toggle("changed", changedAccounts.has(account));
-      $(id).classList.toggle("uncertain", unknown && ["provider-node", "merchant-node"].includes(id));
-    });
-    const changes = event?.balance_changes || [];
-    $("money-change").textContent = unknown
-      ? `ONE PAYOUT, TWO VIEWS · Belay book: ${usdc(transit)} in transit · Provider: ${usd(observed)} paid`
-      : changes.length
-      ? changes.slice(0, 2).map((change) => `${accountName(change.account)} ${formatAccountAmount(change.asset, change.before_units)} → ${formatAccountAmount(change.asset, change.after_units)}`).join(" · ")
-      : event?.technical?.money_effect || "No value movement";
+    const statusKey = mission?.status === "needs_details" ? "needs_details" : mission?.stage;
+    $("status-label").textContent = labels[statusKey] || "PAYMENT MISSION";
+    $("product-title").textContent = event?.title || mission?.title || "Ready for your review";
   }
 
   function renderConversation() {
-    const allEvents = events();
-    const selectedIndex = Math.max(0, allEvents.findIndex((event) => event.id === selectedEvent()?.id));
-    const visibleEvents = run ? allEvents.slice(0, selectedIndex + 1).slice(-4) : [];
-    const user = element("div", "message user-message");
-    user.append(
-      document.createTextNode("Find two adjacent tickets for The Midnight Signals on October 24. Stay under "),
-      element("strong", "", "300 USDC total."),
-    );
-    const messages = visibleEvents.map((event, index) => {
-      const message = element("div", `message agent-message ${index === visibleEvents.length - 1 ? "current" : "older"}`);
-      message.append(
-        element("span", "message-step", `BELAY · STEP ${String(event.step).padStart(2, "0")}`),
-        document.createTextNode(event.user_message || event.title),
-      );
-      return message;
-    });
-    if (!messages.length) {
-      const initial = element("div", "message agent-message", "Choose a scenario and authorize the mission. I will explain each action in plain language.");
-      initial.id = "agent-message";
-      messages.push(initial);
+    $("request-bubble").textContent = mission.request_text;
+    $("assistant-bubble").textContent = mission.user_message;
+    $("assistant-bubble").classList.toggle("thinking", autoRunning && !mission.terminal);
+  }
+
+  function markMissingFields() {
+    const missing = new Set((mission.missing_fields || []).map((item) => item.field));
+    if (dirty) {
+      if ($("plan-payee").value.trim()) missing.delete("payee");
+      else missing.add("payee");
+      if ($("plan-amount").value.trim()) missing.delete("amount_usd_cents");
+      else missing.add("amount_usd_cents");
+      const category = CATEGORY_META[$("plan-category").value] || CATEGORY_META.purchase;
+      if (category.required && !$("plan-reference").value.trim()) missing.add("reference");
+      else missing.delete("reference");
     }
-    $("customer-conversation").replaceChildren(user, ...messages);
-    requestAnimationFrame(() => {
-      $("customer-conversation").scrollTop = $("customer-conversation").scrollHeight;
-    });
-  }
-
-  function renderOffer() {
-    const offer = run?.offer;
-    const visible = Boolean(offer) && (viewStep() >= 1 || run?.entry_mode === "injected_historical_fixture");
-    $("offer-card").hidden = !visible;
-    if (!visible) return;
-    $("offer-quantity").textContent = `${offer.quantity} adjacent ticket${offer.quantity === 1 ? "" : "s"}`;
-    $("offer-price").textContent = `${usd(offer.total_usd_cents)} USD`;
-    $("offer-seats").textContent = offer.seats.join(" · ");
-    const decision = viewStep() >= 3 ? run.policy_decision : null;
-    const violation = decision?.allowed === false;
-    $("offer-status").textContent = !decision ? "Agent proposal" : decision.allowed ? "23 checks passed" : "Does not match grant";
-    $("offer-status").classList.toggle("danger", violation);
-    $("offer-card").classList.toggle("violation", violation);
-  }
-
-  function renderOutcome() {
-    const event = selectedEvent();
-    const outcome = event?.outcome || run?.outcome || {
-      kind: "active", headline: "Mission not started", detail: "No money has moved.",
+    const map = {
+      payee: "plan-payee",
+      amount_usd_cents: "plan-amount",
+      reference: "plan-reference",
     };
-    $("outcome").className = `outcome ${outcome.kind || "active"}`;
-    $("outcome-headline").textContent = outcome.headline || "Mission in progress";
-    $("outcome-detail").textContent = outcome.detail || "The protected transaction is still active.";
-    const icons = { success: "✓", remedied: "↺", blocked: "×", warning: "!", review: "?", safe: "✓", active: "○" };
-    $("outcome").querySelector(".outcome-icon").textContent = icons[outcome.kind] || "○";
+    Object.entries(map).forEach(([field, id]) => {
+      $(id).closest(".field").classList.toggle("missing", missing.has(field));
+      $(id).setAttribute("aria-invalid", String(missing.has(field)));
+    });
+    const note = $("missing-note");
+    const messages = [];
+    if (missing.size) {
+      const questions = [];
+      if (missing.has("payee")) questions.push("Who should receive the payment?");
+      if (missing.has("amount_usd_cents")) questions.push("What exact amount should be paid?");
+      if (missing.has("reference")) questions.push("What payment reference should be attached?");
+      messages.push(`Before authorization: ${questions.join(" ")}`);
+    }
+    messages.push(...(mission.plan.review_notes || []));
+    if (mission.plan.due_date && mission.plan.due_date !== "Not specified") {
+      messages.push(`The date “${mission.plan.due_date}” is recorded in the authorization. This demo starts payment immediately after you approve.`);
+    }
+    note.hidden = messages.length === 0;
+    note.textContent = messages.join(" ");
   }
 
-  function renderTickets() {
-    const event = selectedEvent();
-    const stage = event?.stage;
-    const historical = run?.entry_mode === "injected_historical_fixture";
-    const visible = Boolean(run?.tickets?.length) && (historical || ["delivered", "complete"].includes(stage));
-    $("ticket-list").hidden = !visible;
-    if (!visible) {
-      $("ticket-list").replaceChildren();
-      return;
+  function renderPlan() {
+    syncPlanForm();
+    const plan = mission.plan;
+    const editable = isEditable();
+    const selectedCategory = $("plan-category").value || plan.category;
+    const category = CATEGORY_META[selectedCategory] || CATEGORY_META.purchase;
+    $("category-label").textContent = `${category.label.toUpperCase()} PLAN`;
+    $("reference-label").textContent = category.reference + (category.required ? " *" : "");
+    $("plan-reference").required = category.required;
+    $("plan-form").classList.toggle("locked", !editable);
+    for (const id of ["plan-category", "plan-description", "plan-payee", "plan-amount", "plan-maximum", "plan-reference", "plan-due-date"]) {
+      $(id).disabled = busy || !editable;
     }
-    const tickets = run.tickets.map((ticket) => ({ ...ticket, status: "VERIFIED" }));
-    if (run.unauthorized_item && historical) {
-      tickets.push({
-        section: run.unauthorized_item.section,
-        row: run.unauthorized_item.row,
-        seat: run.unauthorized_item.seat,
-        holder: "Not delivered to Alex",
-        status: "QUARANTINED",
-      });
+    markMissingFields();
+
+    const payeeChanged = dirty && $("plan-payee").value.trim() !== plan.payee;
+    if (payeeChanged) {
+      $("beneficiary-id").textContent = "Pending save";
+      $("beneficiary-status").textContent = "A fictional ID will be resolved when you save";
+    } else if (plan.payee_id) {
+      $("beneficiary-id").textContent = plan.payee_id;
+      $("beneficiary-status").textContent = plan.beneficiary_status === "fictional_local_fixture" ? "Fictional local identity fixture" : plan.beneficiary_status.replaceAll("_", " ");
+    } else {
+      $("beneficiary-id").textContent = "Unresolved";
+      $("beneficiary-status").textContent = "Authorization stays blocked until a payee is saved";
     }
-    $("ticket-list").replaceChildren(...tickets.map((ticket) => {
-      const item = element("article");
-      item.append(
-        element("strong", "", `${ticket.section}-${ticket.row}-${ticket.seat}`),
-        element("span", "", `The Midnight Signals · ${ticket.holder}`),
-        element("b", "", ticket.status),
-      );
+
+    const state = $("plan-state");
+    if (dirty) state.textContent = "UNSAVED";
+    else if (mission.stage === "review_required") state.textContent = "REVIEW NEEDED";
+    else if (mission.terminal) state.textContent = mission.stage === "complete" ? "COMPLETE" : "STOPPED";
+    else if (mission.grant) state.textContent = "LOCKED";
+    else if (mission.can_authorize) state.textContent = "READY";
+    else state.textContent = "NEEDS DETAILS";
+    state.className = `state-badge${mission.terminal && mission.stage !== "complete" ? " blocked" : mission.can_authorize || mission.grant ? " active" : ""}`;
+
+    $("save-plan").hidden = !editable;
+    $("save-plan").disabled = busy;
+    $("save-plan").textContent = dirty ? "Save changes" : "Plan saved";
+    $("authorize-payment").hidden = !editable;
+    $("authorize-payment").disabled = busy || dirty || !mission.can_authorize;
+    $("resume-payment").hidden = !mission.can_advance || autoRunning;
+    $("resume-payment").disabled = busy;
+  }
+
+  function renderAuthorization() {
+    const card = $("authorization-card");
+    card.hidden = !mission.grant;
+    if (!mission.grant) return;
+    const plan = mission.plan;
+    const expiry = new Date(mission.grant.expires_at * 1000);
+    $("authorization-summary").textContent = `${usd(plan.amount_usd_cents)} to ${plan.payee} · one payment · expires ${expiry.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+    const state = $("authorization-state");
+    state.textContent = mission.terminal ? "CLOSED" : "ACTIVE";
+    state.className = `state-badge ${mission.terminal ? "" : "active"}`;
+  }
+
+  function renderReceipt() {
+    const card = $("receipt-card");
+    const receipt = mission.receipt;
+    card.hidden = !receipt;
+    if (!receipt) return;
+    $("receipt-title").textContent = receipt.confirmation;
+    $("receipt-payee").textContent = receipt.payee;
+    $("receipt-amount").textContent = usd(receipt.amount_usd_cents);
+    $("receipt-reference").textContent = receipt.reference || "No reference needed";
+    $("receipt-id").textContent = receipt.receipt_id;
+    $("receipt-limit").textContent = usd(mission.grant?.maximum_usd_cents ?? mission.plan.maximum_usd_cents);
+    $("receipt-date").textContent = mission.grant?.due_date || mission.plan.due_date || "Not specified";
+    $("receipt-operation").textContent = receipt.operation_id || mission.operation_id;
+    $("receipt-provider").textContent = receipt.payment?.provider_reference || mission.provider_payment?.provider_reference || "Not recorded";
+    $("receipt-attempts").textContent = String(receipt.payment?.attempt_count ?? mission.provider_payment?.attempt_count ?? 0);
+    $("receipt-authorization").textContent = receipt.authorization_digest || mission.grant?.signature || "Not recorded";
+    $("receipt-confirmation").textContent = `Belay linked the request, exact authorization, one operation, and one simulated ${usd(receipt.payment?.amount_usd_cents ?? receipt.amount_usd_cents)} USD payout.`;
+    const external = receipt.domain_outcome;
+    $("receipt-scope").textContent = external
+      ? `${external.label} is ${String(external.status).replaceAll("_", " ")}. ${external.scope}`
+      : receipt.scope;
+  }
+
+  function renderBackendNow() {
+    const event = latestEvent();
+    $("event-number").textContent = String((event?.number || 0) + 1).padStart(2, "0");
+    $("backend-actor").textContent = (event?.backend?.actor || "Belay").toUpperCase();
+    $("backend-action").textContent = event?.backend?.action || event?.title || "Prepare the payment";
+    $("backend-explanation").textContent = event?.backend?.control || "Belay turns the request into a plan without moving money.";
+    $("backend-proof").textContent = event?.backend?.proof || "No proof recorded yet";
+    $("backend-retry").textContent = event?.backend?.safe_retry || "No money moved";
+    $("sync-label").textContent = mission.stage === "complete" ? "Final linked state" : mission.terminal ? "Final stopped state" : "Same live event";
+  }
+
+  function simpleChecks() {
+    const policy = mission.policy_decision;
+    const byName = new Map((policy?.checks || []).map((item) => [item.name, item.passed]));
+    const groups = POLICY_GROUPS.map((group) => {
+      const represented = group.names.every((name) => byName.has(name));
+      const passed = Boolean(policy && represented && group.names.every((name) => byName.get(name) === true));
+      return {
+        name: group.label,
+        detail: `${group.names.length} backend ${group.names.length === 1 ? "check" : "checks"}`,
+        status: !policy ? "waiting" : passed ? "passed" : "failed",
+        passed,
+      };
+    });
+    if (policy?.allowed === false && groups.every((group) => group.passed)) {
+      groups.at(-1).passed = false;
+      groups.at(-1).status = "failed";
+      groups.at(-1).detail = "Backend decision rejected";
+    }
+    return groups;
+  }
+
+  function renderChecks() {
+    const checks = simpleChecks();
+    $("check-list").replaceChildren(...checks.map((check) => {
+      const item = element("div", `check-item ${check.status}`);
+      const copy = element("span");
+      copy.append(element("strong", "", check.name), element("small", "", check.detail));
+      item.append(element("i", "", check.status === "passed" ? "✓" : check.status === "failed" ? "!" : "○"), copy);
+      return item;
+    }));
+    const backendChecks = mission.policy_decision?.checks || [];
+    const passed = backendChecks.filter((item) => item.passed).length;
+    const allowed = mission.policy_decision?.allowed === true && passed === 15 && backendChecks.length === 15;
+    $("check-score").textContent = mission.policy_decision
+      ? `${passed} of ${backendChecks.length} passed${mission.policy_decision.allowed ? "" : " · stopped"}`
+      : mission.grant ? "15 checks about to run" : "Runs after approval";
+    $("check-score").classList.toggle("complete", allowed);
+  }
+
+  function moneyChangeText(event) {
+    const before = event?.money_before;
+    const after = event?.money_after;
+    if (!before || !after) return "No money moved";
+    if (after.payment_hold_usdc_units > before.payment_hold_usdc_units) return `${usdc(after.payment_hold_usdc_units - before.payment_hold_usdc_units)} reserved`;
+    if (after.provider_in_transit_usdc_units > before.provider_in_transit_usdc_units) return `${usdc(after.provider_in_transit_usdc_units - before.provider_in_transit_usdc_units)} sent once`;
+    if (after.payee_received_usd_cents > before.payee_received_usd_cents) return `${usd(after.payee_received_usd_cents - before.payee_received_usd_cents)} delivered`;
+    const returned = before.payment_hold_usdc_units - after.payment_hold_usdc_units;
+    if (returned > 0 && after.customer_available_usdc_units > before.customer_available_usdc_units) {
+      return `${usdc(returned)} returned · no payout`;
+    }
+    if (event?.stage === "complete" && after.payee_received_usd_cents > 0) {
+      return `No new movement · ${usd(after.payee_received_usd_cents)} paid once`;
+    }
+    return "No money moved";
+  }
+
+  function renderMoney() {
+    const money = mission.money;
+    const event = latestEvent();
+    $("wallet-balance").textContent = usdc(money.customer_available_usdc_units);
+    $("money-customer-value").textContent = usdc(money.customer_available_usdc_units);
+    $("money-hold-value").textContent = usdc(money.payment_hold_usdc_units);
+    $("money-provider-value").textContent = usdc(money.provider_in_transit_usdc_units);
+    $("money-payee-value").textContent = usd(money.payee_received_usd_cents);
+    $("money-payee-label").textContent = mission.plan.payee || "waiting";
+    $("money-effect").textContent = moneyChangeText(event);
+
+    const order = ["money-customer", "money-hold", "money-provider", "money-payee"];
+    const active = money.payee_received_usd_cents > 0 ? 3 : money.provider_in_transit_usdc_units > 0 ? 2 : money.payment_hold_usdc_units > 0 ? 1 : 0;
+    order.forEach((id, index) => {
+      const node = $(id);
+      node.classList.toggle("active", index === active && mission.stage !== "complete");
+      node.classList.toggle("done", index < active || (mission.stage === "complete" && index <= active));
+      const before = event?.money_before;
+      const after = event?.money_after;
+      const fields = ["customer_available_usdc_units", "payment_hold_usdc_units", "provider_in_transit_usdc_units", "payee_received_usd_cents"];
+      node.classList.toggle("changed", Boolean(before && after && before[fields[index]] !== after[fields[index]]));
+    });
+  }
+
+  function proofRecords() {
+    return [
+      { label: "Original request digest", value: mission.request_digest, present: Boolean(mission.request_digest) },
+      { label: "Versioned payment plan", value: `plan revision ${mission.plan_revision}`, present: Number.isInteger(mission.plan_revision) },
+      { label: "Signed user authorization", value: mission.grant?.signature, present: Boolean(mission.grant) },
+      { label: "Single payment operation", value: mission.provider_payment?.provider_reference || mission.operation_id, present: Boolean(mission.provider_payment) },
+      { label: "Linked final receipt", value: mission.receipt?.receipt_id, present: Boolean(mission.receipt) },
+    ];
+  }
+
+  function renderProofs() {
+    const records = proofRecords();
+    $("proof-list").replaceChildren(...records.map((record) => {
+      const item = element("article", `proof-item${record.present ? " present" : ""}`);
+      const copy = element("div");
+      copy.append(element("strong", "", record.label), element("span", "", record.present ? record.value : "Waiting for this step"));
+      item.append(element("i", "", record.present ? "✓" : "○"), copy, element("b", "", record.present ? "WRITTEN" : "WAITING"));
+      return item;
+    }));
+    const present = records.filter((record) => record.present).length;
+    $("proof-score").textContent = `${present} of ${records.length}`;
+    $("proof-score").classList.toggle("complete", present === records.length);
+  }
+
+  function pretty(value) {
+    return JSON.stringify(value ?? {}, null, 2);
+  }
+
+  function renderAudit() {
+    const event = latestEvent();
+    $("mission-id").textContent = mission.id;
+    $("operation-id").textContent = mission.operation_id;
+    $("provider-attempts").textContent = String(mission.provider_payment?.attempt_count || 0);
+    $("safe-retry").textContent = event?.backend?.safe_retry || "No money moved";
+    $("state-payload").textContent = pretty({
+      revision: mission.revision,
+      plan_revision: mission.plan_revision,
+      request_digest: mission.request_digest,
+      status: mission.status,
+      states: mission.states,
+      money: mission.money,
+      policy_decision: mission.policy_decision,
+    });
+    $("request-payload").textContent = pretty(event?.backend?.request);
+    $("response-payload").textContent = pretty(event?.backend?.response);
+
+    if (!mission.ledger?.length) {
+      $("ledger-list").replaceChildren(element("p", "empty", "No value-moving entry yet."));
+    } else {
+      $("ledger-list").replaceChildren(...mission.ledger.map((entry) => {
+        const item = element("article");
+        item.append(
+          element("strong", "", `${entry.account_from} → ${entry.account_to}`),
+          element("span", "", entry.asset === "USDC_TO_USD_1_TO_1_DEMO" ? `${usdc(entry.units)} → ${usd(entry.units / 10_000)}` : usdc(entry.units)),
+          element("code", "", entry.idempotency_key),
+        );
+        return item;
+      }));
+    }
+
+    $("event-list").replaceChildren(...(mission.events || []).map((historyEvent) => {
+      const item = element("li");
+      item.append(element("b", "", String(historyEvent.number + 1).padStart(2, "0")), element("span", "", historyEvent.title));
       return item;
     }));
   }
 
-  function renderReceipt() {
-    const receipt = run?.receipt;
-    const event = selectedEvent();
-    const visible = Boolean(receipt) && Boolean(event) && (["complete", "customer_restored"].includes(event.stage) || (followLatest && run.terminal));
-    $("receipt").hidden = !visible;
-    if (!visible) return;
-    $("receipt-id").textContent = receipt.receipt_id;
-    $("receipt-instruction").textContent = `${receipt.instruction.quantity} tickets · ${usdc(receipt.instruction.maximum_usdc_units)} max`;
-    $("receipt-purchase").textContent = `${receipt.purchase.quantity} ticket${receipt.purchase.quantity === 1 ? "" : "s"} · ${usd(receipt.purchase.total_usd_cents)}`;
-    $("receipt-payment").textContent = `${usd(receipt.payment.merchant_received_usd_cents)} USD to merchant`;
-    const recoveryLabels = {
-      supplier_recovery_open: "supplier recovery open",
-      belay_agent_error_absorbed: "Belay absorbs agent error",
-    };
-    $("receipt-outcome").textContent = receipt.outcome.remedy_usdc_units
-      ? `${usdc(receipt.outcome.remedy_usdc_units)} remedy · ${recoveryLabels[receipt.outcome.recovery_state] || human(receipt.outcome.recovery_state)}`
-      : `${human(receipt.outcome.delivery_state)} · no remedy`;
-  }
-
-  function renderSystemMap() {
-    const event = selectedEvent();
-    const technical = event?.technical || fallbackTechnical(event);
-    $("active-layer").textContent = event ? technical.layer : "Awaiting authority";
-    const map = document.querySelector(".system-nodes");
-    let activeNode = null;
-    document.querySelectorAll(".system-nodes article").forEach((node) => {
-      node.classList.toggle("active", node.dataset.layer === technical.layer_id);
-      if (node.classList.contains("active")) activeNode = node;
-    });
-    if (map && activeNode) {
-      const target = activeNode.offsetLeft - (map.clientWidth - activeNode.offsetWidth) / 2;
-      map.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
-    }
-  }
-
-  function renderKnowledge(event) {
-    const knowledge = event?.knowledge;
-    $("knowledge-strip").hidden = !knowledge;
-    if (!knowledge) return;
-    $("provider-knowledge").textContent = human(knowledge.provider);
-    $("belay-knowledge").textContent = human(knowledge.belay);
-    $("safe-action").textContent = human(knowledge.safe_next_action);
-  }
-
-  function renderBackendEvent() {
-    const event = selectedEvent();
-    const technical = event?.technical || fallbackTechnical(event);
-    $("event-layer").textContent = event ? technical.layer.toUpperCase() : "WAITING";
-    $("event-actor").textContent = event?.actor || "No component has acted";
-    $("request-method").textContent = event?.method || "—";
-    $("request-status").textContent = event ? String(event.status) : "—";
-    $("request-status").dataset.status = event ? String(event.status) : "";
-    $("backend-event-title").textContent = event?.title || "Authorize a run to inspect the backend";
-    $("backend-explanation").textContent = event?.explanation || "Each customer update will be paired with the exact infrastructure event that caused it.";
-    $("event-from").textContent = event?.from || "Customer";
-    $("event-to").textContent = event?.to || "Belay";
-    $("request-url").textContent = event?.url || "No route selected";
-    $("current-control").textContent = technical.control;
-    $("current-money-effect").textContent = technical.money_effect;
-    $("current-proof").textContent = technical.proof;
-    $("current-retry").textContent = technical.retry_rule;
-    renderKnowledge(event);
-  }
-
-  function paintJson(id, value) {
-    const text = JSON.stringify(value ?? {}, null, 2);
-    const fragment = document.createDocumentFragment();
-    const expression = /("(?:\\.|[^"\\])*"\s*:?)|\b(true|false|null)\b|(-?\b\d+(?:\.\d+)?\b)/g;
-    let offset = 0;
-    for (const match of text.matchAll(expression)) {
-      fragment.append(document.createTextNode(text.slice(offset, match.index)));
-      const token = element("span");
-      token.className = match[1]
-        ? (match[1].endsWith(":") ? "json-key" : "json-string")
-        : match[2] ? "json-bool" : "json-number";
-      token.textContent = match[0];
-      fragment.append(token);
-      offset = match.index + match[0].length;
-    }
-    fragment.append(document.createTextNode(text.slice(offset)));
-    $(id).replaceChildren(fragment);
-  }
-
-  function renderApiExchange() {
-    const event = selectedEvent();
-    paintJson("request-payload", event?.request || {});
-    const response = event?.provider_observation
-      ? { received_by_belay: event.response, simulator_provider_observation: event.provider_observation }
-      : event?.response || {};
-    paintJson("response-payload", response);
-  }
-
-  function renderPolicy() {
-    const decision = viewStep() >= 3 ? run?.policy_decision : null;
-    if (!decision) {
-      $("policy-score").textContent = "Waiting";
-      $("policy-reason").textContent = "The shopping model cannot approve itself. Exact checks appear when an offer and quote are ready.";
-      $("control-groups").replaceChildren(...CORE_POLICY_GROUPS.map(([name]) => {
-        const row = element("div");
-        row.append(element("span", "", name), element("b", "", "WAIT"));
-        return row;
-      }));
-      $("check-list").replaceChildren();
-      $("all-checks").hidden = true;
-      return;
-    }
-    const checks = decision.checks || [];
-    const passed = checks.filter((check) => check.passed).length;
-    $("policy-score").textContent = `${passed}/${checks.length} ${decision.allowed ? "passed" : "passed · blocked"}`;
-    $("policy-reason").textContent = decision.reason;
-    $("control-groups").replaceChildren(...CORE_POLICY_GROUPS.map(([name, names]) => {
-      const subset = checks.filter((check) => names.includes(check.name));
-      const okay = subset.length > 0 && subset.every((check) => check.passed);
-      const row = element("div", okay ? "passed" : "failed");
-      row.append(element("span", "", name), element("b", "", okay ? `${subset.length}/${subset.length}` : `${subset.filter((check) => check.passed).length}/${subset.length}`));
-      return row;
-    }));
-    $("all-checks").hidden = false;
-    $("check-list").replaceChildren(...checks.map((check) => {
-      const row = element("article", check.passed ? "" : "failed");
-      row.append(
-        element("b", "", check.passed ? "PASS" : "FAIL"),
-        element("span", "", human(check.name)),
-        element("code", "", `expected ${safeText(check.expected)} · observed ${safeText(check.observed)}`),
-      );
-      return row;
-    }));
-  }
-
-  function renderStatuses() {
-    const event = selectedEvent();
-    const state = event?.state_after || {};
-    const statuses = {
-      "funding-state": state.funding_state ?? run?.funding_state,
-      "conversion-state": state.conversion_state ?? run?.conversion_state,
-      "payout-state": state.payout_state ?? run?.payout_state,
-      "order-state": state.order_state ?? run?.order_state,
-      "delivery-state": state.delivery_state ?? run?.delivery_state,
-      "protection-state": state.protection_state ?? run?.protection_state,
-    };
-    Object.entries(statuses).forEach(([id, value]) => {
-      $(id).textContent = human(value);
-      $(id).dataset.state = value || "not_started";
-    });
-    const previous = event?.state_before;
-    const changed = previous
-      ? Object.keys(state).filter((key) => previous[key] !== state[key])
-      : [];
-    $("state-delta").textContent = previous === null
-      ? "Initial state"
-      : changed.length ? `${changed.length} state ${changed.length === 1 ? "change" : "changes"}` : "No state change";
-    const provider = event?.provider_after;
-    $("payout-count").textContent = String(provider?.payout_state === "paid" ? 1 : followLatest ? run?.settlement?.provider_payout_count || 0 : 0);
-    $("attempt-count").textContent = String(provider?.attempt_count || (followLatest ? run?.settlement?.provider_attempt_count || 0 : 0));
-    $("latest-ledger-key").textContent = event?.ledger_keys?.at(-1) || "None in this event";
-  }
-
-  function renderChanges() {
-    const event = selectedEvent();
-    const changes = event?.balance_changes || [];
-    $("change-count").textContent = `${changes.length} ${changes.length === 1 ? "account change" : "account changes"}`;
-    if (!changes.length) {
-      $("balance-changes").replaceChildren(element("p", "empty-state", "No account balance changed in this event."));
-    } else {
-      $("balance-changes").replaceChildren(...changes.map((change) => {
-        const row = element("article");
-        row.append(
-          element("span", "", accountName(change.account)),
-          element("strong", "", `${formatAccountAmount(change.asset, change.before_units)} → ${formatAccountAmount(change.asset, change.after_units)}`),
-          element("small", "", `Delta ${change.delta_units >= 0 ? "+" : ""}${formatAccountAmount(change.asset, change.delta_units)}`),
-        );
-        return row;
-      }));
-    }
-
-    const keys = new Set(event?.ledger_keys || []);
-    const entries = (run?.ledger || []).filter((entry) => keys.has(entry.idempotency_key));
-    if (!entries.length) {
-      $("ledger-list").replaceChildren(element("p", "empty-state", "No value-moving ledger key was created."));
-    } else {
-      $("ledger-list").replaceChildren(...entries.map((entry) => {
-        const row = element("article");
-        const amount = entry.asset === "USDC_TO_USD_1_TO_1_DEMO"
-          ? `${usdc(entry.units)} → ${usd(event?.provider_after?.net_usd_cents || run?.settlement?.merchant_received_usd_cents || 0)} USD`
-          : formatAccountAmount(entry.asset, entry.units);
-        row.append(
-          element("span", "", `${accountName(entry.account_from)} → ${accountName(entry.account_to)}`),
-          element("strong", "", amount),
-          element("code", "", entry.idempotency_key),
-        );
-        return row;
-      }));
-    }
-  }
-
-  function proofRecord(label, reference, present) {
-    const row = element("article", present ? "present" : "");
-    row.append(
-      element("i", "", present ? "✓" : "○"),
-      (() => {
-        const copy = element("div");
-        copy.append(
-          element("strong", "", label),
-          element("span", "", present ? (reference || "Recorded") : "Waiting for this stage"),
-        );
-        return copy;
-      })(),
-      element("b", "", present ? "WRITTEN" : "PENDING"),
-    );
-    return row;
-  }
-
-  function renderProofs() {
-    const event = selectedEvent();
-    const step = viewStep();
-    const state = event?.state_after || {};
-    const provider = event?.provider_after;
-    const claim = run?.claims?.at(-1);
-    const historical = run?.entry_mode === "injected_historical_fixture";
-    const records = [
-      proofRecord("Customer authority", run?.grant?.signature, Boolean(run && step >= 0)),
-      proofRecord("Admitted order", run?.admission?.operation_id, Boolean(run?.admission && step >= 3)),
-      proofRecord("Signed settlement intent", run?.authorization?.intent_digest, Boolean(run?.authorization && step >= 4)),
-      proofRecord("Provider / settlement", run?.settlement_record?.provider_reference || provider?.provider_reference, Boolean(provider?.payout_state === "paid" || run?.settlement_record && followLatest)),
-      proofRecord("Delivery evidence", run?.delivery_record?.evidence_digest || human(state.delivery_state), Boolean(historical || (state.delivery_state && state.delivery_state !== "not_started"))),
-      proofRecord("Protection claim", claim?.case_id, Boolean(claim && (state.protection_state?.includes("claim") || state.protection_state === "paid" || state.protection_state === "review_required"))),
-      proofRecord("Linked receipt", run?.receipt?.receipt_id, Boolean(run?.receipt && (["complete", "customer_restored"].includes(event?.stage) || followLatest && run.terminal))),
-    ];
-    $("proof-stack").replaceChildren(...records);
-    $("proof-count").textContent = `${records.filter((record) => record.classList.contains("present")).length}/${records.length} records`;
-  }
-
-  function renderCredentials() {
-    if (!config) return;
-    $("credential-list").replaceChildren(...(config.credentials || []).map((credential) => {
-      const card = element("article");
-      card.append(
-        element("strong", "", credential.name),
-        element("span", "", credential.holder),
-        element("code", "", credential.key),
-        element("p", "", credential.purpose),
-      );
-      return card;
-    }));
-    $("technical-notice").textContent = config.notice;
-  }
-
   function render() {
-    updateButtons();
+    $("mission-form").setAttribute("aria-busy", String(busy));
+    $("request-input").disabled = busy || Boolean(mission);
+    $("analyze").disabled = busy || Boolean(mission);
+    $("new-mission").disabled = busy;
+    $("product").hidden = !mission;
+    document.querySelectorAll(".example-chip").forEach((button) => { button.disabled = busy || Boolean(mission); });
+    if (!mission) return;
+    $("product").setAttribute("aria-busy", String(busy));
+    renderStatus();
     renderProgress();
-    renderScenario();
-    renderTrace();
-    renderLens();
-    renderMoney();
     renderConversation();
-    renderOffer();
-    renderOutcome();
-    renderTickets();
+    renderPlan();
+    renderAuthorization();
     renderReceipt();
-    renderSystemMap();
-    renderBackendEvent();
-    renderPolicy();
-    renderStatuses();
-    renderApiExchange();
-    renderChanges();
+    renderBackendNow();
+    renderChecks();
+    renderMoney();
     renderProofs();
-    renderCredentials();
-
-    $("grant-state").textContent = run ? (run.terminal ? "CLOSED" : "ACTIVE") : "READY";
-    $("grant-state").dataset.state = run?.terminal ? "closed" : run ? "active" : "ready";
-    $("customer-connection").classList.toggle("active", Boolean(run));
-    $("entry-mode").textContent = run?.entry_mode === "injected_historical_fixture" ? "HISTORICAL FIXTURE" : "GUARDED MODE";
-    $("run-short-id").textContent = run ? run.id.slice(0, 12).toUpperCase() : "NO RUN";
-    $("operation-id").textContent = run?.operation_id || "Allocated after authorization";
-    $("order-id").textContent = run?.order_id || "Allocated after authorization";
-    $("mode-id").textContent = run?.entry_mode || "live_guarded_simulation";
-  }
-
-  function playbackDelay() {
-    const stage = run?.stage;
-    if (["admitted", "merchant_paid", "non_delivery", "claim_approved", "customer_restored", "complete"].includes(stage)) return 2600;
-    return 1750;
+    renderAudit();
   }
 
   function scheduleAdvance() {
-    if (!playing || busy || !run?.can_advance || run.terminal || isUnknown() || run.manual_review) return;
+    if (!autoRunning || busy || !mission?.can_advance || mission.terminal) {
+      if (mission?.terminal) autoRunning = false;
+      render();
+      return;
+    }
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => advance(true), playbackDelay());
+    timer = setTimeout(() => advanceOne(true), AUTO_DELAY_MS);
   }
 
-  async function advance(automatic = false) {
-    if (busy || !run || run.terminal || !run.can_advance) return;
-    const restoreNextFocus = !automatic && document.activeElement === $("next");
+  async function recoverConflict(error) {
+    if (error.current) {
+      mission = error.current;
+      return true;
+    }
+    if (error.status === 409 && mission?.id) {
+      try {
+        mission = await api(`/api/missions/${encodeURIComponent(mission.id)}`);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  async function advanceOne(automatic) {
+    if (busy || !mission?.can_advance || mission.terminal) return;
     busy = true;
     showError();
-    updateButtons();
+    render();
     try {
-      run = await api(`/api/runs/${encodeURIComponent(run.id)}/advance`, {
-        expected_revision: run.revision,
-      });
-      followLatest = true;
-      selectedEventId = null;
-      render();
-      if (run.terminal || isUnknown() || run.manual_review) {
-        stopPlayback();
-        updateButtons();
-        if (run.terminal && !automatic) (run.receipt ? $("receipt") : $("outcome")).focus();
-      }
+      mission = await api(`/api/missions/${encodeURIComponent(mission.id)}/advance`, { expected_revision: mission.revision });
+      remember(mission.id);
     } catch (error) {
-      stopPlayback();
-      showError(`${error.message} The simulator paused and did not automatically repeat a money-moving request.`);
+      stopAuto();
+      const recovered = await recoverConflict(error);
+      showError(recovered ? `${error.message} The current mission was reloaded; review it before continuing.` : `${error.message} Belay paused without repeating the payment.`);
     } finally {
       busy = false;
-      updateButtons();
-      if (restoreNextFocus && run?.can_advance && !run.terminal) $("next").focus();
-      if (isUnknown()) $("next").focus();
+      render();
     }
+    if (mission?.terminal && mission.receipt && automatic) $("receipt-card").focus({ preventScroll: true });
     scheduleAdvance();
+  }
+
+  function planFields() {
+    const fields = {
+      category: $("plan-category").value,
+      description: $("plan-description").value.trim(),
+      payee: $("plan-payee").value.trim(),
+      amount_usd_cents: centsFromInput($("plan-amount").value, true),
+      maximum_usd_cents: centsFromInput($("plan-maximum").value, false),
+      reference: $("plan-reference").value.trim(),
+      due_date: $("plan-due-date").value.trim() || "Not specified",
+    };
+    if (!fields.payee) throw new Error("Enter who should receive the payment.");
+    const category = CATEGORY_META[fields.category] || CATEGORY_META.purchase;
+    if (category.required && !fields.reference) {
+      throw new Error(`Enter the ${category.reference.toLowerCase()}.`);
+    }
+    if (fields.maximum_usd_cents !== null && fields.amount_usd_cents > fields.maximum_usd_cents) {
+      throw new Error("The exact amount cannot be higher than your maximum.");
+    }
+    return fields;
   }
 
   $("mission-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (busy || run) return;
+    if (busy || mission) return;
+    const request = $("request-input").value.trim();
+    if (!$("mission-form").reportValidity()) return;
     busy = true;
     showError();
-    updateButtons();
+    render();
     try {
-      run = await api("/api/runs", {
-        scenario: $("scenario").value,
-        budget_cents: 30_000,
-        quantity: 2,
-      });
-      remember(run.id);
-      followLatest = true;
-      selectedEventId = null;
-      playing = true;
+      mission = await api("/api/missions/analyze", { request });
+      remember(mission.id);
+      lastFormRevision = null;
+      dirty = false;
+      setMobileView("customer");
       render();
+      $("product").scrollIntoView({ behavior: "smooth", block: "start" });
+      const firstMissing = mission.missing_fields?.[0]?.field;
+      const focusMap = { payee: "plan-payee", amount_usd_cents: "plan-amount", reference: "plan-reference" };
+      setTimeout(() => $(focusMap[firstMissing] || "authorize-payment").focus(), 350);
     } catch (error) {
       showError(error.message);
     } finally {
       busy = false;
-      updateButtons();
+      render();
+    }
+  });
+
+  for (const id of ["plan-category", "plan-description", "plan-payee", "plan-amount", "plan-maximum", "plan-reference", "plan-due-date"]) {
+    $(id).addEventListener(id === "plan-category" ? "change" : "input", () => {
+      if (!isEditable()) return;
+      dirty = true;
+      render();
+    });
+  }
+
+  $("plan-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (busy || !isEditable()) return;
+    if (!$("plan-form").reportValidity()) return;
+    let fields;
+    try {
+      fields = planFields();
+    } catch (error) {
+      showError(error.message);
+      return;
+    }
+    busy = true;
+    showError();
+    render();
+    try {
+      mission = await api(`/api/missions/${encodeURIComponent(mission.id)}/details`, { expected_revision: mission.revision, fields });
+      lastFormRevision = null;
+      dirty = false;
+      syncPlanForm(true);
+    } catch (error) {
+      if (await recoverConflict(error)) {
+        dirty = false;
+        lastFormRevision = null;
+        syncPlanForm(true);
+      }
+      showError(error.message);
+    } finally {
+      busy = false;
+      render();
+    }
+    if (mission?.can_authorize) $("authorize-payment").focus();
+  });
+
+  $("authorize-payment").addEventListener("click", async () => {
+    if (busy || dirty || !mission?.can_authorize) return;
+    busy = true;
+    showError();
+    render();
+    try {
+      mission = await api(`/api/missions/${encodeURIComponent(mission.id)}/authorize`, { expected_revision: mission.revision });
+      remember(mission.id);
+      lastFormRevision = null;
+      syncPlanForm(true);
+      autoRunning = true;
+    } catch (error) {
+      await recoverConflict(error);
+      showError(error.message);
+    } finally {
+      busy = false;
+      render();
     }
     scheduleAdvance();
   });
 
-  $("next").addEventListener("click", () => advance(false));
-  $("play").addEventListener("click", () => {
-    if (playing) {
-      stopPlayback();
-      updateButtons();
-      return;
-    }
-    if (!busy && run?.can_advance) {
-      playing = true;
-      followLatest = true;
-      selectedEventId = null;
-      render();
-      scheduleAdvance();
-    }
-  });
-  $("reset").addEventListener("click", () => {
-    if (busy || !run) return;
-    stopPlayback();
-    run = null;
-    followLatest = true;
-    selectedEventId = null;
-    remember(null);
+  $("resume-payment").addEventListener("click", () => {
+    if (busy || !mission?.can_advance) return;
     showError();
+    autoRunning = true;
     render();
-    $("scenario").focus();
-  });
-  $("scenario").addEventListener("change", renderScenario);
-  $("event-select").addEventListener("change", () => {
-    selectedEventId = $("event-select").value;
-    followLatest = selectedEventId === latestEvent()?.id;
-    render();
-  });
-  $("return-live").addEventListener("click", () => {
-    followLatest = true;
-    selectedEventId = null;
-    render();
+    scheduleAdvance();
   });
 
-  function setMobileView(view) {
-    $("simulator").querySelector(".workspace").dataset.mobileView = view;
-    $("view-customer").setAttribute("aria-selected", String(view === "customer"));
-    $("view-backend").setAttribute("aria-selected", String(view === "backend"));
+  $("new-mission").addEventListener("click", () => {
+    if (busy) return;
+    stopAuto();
+    mission = null;
+    dirty = false;
+    lastFormRevision = null;
+    remember(null);
+    $("request-input").value = "";
+    $("technical-audit").open = false;
+    setMobileView("customer");
+    showError();
+    render();
+    $("mission").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("request-input").focus({ preventScroll: true });
+  });
+
+  function setMobileView(view, focusTab = false) {
+    const customerSelected = view === "customer";
+    $("workspace").dataset.mobileView = view;
+    $("view-customer").setAttribute("aria-selected", String(customerSelected));
+    $("view-backend").setAttribute("aria-selected", String(!customerSelected));
+    $("view-customer").tabIndex = customerSelected ? 0 : -1;
+    $("view-backend").tabIndex = customerSelected ? -1 : 0;
+    const mobile = window.matchMedia("(max-width: 960px)").matches;
+    if (mobile) {
+      $("customer-panel").setAttribute("role", "tabpanel");
+      $("backend-panel").setAttribute("role", "tabpanel");
+      $("customer-panel").setAttribute("aria-labelledby", "view-customer");
+      $("backend-panel").setAttribute("aria-labelledby", "view-backend");
+      $("customer-panel").setAttribute("aria-hidden", String(!customerSelected));
+      $("backend-panel").setAttribute("aria-hidden", String(customerSelected));
+    } else {
+      $("customer-panel").removeAttribute("role");
+      $("backend-panel").removeAttribute("role");
+      $("customer-panel").setAttribute("aria-labelledby", "customer-title");
+      $("backend-panel").setAttribute("aria-labelledby", "backend-title");
+      $("customer-panel").removeAttribute("aria-hidden");
+      $("backend-panel").removeAttribute("aria-hidden");
+    }
+    if (focusTab) $(customerSelected ? "view-customer" : "view-backend").focus();
   }
   $("view-customer").addEventListener("click", () => setMobileView("customer"));
   $("view-backend").addEventListener("click", () => setMobileView("backend"));
+  for (const id of ["view-customer", "view-backend"]) {
+    $(id).addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      let view;
+      if (event.key === "Home") view = "customer";
+      else if (event.key === "End") view = "backend";
+      else view = $("workspace").dataset.mobileView === "customer" ? "backend" : "customer";
+      setMobileView(view, true);
+    });
+  }
+  window.addEventListener("resize", () => setMobileView($("workspace").dataset.mobileView));
+
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-      stopPlayback();
-      updateButtons();
+    if (document.hidden && autoRunning) {
+      stopAuto();
+      render();
     }
   });
 
@@ -808,34 +730,36 @@
     busy = true;
     render();
     try {
-      config = await api("/api/config");
-      $("scenario").replaceChildren(...config.scenarios.map((scenario) => {
-        const option = element("option", "", scenario.label);
-        option.value = scenario.id;
-        return option;
+      config = await api("/api/mission/config");
+      $("example-list").replaceChildren(...(config.examples || []).map((example) => {
+        const button = element("button", "example-chip", example);
+        button.type = "button";
+        button.title = example;
+        button.addEventListener("click", () => {
+          $("request-input").value = example;
+          $("request-input").focus();
+        });
+        return button;
       }));
-      $("scenario").value = config.scenarios.some((item) => item.id === "non_delivery_paid")
-        ? "non_delivery_paid"
-        : config.scenarios[0]?.id;
-      renderScenario();
-      renderCredentials();
+
       const saved = recalled();
       if (saved && /^[a-f0-9]{32}$/.test(saved)) {
         try {
-          run = await api(`/api/runs/${encodeURIComponent(saved)}`);
-          $("scenario").value = run.scenario;
-          followLatest = true;
-          selectedEventId = null;
-          renderScenario();
+          mission = await api(`/api/missions/${encodeURIComponent(saved)}`);
+          $("request-input").value = mission.request_text;
+          lastFormRevision = null;
+          dirty = false;
+          setMobileView("customer");
         } catch {
           remember(null);
-          showError("The saved walkthrough belongs to an older or unavailable demo. Start a new run.");
+          showError("The saved demo mission is unavailable. Start a new request.");
         }
       }
     } catch (error) {
-      showError(`Could not connect to the local simulator: ${error.message}`);
+      showError(`Could not connect to the local Belay service: ${error.message}`);
     } finally {
       busy = false;
+      setMobileView($("workspace").dataset.mobileView || "customer");
       render();
     }
   }

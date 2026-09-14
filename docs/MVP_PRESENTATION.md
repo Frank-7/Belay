@@ -1,108 +1,96 @@
-# Belay: plain-language MVP presentation
+# Belay investor presentation
 
-Presentation script for the proposed v0.3 architecture. All example purchases,
-provider replies, coverage and money are fictional. This is not a live bank,
-merchant, blockchain or insurance demonstration.
+Use the runnable Payment Mission MVP on port 8777. All wallets, signatures,
+USDC, conversion, USD payout and payee confirmation are local fixtures. The
+product interaction, HTTP API, persisted workflow, revision checks and ledger
+are implemented.
 
-## The one-sentence explanation
+## One sentence
 
-Belay lets an agent buy within your rules, pays suppliers in dollars using
-USDC underneath, and provides an evidence-based path to recover from eligible
-purchase failures.
+Belay turns any payment request into one exact, reviewable authorization and a
+payment trail an AI cannot silently rewrite.
 
-## Six scenes
+## 60-second pitch
 
-### 1. Give the assistant a job
+"People will ask AI to pay invoices, insurance, taxes, bills and purchases.
+The payment API is the easy part. The dangerous part is letting an uncertain
+AI choose who gets paid, how much and whether it should retry after a failure.
 
-User: "Buy two adjacent concert tickets. Spend no more than $300 in total."
+Belay is the control layer between the AI and the money. Give it a payment
+request and it prepares a plan. Missing payees, amounts and required references
+stay blank until the customer supplies them. One approval fixes the exact
+beneficiary, amount, purpose and operation identity.
 
-Belay: "Exactly two, for this event and date. I will use an allowed seller
-and stay inside your limit. Here are the protection terms for this mission."
+From there, deterministic controls take over. Belay checks the grant, reserves
+the exact funds once, locks the instruction, pays through one stable operation
+and creates a receipt that says exactly what happened. A tax receipt does not
+pretend a return was filed. An insurance receipt does not pretend coverage was
+approved.
 
-Explain: The model understands the request. Ordinary code checks the rules.
-The user initially approves the mission and funds its budget.
+The MVP beside me runs that complete flow with persisted state and simulated
+USDC-to-USD settlement. We are building the payment-control contract that any
+agent, wallet and regulated settlement provider can plug into."
 
-### 2. Pay a normal supplier
+## Live walkthrough
 
-Belay finds two tickets at $100 each. The supplier wants dollars, not crypto.
+1. Type `Pay invoice INV-1042 for $1,250 to Acme Design by September 30`.
+2. Select **Prepare payment**. Point to the editable plan: the AI proposal is
+   visible and has no authority yet.
+3. Select **Authorize one payment**. Point to the fixed amount, beneficiary and
+   one-time scope.
+4. Let the payment run. Follow the customer progress on the left and the same
+   event in **Behind this action** on the right.
+5. Open the receipt. Show the linked request, authorization, provider result
+   and honest confirmation scope.
+6. Begin `Pay my federal estimated tax`. The missing amount and reference stay
+   blank. Say: "Belay asks; it does not guess with money."
 
-Explain: Belay sends the approved USDC amount to an approved payment partner.
-The partner converts it and sends $200 to the supplier's bank against the
-order. The supplier does not need a crypto wallet. The demo assumes zero fees
-and a 1:1 conversion; a live transaction uses an actual quote.
+## What the prototype proves
 
-### 3. Keep a useful receipt
+- One interface can shape invoices, bills, insurance premiums, taxes,
+  subscriptions, transfers, tickets and other purchases.
+- The agent proposes; the user authorizes; deterministic code moves value.
+- A stable operation identity and unique ledger keys stop a stale or repeated
+  browser action from creating another local movement.
+- The customer and backend views cannot tell different stories because both
+  are rendered from the same persisted event.
+- Receipt wording separates payment from external outcomes such as delivery,
+  tax filing, remaining bill balance, coverage or claim approval.
 
-The receipt has four sections: your instruction, what was ordered, where the
-payment went, and what was delivered. Two tickets delivered correctly closes
-the task. Payment success alone does not prove delivery.
+## What comes next
 
-### 4. Show a supplier failure
+Replace each fictional edge with an approved adapter while keeping the same
+control contract:
 
-The supplier has received $200 but has not supplied the tickets. A clearly
-eligible claim is approved under the demo terms.
+1. Connect an authenticated agent or planner to propose structured plans.
+2. Connect a production wallet or custodian for USDC authority and holds.
+3. Connect one regulated conversion and USD payout provider.
+4. Verify one payee domain end to end, starting with an invoice or biller API.
+5. Add provider reconciliation, production signing, compliance controls and
+   operational monitoring.
 
-Explain: Belay's separate reserve pays the user 200 USDC. The user can withdraw
-it or authorize a different purchase. Belay handles recovery separately. The
-supplier still has the original $200 until recovery succeeds; no transaction
-has been magically reversed.
-
-### 5. Show an agent mistake
-
-First, make the model propose three tickets: the checker blocks it.
-Then load a separately labeled historical fault: the system bought three
-$100 tickets even though the user authorized two.
-
-Explain: This fault should have been prevented. The two wanted tickets remain
-valid. A covered agent-error claim reimburses the extra $100, less any refund
-already received. The same loss cannot be claimed twice.
-
-### 6. Show the difficult case honestly
-
-A user reports a damaged or incorrect product, but the evidence conflicts.
-
-Explain: Belay collects evidence and sends the case for review. AI can summarize
-the facts; it cannot turn an uncertain photo into unquestionable truth. The
-case shows its status, reviewer and next step instead of pretending it is done.
-
-## A roughly 60-second pitch
-
-"An agent can choose an item and pay for it. The hard part is knowing it bought
-the right thing, paying a supplier that wants ordinary dollars, and helping
-the customer when the result is wrong.
-
-Belay connects those steps. You approve a task and spending rules. The agent
-finds an offer, but deterministic checks control the actual purchase. USDC
-moves through our payment system; an approved partner pays the supplier in USD.
-
-Our receipt connects what you requested, what was bought, what was paid and
-what was delivered. If funds are still held, we can return them under the
-rules. If the supplier has already been paid, an eligible prompt reimbursement
-comes from a separate funded reserve, while recovery continues.
-
-We start with one ticket-purchase workflow. This presentation uses simulated
-payments and protection. The MVP will test exact-order execution, USD payout
-recovery and the cost of providing useful customer remedies."
-
-## Questions judges are likely to ask
+## Questions investors may ask
 
 | Question | Clear answer |
 |---|---|
-| Does the seller accept crypto? | No. The main design pays USD through an approved provider, using a payment method the seller accepts. |
-| Can it pay every website? | Not initially. The MVP uses one invoice/bank-payment supplier. Card-only sellers need a later issuing adapter. |
-| Where does a reimbursement come from? | Held customer funds if still available; otherwise separate protection capital or an actual partner obligation. |
-| Who decides a product was wrong? | Narrow evidence rules for clear cases; a separate reviewer for disputed or uncertain cases. |
-| Why blockchain? | USDC funding, explicit on-chain permissions and inspectable settlement. It does not make banks or delivery part of one atomic transaction. |
-| Why not use an existing payment company? | We intend to integrate one. Belay's work is the agent control, linked evidence, workflow recovery and protection operation. |
-| Are you insured? | No partner or live coverage is established. The proposed agent-error guarantee needs defined funding and terms. |
-| Does your AI run inside the demo? | The presentation dialogue was authored with the assistant. Recorded fixture mode is labeled; a live model endpoint is a later explicit integration. |
-| What has actually been built? | Existing local purchase/recovery simulators and this architecture. The new USD payout, contract and reserve workflow remain to be implemented. |
+| Does it move real money today? | No. The current product is a local, durable simulation. Real settlement requires custody, compliance and provider contracts. |
+| Is the AI in the demo? | No external model is connected. A deterministic local extractor shapes the request, and the interface is ready for a model adapter. |
+| Can it calculate or file taxes? | No. It can prepare and simulate an exact tax payment. Calculation and filing require authoritative tax integrations. |
+| Does an insurance payment prove coverage? | No. It proves only the simulated premium payment. Coverage and claims require the insurer's evidence. |
+| Why use USDC if the payee wants dollars? | USDC is the internal source asset in the proposed architecture; a regulated provider converts it and pays verified USD details. The demo simulates that route. |
+| Why will a merchant integrate? | The merchant can keep receiving USD. Belay's initial adapter target should use an existing invoice or bill-payment interface rather than require the merchant to adopt a wallet. |
+| What is defensible? | The durable authorization and evidence graph across agents, wallets, payout providers and payee systems, plus the operational data required to reconcile failures safely. |
+| Is it a blockchain or payment processor? | It is the control layer. Wallet, chain and settlement providers remain replaceable adapters. |
+| What has actually been built? | An open-ended composer, editable plan, exact authorization, deterministic checks, simulated settlement, scoped receipt, two-sided audit, HTTP API and persisted SQLite state. |
 
-## Words to use carefully
+## Language for the pitch
 
-Say "eligible reimbursement", "provider payout pending", "funded reserve",
-"verified order" and "proposed integration" when those are the actual facts.
-Do not say "unlimited refunds", "fraud-proof", "instant dollars everywhere",
-"blockchain reverses any payment", "insured" or "works with every merchant".
+Say **simulated settlement**, **reviewed authorization**, **one-time payment**,
+**stable operation identity**, **linked receipt** and **provider adapter**.
+Avoid claims such as *fraud-proof*, *insured*, *files taxes*, *proves coverage*,
+*reverses a blockchain payment* or *works with every bank and merchant*.
 
-The full technical and commercial outline is [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md).
+The runnable product and production seams are documented in
+[PURCHASE_SIMULATOR.md](PURCHASE_SIMULATOR.md). The earlier ticket-specific
+design remains in [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md) as architecture
+research.

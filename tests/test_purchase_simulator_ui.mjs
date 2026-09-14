@@ -2,78 +2,122 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const html = readFileSync(
-  new URL("../purchase_simulator/web/index.html", import.meta.url),
-  "utf8",
-);
-const script = readFileSync(
-  new URL("../purchase_simulator/web/app.js", import.meta.url),
-  "utf8",
-);
-const css = readFileSync(
-  new URL("../purchase_simulator/web/style.css", import.meta.url),
-  "utf8",
-);
+const html = readFileSync(new URL("../purchase_simulator/web/index.html", import.meta.url), "utf8");
+const script = readFileSync(new URL("../purchase_simulator/web/app.js", import.meta.url), "utf8");
+const css = readFileSync(new URL("../purchase_simulator/web/style.css", import.meta.url), "utf8");
 
-test("investor story leads with one synchronized customer and backend simulation", () => {
-  assert.match(html, /Let an agent buy[\s\S]*Keep every decision accountable/);
-  assert.match(html, /Customer on the left[\s\S]*Infrastructure on the right/);
-  assert.match(html, /CUSTOMER SEES/);
-  assert.match(html, /BELAY PROVES/);
-  assert.match(html, /Safe local simulation[\s\S]*No live chain, money, bank, merchant, wallet, coverage, model, or tickets/);
-  assert.match(html, /Fictional local software demonstration · No financial product or live coverage/);
+test("product accepts one free-text mission without a canned scenario picker", () => {
+  assert.match(html, /Tell your AI what to pay[\s\S]*Belay makes it safe/);
+  assert.match(html, /id="request-input"[\s\S]*maxlength="1200"[\s\S]*required/);
+  assert.match(html, /Build my payment plan/);
+  assert.match(html, /id="example-list"/);
+  assert.doesNotMatch(html, /id="scenario"|Choose the test|scenario-console/);
+  assert.doesNotMatch(script, /\/api\/runs|non_delivery_paid|budget_cents/);
 });
 
-test("backend exposes trust, state, request, response, money, proof, and history surfaces", () => {
+test("review includes an editable payment type and every money-moving field", () => {
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(ids).size, ids.length, "HTML IDs must be unique");
   for (const id of [
-    "customer-panel", "backend-panel", "customer-now", "backend-now",
-    "buyer-balance", "held-balance", "provider-balance", "merchant-balance",
-    "reserve-cash", "current-control", "current-money-effect", "current-proof",
-    "current-retry", "policy-score", "control-groups", "funding-state",
-    "conversion-state", "payout-state", "order-state", "delivery-state",
-    "protection-state", "request-payload", "response-payload", "balance-changes",
-    "latest-ledger-key", "proof-stack", "trace-list", "event-select", "return-live",
-  ]) {
-    assert.ok(ids.includes(id), `missing two-sided simulator surface #${id}`);
+    "plan-form", "plan-category", "plan-description", "plan-payee", "plan-amount",
+    "plan-maximum", "plan-reference", "plan-due-date", "save-plan",
+    "authorize-payment", "authorization-card",
+  ]) assert.ok(ids.includes(id), `missing payment review surface #${id}`);
+  for (const category of ["purchase", "invoice", "bill", "tax", "insurance", "ticket", "subscription", "transfer"]) {
+    assert.match(html, new RegExp(`<option value="${category}">`));
   }
-  for (const label of ["CONTROL", "STATE / MONEY CHANGE", "PROOF CREATED", "SAFE REPLAY"]) {
-    assert.match(html, new RegExp(`>${label}<`));
-  }
+  assert.match(script, /category: \$\("plan-category"\)\.value/);
+  assert.match(script, /"plan-category"[\s\S]*\/details`, \{ expected_revision: mission\.revision, fields \}/);
+  assert.match(html, /Belay never guesses the payee or amount/);
+  assert.match(html, /Authorize &amp; pay now/);
 });
 
-test("controls are accessible and mobile swaps synchronized sides instead of stacking both", () => {
-  assert.match(html, /class="skip-link" href="#simulator"/);
-  assert.match(html, /aria-describedby="scenario-description"/);
-  assert.match(html, /role="progressbar"[^>]*aria-valuemin="0"[^>]*aria-valuemax="13"[^>]*aria-valuenow="0"[^>]*aria-valuetext="Ready"/);
-  for (const id of ["start", "play", "next", "reset", "view-customer", "view-backend", "return-live"]) {
-    assert.match(html, new RegExp(`<button[^>]*id="${id}"[^>]*type="(?:submit|button)"`));
-  }
-  assert.match(html, /role="tablist" aria-label="Simulation side"/);
-  assert.match(css, /\.workspace\[data-mobile-view="customer"\] \.backend-panel/);
-  assert.match(css, /\.workspace\[data-mobile-view="backend"\] \.customer-panel/);
+test("pre-authorization view identifies the fictional recipient and fixed demo economics", () => {
+  for (const id of ["beneficiary-id", "beneficiary-status"]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(script, /plan\.payee_id/);
+  assert.match(script, /fictional_local_fixture/);
+  assert.match(html, /Resets to 25,000 USDC/);
+  assert.match(html, /1 USDC = \$1 USD/);
+  assert.match(html, /Demo fee[\s\S]*\$0\.00/);
+});
+
+test("six visible policy groups account for all fifteen backend checks", () => {
+  const backendCheckNames = [
+    "User approved", "Plan unchanged", "Grant signature valid", "Payee matches",
+    "Amount matches", "Within maximum", "Exact funds ready", "Reference ready",
+    "Payee reviewed", "USDC source", "USD destination", "One-time scope",
+    "Grant active", "Operation fixed", "Signed instruction matches",
+  ];
+  for (const name of backendCheckNames) assert.match(script, new RegExp(`"${name}"`));
+  assert.equal((script.match(/\{ label: .*? names: \[/g) || []).length, 6);
+  assert.match(script, /policy\?\.allowed === false && groups\.every/);
+  assert.match(script, /passed === 15 && backendChecks\.length === 15/);
+  assert.match(css, /\.check-item\.failed/);
+});
+
+test("proofs and receipt render backend evidence instead of UI counters", () => {
+  assert.match(script, /Original request digest[\s\S]*mission\.request_digest/);
+  assert.match(script, /Versioned payment plan[\s\S]*mission\.plan_revision/);
+  for (const id of [
+    "receipt-payee", "receipt-amount", "receipt-reference", "receipt-id",
+    "receipt-limit", "receipt-date", "receipt-operation", "receipt-provider",
+    "receipt-attempts", "receipt-authorization", "receipt-confirmation", "receipt-scope",
+  ]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(script, /receipt\.payment\?\.provider_reference/);
+  assert.match(script, /receipt\.payment\?\.attempt_count/);
+  assert.match(script, /receipt\.authorization_digest/);
+  assert.match(script, /receipt\.domain_outcome/);
+});
+
+test("customer and backend panes expose the same event, safe retry, money, and terminal state", () => {
+  for (const id of [
+    "customer-panel", "backend-panel", "backend-actor", "backend-action",
+    "backend-explanation", "backend-proof", "backend-retry", "sync-label",
+    "money-customer-value", "money-hold-value", "money-provider-value",
+    "money-payee-value", "state-payload", "request-payload", "response-payload",
+    "ledger-list", "event-list",
+  ]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(script, /event\?\.backend\?\.proof/);
+  assert.match(script, /event\?\.backend\?\.safe_retry/);
+  assert.match(script, /Final linked state/);
+  assert.match(script, /returned · no payout/);
+  assert.match(script, /review_required/);
+  assert.match(script, /mission\?\.status === "needs_details"/);
+});
+
+test("workflow uses revisioned APIs and a presentation-speed automatic run", () => {
+  assert.match(script, /api\("\/api\/mission\/config"\)/);
+  assert.match(script, /api\("\/api\/missions\/analyze", \{ request \}\)/);
+  assert.match(script, /\/authorize`, \{ expected_revision: mission\.revision \}/);
+  assert.match(script, /\/advance`, \{ expected_revision: mission\.revision \}/);
+  assert.match(script, /const AUTO_DELAY_MS = 1900/);
+  assert.match(script, /setTimeout\(\(\) => advanceOne\(true\), AUTO_DELAY_MS\)/);
+  assert.match(script, /provider_payment\?\.attempt_count/);
+});
+
+test("mobile navigation is sticky, keyboard-operable, and returns to the customer", () => {
+  assert.match(html, /role="tablist"[\s\S]*aria-orientation="horizontal"/);
+  assert.match(html, /id="view-customer"[^>]*role="tab"[^>]*aria-controls="customer-panel"[^>]*tabindex="0"/);
+  assert.match(html, /id="view-backend"[^>]*role="tab"[^>]*aria-controls="backend-panel"[^>]*tabindex="-1"/);
+  assert.match(script, /setAttribute\("role", "tabpanel"\)/);
+  assert.match(script, /\["ArrowLeft", "ArrowRight", "Home", "End"\]/);
+  assert.match(script, /setMobileView\("customer"\);[\s\S]*scrollIntoView/);
+  assert.match(script, /\$\("technical-audit"\)\.open = false;[\s\S]*setMobileView\("customer"\)/);
+  assert.match(css, /\.product-navigation \{ position: sticky/);
+  assert.match(css, /\.mobile-tabs button \{ min-height: 44px/);
+  assert.match(css, /\.field input, \.field select \{[^}]*min-height: 44px/);
   assert.match(css, /@media \(max-width: 960px\)/);
   assert.match(css, /@media \(max-width: 720px\)/);
-  assert.match(css, /prefers-reduced-motion: reduce/);
-  assert.match(css, /:focus-visible/);
 });
 
-test("browser follows one local event timeline and renders backend truth safely", () => {
-  assert.match(script, /api\("\/api\/config"\)/);
-  assert.match(script, /api\("\/api\/runs"/);
-  assert.match(script, /budget_cents: 30_000/);
-  assert.match(script, /expected_revision: run\.revision/);
-  assert.match(script, /event\?\.user_message/);
-  assert.match(script, /event\?\.accounts_after/);
-  assert.match(script, /event\?\.balance_changes/);
-  assert.match(script, /event\?\.ledger_keys/);
-  assert.match(script, /provider_observation/);
-  assert.match(script, /read_only_lookup_by_operation_id|Reconcile paid operation/);
-  assert.match(script, /request-payload/);
-  assert.match(script, /response-payload/);
-  assert.match(script, /selectedButton\.offsetTop/);
-  assert.match(script, /non_delivery_paid/);
+test("demo remains safe, accessible, and renders untrusted values as text", () => {
+  assert.match(html, /class="skip-link" href="#mission"/);
+  assert.match(html, /Never enter real SSNs, tax IDs, cards, bank details, API keys, wallet seeds, or policy credentials/);
+  assert.match(html, /Fictional local product demonstration · No financial product, live payment, guarantee, or coverage/);
+  assert.match(css, /\.workspace\[data-mobile-view="customer"\] \.backend-panel/);
+  assert.match(css, /\.workspace\[data-mobile-view="backend"\] \.customer-panel/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
+  assert.match(css, /:focus-visible/);
   assert.doesNotMatch(script, /\.innerHTML\s*=/);
   assert.match(script, /document\.createTextNode/);
 });
