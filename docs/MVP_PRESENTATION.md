@@ -3,7 +3,9 @@
 Use the runnable Payment Mission MVP on port 8777. All wallets, signatures,
 USDC, conversion, USD payout and payee confirmation are local fixtures. The
 product interaction, HTTP API, persisted workflow, revision checks and ledger
-are implemented.
+are implemented. The same server also retains a legacy ticket API with a
+working read-only lost-payout investigation. That safety bridge is not yet wired
+into the universal investor interface.
 
 ## One sentence
 
@@ -56,6 +58,9 @@ agent, wallet and regulated settlement provider can plug into."
   are rendered from the same persisted event.
 - Receipt wording separates payment from external outcomes such as delivery,
   tax filing, remaining bill balance, coverage or claim approval.
+- The legacy `belay.purchase.v0.3` path proves that dispatch can be saved before
+  provider contact and an unknown original payout can be investigated without
+  authorizing another send. A universal `belay.mission.v0.1` adapter is next.
 
 ## What comes next
 
@@ -79,9 +84,10 @@ control contract:
 | Does an insurance payment prove coverage? | No. It proves only the simulated premium payment. Coverage and claims require the insurer's evidence. |
 | Why use USDC if the payee wants dollars? | USDC is the internal source asset in the proposed architecture; a regulated provider converts it and pays verified USD details. The demo simulates that route. |
 | Why will a merchant integrate? | The merchant can keep receiving USD. Belay's initial adapter target should use an existing invoice or bill-payment interface rather than require the merchant to adopt a wallet. |
+| What if the payout provider's reply is lost? | The legacy v0.3 backend keeps the hold reserved, looks up the original operation through a read-only evidence bridge and reconciles only exact paid evidence. The universal mission adapter is the next integration step. |
 | What is defensible? | The durable authorization and evidence graph across agents, wallets, payout providers and payee systems, plus the operational data required to reconcile failures safely. |
 | Is it a blockchain or payment processor? | It is the control layer. Wallet, chain and settlement providers remain replaceable adapters. |
-| What has actually been built? | An open-ended composer, editable plan, exact authorization, deterministic checks, simulated settlement, scoped receipt, two-sided audit, HTTP API and persisted SQLite state. |
+| What has actually been built? | An open-ended composer, editable plan, exact authorization, deterministic checks, simulated settlement, scoped receipt, two-sided audit, HTTP API and persisted SQLite state, plus a typed read-only lost-payout bridge on the legacy v0.3 API. |
 
 ## Language for the pitch
 

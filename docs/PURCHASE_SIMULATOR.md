@@ -152,6 +152,30 @@ compliance controls, monitoring and operational support. A government or
 insurer adapter must return authoritative acceptance evidence before Belay can
 claim that an obligation was satisfied.
 
+## Legacy v0.3 recovery bridge
+
+The same server retains the earlier `belay.purchase.v0.3` ticket workflow for
+compatibility. Its payout-reply-lost path now demonstrates a stricter recovery
+boundary. Before provider I/O, Belay commits a `dispatch_attempts_v3` record for
+the exact run, order, operation and canonical payment intent. Once dispatch may
+have started, the customer hold stays reserved; expiry or cancellation cannot
+release it based only on a missing reply.
+
+The typed investigator in `purchase_simulator/recovery.py` and
+`recovery_app/purchase.py` reads only the original provider operation. It binds
+the mission and order identities, grant digest, beneficiary, six-decimal USDC
+base units, USD cents and canonical intent. It returns `paid`, `unknown` or
+`conflict`, and only exact paid evidence sets `can_reconcile`. A missing record,
+provider outage, partial status or disagreement cannot release funds or permit
+another submission.
+
+When the legacy executor reconciles, it reads the provider again and rejects a
+changed evidence digest. The original payout is accounted once; no browser
+verdict is accepted and no investigation callback can sign, submit, convert,
+complete or pay a claim. This bridge currently covers one fictional lost-payout
+path. The universal `belay.mission.v0.1` interface still needs its own typed
+recovery adapter.
+
 ## Local API
 
 | Route | Body | Purpose |
@@ -171,12 +195,15 @@ wallet key, bank credential or raw payment token.
 The earlier `GET /api/config` and `/api/runs` ticket-simulator routes remain
 available for repository compatibility. They use the separate
 `belay.purchase.v0.3` schema and do not drive the current investor interface.
+`POST /api/runs/{id}/investigate` accepts only `expected_revision` and returns
+the read-only finding for that legacy run's original payout.
 
 ## Verify
 
 ```bash
 python -m unittest discover -s tests -p "test_mission_control.py" -v
 python -m unittest discover -s tests -p "test_purchase_simulator.py" -v
+python -m unittest discover -s tests -p "test_purchase_recovery.py" -v
 node --check purchase_simulator/web/app.js
 node --test tests/test_purchase_simulator_ui.mjs
 python experiments/check_docs.py
@@ -185,7 +212,9 @@ python experiments/check_docs.py
 The suites use temporary databases and no remote services. The mission tests
 cover parsing, missing details, authorization bounds, the complete money path,
 stable revisions, persistence and the loopback API. The legacy suite protects
-the ticket workflow that remains available through its API.
+the ticket workflow that remains available through its API. The recovery suite
+covers dispatch uncertainty, hold safety, exact evidence binding, unknown and
+conflicting observations, current revisions and no replacement submission.
 
 ## Production adapter seams
 

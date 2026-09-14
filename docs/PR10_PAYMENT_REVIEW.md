@@ -38,11 +38,11 @@ Resolve refused: 409 Evidence does not support a resolution
 New explicit same-tuple transfer refused: 409 An identical test transfer is still unresolved.
 ```
 
-The merged fix adds a journaled, evidence-bound terminal failure that preserves the original
-hash and gas disclosure and sends no money. Permit a separate, explicitly
+The merged fix adds a journaled, evidence-bound terminal failure that preserves
+the original hash and gas disclosure, sends no money and permits a separately
 authorized incident afterward. Missing/pending receipts and ambiguous wallet
-errors must remain unknown; they do not authorize retries. Regression coverage
-should include restart, duplicate closure and stale evidence. This is a
+errors remain unknown; they do not authorize retries. Regression coverage
+includes restart, duplicate closure and stale evidence. This was a
 lifecycle/availability defect, not an observed double payment.
 
 ## Reusable components
@@ -57,6 +57,27 @@ lifecycle/availability defect, not an observed double payment.
 
 The optional LLM proposes evidence interpretations. It is not signer, executor
 or claims payer. Keep that separation in the larger architecture.
+
+## Post-merge legacy purchase integration
+
+Commit `fe23651` adds a separate typed bridge for the ticket simulator's
+`belay.purchase.v0.3` payout-reply-lost path. It persists a dispatch-attempt
+record before provider I/O and keeps the exact order hold reserved when
+acceptance may be unknown. A read-only investigator binds the run, mission,
+order and operation IDs, grant digest, beneficiary, USDC base units, USD cents
+and canonical intent.
+
+The investigator returns `paid`, `unknown` or `conflict`; only exact paid
+evidence sets `can_reconcile`. Missing, unavailable, partial or contradictory
+evidence cannot release funds or authorize another submission. Reconciliation
+re-reads the provider and accounts the original payout once only if the
+evidence is still identical. The API accepts only the current revision at
+`POST /api/runs/{id}/investigate` and does not accept a client verdict.
+
+This is an implemented legacy compatibility path. It is not wired into the
+generalized `belay.mission.v0.1` investor flow, and it does not turn Recovery
+Desk into a signer, ledger, provider client, claims service or autonomous
+executor.
 
 ## Missing product layers
 
@@ -96,8 +117,10 @@ Keep both test targets, data-directory exclusions and application entry points.
 Recovery Desk uses port 8766 and `.belay-recovery/`; Payment Mission uses port
 8777 and `.belay-purchase-simulator/`. Preserve main's fixes and historical
 research numbers. Treat Recovery Desk as implemented recovery and Payment
-Mission as a separate local payment simulation. Connect them later through a
-typed, read-only provider observation rather than a shared executor or database.
+Mission as a separate local payment simulation. The legacy v0.3 ticket path now
+has a typed, read-only provider observation; connect the generalized v0.1
+mission path later through its own adapter rather than a shared executor or
+database.
 
 ## Checks performed here
 
@@ -107,6 +130,9 @@ typed, read-only provider observation rather than a shared executor or database.
 - Node: 30 wallet and Recovery Desk frontend tests passed.
 - The original review reproduced the finalized-revert dead end; the merged
   regression suite covers the corrected terminal-failure behavior.
+- The later legacy purchase bridge adds focused tests for provider/application
+  commit gaps, expiry and cancellation hold safety, evidence conflicts,
+  unavailable evidence, exact revisions and no replacement submission.
 - GitHub CI and Pages succeeded for this head. Full POSIX crash tests were not
   rerun locally on Windows; no actual wallet transfer or model call was made.
 

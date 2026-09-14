@@ -252,8 +252,12 @@ An Arc receipt is normalized to a **positive-only** recovery observation.
 The demo permits 0.01–1.00 test USDC, so conversion to the existing integer
 cent field is exact; the original six-decimal units and string transaction
 hash are retained. A missing, pending, inconsistent or failed receipt
-never produces permission to send a second transaction. Resolution only
-records an existing transfer; the app has no blockchain signing or
+never produces permission to send a second transaction. Resolution records
+an existing transfer or the exact finalized transaction's failed execution;
+failed closure is a separate application journal record, not an absence
+verdict. It retains the original hash and gas disclosure and requires fresh
+verification of the same receipt and canonical block. A subsequent transfer
+requires a separate intent and wallet authorization. The app has no blockchain signing or
 broadcast callback. One transaction hash cannot resolve two app incidents.
 The app refuses simultaneous unresolved cases with the same sender,
 recipient and amount. Manual attachment must identify the original transfer:
@@ -267,3 +271,35 @@ requires inspection and manual hash attachment. Revoking local permission
 cannot cancel an already-open wallet prompt or undo a signed transaction;
 the person must reject the prompt in MetaMask. This is human-authorized
 testnet recovery, not autonomous custody, escrow or a financial guarantee.
+
+## 9. Purchase investigation and USD evidence
+
+The commerce simulator uses separate application and fictional-provider
+databases. Before calling that provider, it commits an immutable dispatch
+record and an uncertain state while retaining the customer hold. Recovery
+looks up that same operation before expiry or cancellation can release funds.
+An absent, unavailable or contradictory response leaves the hold reserved;
+it never causes an automatic replacement submission. Accepted legacy
+operations without the new dispatch record remain held for manual review.
+These are local simulator guarantees, not bank, exchange or chain guarantees.
+
+`purchase_simulator/recovery.py` translates the saved purchase and a read-only
+provider lookup into `recovery_app/purchase.py`. Its versioned intent binds
+the mission/run, grant, order, operation, quote and merchant beneficiary.
+USDC six-decimal base units and USD cents have distinct fields. The adapter
+does not invent a chain identity for fictional provider records or convert
+the purchase into a research refund slot.
+
+The investigator can return paid, unknown or conflicting evidence. Its
+observations use the shared evidence citation format, while purchase-specific
+checks validate the full settlement intent. This deterministic investigation
+does not invoke the refund model or claim a live AI purchase. It has no
+signing key, payment callback, bank client or reserve-payment authority.
+
+The purchase engine alone can reconcile its ledger. It recomputes findings
+from the persisted revision, verifies operation and intent identity, and
+compares a fresh provider snapshot before applying them. Browser-supplied
+findings cannot authorize reconciliation. Funding, conversion, USD payout,
+delivery and reserve reimbursement remain distinct states. A payout receipt
+does not establish ticket delivery, and a seeded demo reserve is not funded
+production coverage.

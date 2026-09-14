@@ -7,8 +7,9 @@ Belay is competing in **AI Apps**. The current pitch has one product promise:
 
 The Payment Mission MVP leads the demonstration. Recovery Desk remains the
 implemented supporting product for an operation whose external outcome is
-uncertain. It must enter the payment path through a typed, read-only observation
-adapter rather than become another executor.
+uncertain. The legacy `belay.purchase.v0.3` path now uses it through a typed,
+read-only purchase investigation. The generalized `belay.mission.v0.1` path
+still needs a domain-neutral observation adapter rather than another executor.
 
 No interviews, willingness to pay, provider access or customer incident rates
 are established by this repository.
@@ -18,6 +19,7 @@ are established by this repository.
 | Product | Working local path | Boundary |
 |---|---|---|
 | Payment Mission MVP | Open-ended request, editable plan, exact authorization, deterministic checks, simulated USDC hold and USD payout, scoped receipt, synchronized customer/backend views | No model, wallet, chain, bank, payee or real money is connected |
+| Legacy v0.3 purchase recovery | Durable dispatch-attempt record, reserved hold, exact-operation investigation and evidence-bound reconciliation | Ticket fixture only; not connected to the universal mission interface |
 | Recovery Desk | Persistent incidents, bounded optional model proposal, deterministic evidence validation, guarded operator resolution and audit export | Local refund fixture; no autonomous payment key or live remedy |
 | Arc test wallet | Human-signed capped test-USDC transfer and read-only finalized-receipt verification | Arc Testnet only; separate from Payment Mission settlement |
 | Research runtime | Anchored side-effect experiments and recorded crash demonstrations | Synthetic measurements; POSIX crash harness |
@@ -64,7 +66,14 @@ money or customer validation.
 
 PR #10 is merged. Its Recovery Desk, Arc verifier and finalized-failure
 lifecycle are implemented; `250456f` closed the pre-merge failure dead end.
-Reuse these parts through a provider-observation interface:
+Commit `fe23651` applies the same read-only evidence boundary to the legacy
+`belay.purchase.v0.3` payout-reply-lost path. It persists possible dispatch
+before provider I/O, keeps the hold reserved, rejects missing or conflicting
+evidence and reconciles the original paid operation only after a fresh provider
+read.
+
+Reuse that pattern for `belay.mission.v0.1` through a new domain-neutral
+provider-observation interface:
 
 - send the exact Payment Mission operation and provider identities;
 - request read-only evidence and preserve unknown outcomes;

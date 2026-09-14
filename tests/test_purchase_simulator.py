@@ -301,6 +301,173 @@ class PurchaseEngineTests(unittest.TestCase):
         )
         self.assertEqual(event["outcome"], admitted["outcome"])
 
+    def test_dispatch_is_durable_before_provider_io_and_recovery_never_resubmits(self):
+        signed = self.to_step(self.create(), 4)
+        submit = self.engine.provider.submit
+
+        def commit_then_interrupt(intent):
+            # A separate connection sees the uncertainty and reservation before
+            # the independently committing provider can receive the request.
+            with closing(sqlite3.connect(self.engine.path)) as db:
+                raw = json.loads(db.execute(
+                    "SELECT state_json FROM runs WHERE id=?", (signed["id"],)
+                ).fetchone()[0])
+                self.assertEqual(raw["stage"], "dispatch_unknown")
+                row = db.execute("SELECT intent_json FROM dispatch_attempts_v3 WHERE run_id=?", (signed["id"],)).fetchone()
+                self.assertEqual(json.loads(row[0]), intent)
+            submit(intent)
+            raise RuntimeError("process interrupted after provider commit")
+
+        with patch.object(self.engine.provider, "submit", side_effect=commit_then_interrupt):
+            with self.assertRaisesRegex(RuntimeError, "interrupted"):
+                self.engine.advance(signed["id"], signed["revision"])
+        self.restart()
+        unknown = self.engine.get(signed["id"])
+        self.assertEqual(unknown["payout_state"], "unknown")
+        self.assertEqual(unknown["buyer"]["available_usdc_units"], CUSTOMER_START - ORDER_COST)
+        self.assertEqual(unknown["buyer"]["held_usdc_units"], ORDER_COST)
+        self.assertEqual(unknown["settlement"]["provider_attempt_count"], 1)
+        self.assertEqual(unknown["dispatch_record"]["operation_id"], signed["operation_id"])
+        with patch("purchase_simulator.engine.time.time", return_value=signed["grant"]["expires_at"] + 1):
+            recovered = self.engine.advance(unknown["id"], unknown["revision"])
+        self.assertEqual(recovered["stage"], "usdc_dispatched")
+        self.assertEqual(recovered["events"][-1]["method"], "GET")
+        with self.assertRaises(DemoError):
+            self.engine.advance(unknown["id"], unknown["revision"])
+        final = self.finish(recovered)
+        self.assertEqual(final["settlement"]["provider_attempt_count"], 1)
+        self.assertEqual(final["settlement"]["provider_payout_count"], 1)
+        self.assertEqual(self.ledger_kinds(final).count("provider_dispatch"), 1)
+        self.assert_demo_value_conserved(final)
+
+    def test_paid_dispatch_recovers_after_expiry_without_releasing_or_paying_again(self):
+        for expiry in ("grant", "quote"):
+            with self.subTest(expiry=expiry):
+                signed = self.to_step(self.create(), 4)
+                submit = self.engine.provider.submit
+
+                def payout_then_interrupt(intent, original_submit=submit):
+                    original_submit(intent)
+                    self.engine.provider.convert(intent["operation_id"])
+                    self.engine.provider.complete(intent["operation_id"])
+                    raise RuntimeError("lost complete provider result")
+
+                with patch.object(self.engine.provider, "submit", side_effect=payout_then_interrupt):
+                    with self.assertRaises(RuntimeError):
+                        self.engine.advance(signed["id"], signed["revision"])
+                self.restart()
+                unknown = self.engine.get(signed["id"])
+                expires = signed["grant"]["expires_at"] if expiry == "grant" else signed["fx_quote"]["expires_at"]
+                with patch("purchase_simulator.engine.time.time", return_value=expires + 1):
+                    recovered = self.engine.advance(unknown["id"], unknown["revision"])
+                self.assertEqual(recovered["stage"], "payout_reconciled")
+                self.assertEqual(recovered["buyer"]["available_usdc_units"], CUSTOMER_START - ORDER_COST)
+                self.assertEqual(recovered["settlement"]["merchant_received_usd_cents"], ORDER_USD_CENTS)
+                final = self.finish(recovered)
+                self.assertEqual(final["settlement"]["provider_attempt_count"], 1)
+                self.assertEqual(final["settlement"]["provider_payout_count"], 1)
+                self.assertNotIn("expired_hold_released", self.ledger_kinds(final))
+                self.assert_demo_value_conserved(final)
+
+    def test_crash_while_saving_dispatch_response_preserves_uncertainty(self):
+        signed = self.to_step(self.create(), 4)
+        enrich = self.engine._enrich_latest_event
+
+        def interrupt_final_save(db, state, **kwargs):
+            if state["stage"] == "usdc_dispatched":
+                raise RuntimeError("interrupted before application response commit")
+            return enrich(db, state, **kwargs)
+
+        with patch.object(self.engine, "_enrich_latest_event", side_effect=interrupt_final_save):
+            with self.assertRaises(RuntimeError):
+                self.engine.advance(signed["id"], signed["revision"])
+        self.restart()
+        unknown = self.engine.get(signed["id"])
+        self.assertEqual(unknown["stage"], "dispatch_unknown")
+        self.assertEqual(unknown["buyer"]["held_usdc_units"], ORDER_COST)
+        self.assertEqual(self.ledger_kinds(unknown), ["order_hold"])
+        with patch.object(self.engine.provider, "submit") as submit:
+            recovered = self.engine.advance(unknown["id"], unknown["revision"])
+            submit.assert_not_called()
+        final = self.finish(recovered)
+        self.assertEqual(final["settlement"]["provider_attempt_count"], 1)
+        self.assertEqual(final["settlement"]["provider_payout_count"], 1)
+        self.assert_demo_value_conserved(final)
+
+    def test_legacy_unjournaled_provider_acceptance_cannot_release_expired_hold(self):
+        signed = self.to_step(self.create(), 4)
+        # An old-version interrupted run has no durable dispatch marker, but
+        # the independently committed provider record still blocks a release.
+        self.engine.provider.submit(signed["intent"])
+        with patch("purchase_simulator.engine.time.time", return_value=signed["grant"]["expires_at"] + 1):
+            with self.assertRaisesRegex(DemoError, "Dispatch may already exist"):
+                self.engine.advance(signed["id"], signed["revision"])
+        current = self.engine.get(signed["id"])
+        self.assertEqual(current["buyer"]["held_usdc_units"], ORDER_COST)
+        self.assertEqual(current["buyer"]["available_usdc_units"], CUSTOMER_START - ORDER_COST)
+        self.assertEqual(current["settlement"]["provider_attempt_count"], 1)
+
+    def test_dispatch_without_acceptance_evidence_keeps_hold_after_expiry_and_cancellation(self):
+        signed = self.to_step(self.create(), 4)
+        with patch.object(self.engine.provider, "submit", side_effect=OSError("connection failed before any reply")) as submit:
+            with self.assertRaises(DemoError) as failed:
+                self.engine.advance(signed["id"], signed["revision"])
+            self.assertEqual(submit.call_count, 1)
+            self.assertEqual(failed.exception.current["stage"], "dispatch_unknown")
+        self.restart()
+        unknown = self.engine.get(signed["id"])
+        self.rewrite_saved_state(unknown, lambda raw: raw.__setitem__("scenario", "cancel_before_dispatch"))
+        for _ in range(2):
+            with patch("purchase_simulator.engine.time.time", return_value=signed["grant"]["expires_at"] + 1):
+                with patch.object(self.engine.provider, "submit") as submit:
+                    with self.assertRaisesRegex(DemoError, "remain reserved"):
+                        self.engine.advance(unknown["id"], unknown["revision"])
+                    submit.assert_not_called()
+        current = self.engine.get(unknown["id"])
+        self.assertEqual(current["revision"], unknown["revision"])
+        self.assertEqual(current["buyer"]["available_usdc_units"], CUSTOMER_START - ORDER_COST)
+        self.assertEqual(current["buyer"]["held_usdc_units"], ORDER_COST)
+        self.assertEqual(current["protection"]["committed_usdc_units"], COMBINED_COVER)
+        self.assertEqual(self.ledger_kinds(current), ["order_hold"])
+        self.assert_demo_value_conserved(current)
+
+    def test_unavailable_or_changed_dispatch_evidence_never_releases_hold(self):
+        signed = self.to_step(self.create(), 4)
+        submit = self.engine.provider.submit
+
+        def interrupted(intent):
+            submit(intent)
+            raise RuntimeError("interrupted")
+
+        with patch.object(self.engine.provider, "submit", side_effect=interrupted):
+            with self.assertRaises(RuntimeError):
+                self.engine.advance(signed["id"], signed["revision"])
+        unknown = self.engine.get(signed["id"])
+        with patch.object(self.engine.provider, "lookup", side_effect=OSError("provider offline")):
+            with self.assertRaises(DemoError):
+                self.engine.advance(unknown["id"], unknown["revision"])
+            snapshot = self.engine.get(unknown["id"])
+            self.assertIsNotNone(snapshot["provider_read_error"])
+            self.assertEqual(snapshot["buyer"]["held_usdc_units"], ORDER_COST)
+        self.rewrite_saved_state(unknown, lambda raw: raw["intent"].__setitem__("beneficiary_id", "changed_merchant"))
+        with self.assertRaisesRegex(DemoError, "exact intent"):
+            self.engine.advance(unknown["id"], unknown["revision"])
+        self.assertEqual(self.engine.get(unknown["id"])["buyer"]["held_usdc_units"], ORDER_COST)
+
+    def test_cancel_and_expiry_still_stop_new_dispatch_before_provider_contact(self):
+        for scenario in ("success", "cancel_before_dispatch"):
+            signed = self.to_step(self.create(scenario), 4)
+            with patch.object(self.engine.provider, "submit") as submit:
+                if scenario == "success":
+                    with patch("purchase_simulator.engine.time.time", return_value=signed["grant"]["expires_at"] + 1):
+                        stopped = self.engine.advance(signed["id"], signed["revision"])
+                else:
+                    stopped = self.engine.advance(signed["id"], signed["revision"])
+                submit.assert_not_called()
+            self.assertTrue(stopped["terminal"])
+            self.assertEqual(stopped["buyer"]["available_usdc_units"], CUSTOMER_START)
+            self.assertIsNone(stopped["dispatch_record"])
+
     def test_mismatched_provider_payout_fails_closed_before_app_settlement(self):
         mutations = (
             ("beneficiary_id", "merchant_attacker_demo"),

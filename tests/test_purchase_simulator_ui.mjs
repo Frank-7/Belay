@@ -12,6 +12,7 @@ test("product accepts one free-text mission without a canned scenario picker", (
   assert.match(html, /Build my payment plan/);
   assert.match(html, /id="example-list"/);
   assert.doesNotMatch(html, /id="scenario"|Choose the test|scenario-console/);
+  assert.doesNotMatch(html, /id="investigate"|recovery-investigation/);
   assert.doesNotMatch(script, /\/api\/runs|non_delivery_paid|budget_cents/);
 });
 
@@ -79,6 +80,8 @@ test("customer and backend panes expose the same event, safe retry, money, and t
   ]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(script, /event\?\.backend\?\.proof/);
   assert.match(script, /event\?\.backend\?\.safe_retry/);
+  assert.match(html, /Safe retry[\s\S]*id="backend-retry"/);
+  assert.match(html, /Safe replay[\s\S]*id="safe-retry"/);
   assert.match(script, /Final linked state/);
   assert.match(script, /returned · no payout/);
   assert.match(script, /review_required/);

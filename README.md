@@ -39,10 +39,14 @@ tax receipt confirms only the simulated payment; an insurance receipt confirms
 only the simulated premium payment.
 
 The investor experience uses the `belay.mission.v0.1` simulation schema. The
-earlier `belay.purchase.v0.3` ticket routes remain for compatibility. A live
-product still requires authenticated users, custody and settlement providers,
-verified payee adapters, compliance review and production cryptography. Read
-the [mission presentation](docs/MVP_PRESENTATION.md),
+earlier `belay.purchase.v0.3` ticket routes remain for compatibility. That
+legacy path now saves dispatch uncertainty before provider contact and exposes
+a typed, read-only Recovery Desk investigation of the original payout. The
+bridge does not yet run inside `belay.mission.v0.1`; the investor interface
+demonstrates the universal product's normal payment path. A live product still
+requires authenticated users, custody and settlement providers, verified
+payee adapters, compliance review and production cryptography. Read the
+[mission presentation](docs/MVP_PRESENTATION.md),
 [USDC settlement architecture](docs/USDC_SETTLEMENT_ARCHITECTURE.md) and
 [integration guide](docs/INTEGRATION.md).
 

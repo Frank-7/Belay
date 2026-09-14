@@ -18,6 +18,12 @@ in [the integration record](PR10_PAYMENT_REVIEW.md). It does not implement USD
 payouts or compensation. Keep that testnet adapter distinct from any proposed
 Base contract or regulated settlement provider.
 
+Commit `fe23651` now demonstrates the read-only boundary for the legacy
+`belay.purchase.v0.3` lost-payout path: dispatch uncertainty is persisted
+before provider contact, and exact provider evidence can reconcile the original
+payout without another submission. The generalized `belay.mission.v0.1` path
+does not yet call this bridge.
+
 ## 1. The product, in simple words
 
 You give an agent a task and spending rules. Belay checks the purchase, pays

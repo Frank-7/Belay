@@ -3,19 +3,24 @@
 Belay has two current local applications with separate responsibilities. The
 **Payment Mission MVP** prepares, authorizes and simulates one exact payment.
 The **Recovery Desk**, merged in PR #10, investigates an interrupted action and
-records what the available evidence supports. They share architectural rules,
-but they do not share a database or silently call each other.
+records what the available evidence supports. They do not share a database.
+The generalized mission path does not call Recovery Desk; the same server's
+legacy ticket path now uses a typed, read-only purchase investigator built on
+Recovery Desk evidence types.
 
 The investor pitch leads with Payment Mission. Recovery Desk is the reusable
-outcome-investigation component for a later provider adapter, not an alternate
-payment executor. See the [PR #10 integration record](PR10_PAYMENT_REVIEW.md).
+outcome-investigation component, not an alternate payment executor. Its first
+purchase bridge is deliberately limited to `belay.purchase.v0.3`; a future
+typed adapter must connect `belay.mission.v0.1`. See the
+[PR #10 integration record](PR10_PAYMENT_REVIEW.md).
 
 ## Components and boundaries
 
 | Component | Entry point | Actual behavior |
 |---|---|---|
 | Payment Mission MVP | `python -m purchase_simulator.server` | Plain-language draft, editable plan, one exact authorization, deterministic checks, simulated USDC-to-USD payout, scoped receipt and synchronized customer/backend views |
-| Legacy protected-purchase API | `/api/runs` on the Payment Mission server | Ticket-specific local state machine, recovery fixtures, reserve accounting and claims; retained for compatibility |
+| Legacy protected-purchase API | `/api/runs` on the Payment Mission server | Ticket-specific local state machine, reserve accounting and claims; saves dispatch uncertainty before provider I/O and retains the payment hold while acceptance may be unknown |
+| Legacy purchase recovery bridge | `purchase_simulator/recovery.py`, `recovery_app/purchase.py` | Binds the exact v0.3 purchase intent to read-only provider evidence and returns `paid`, `unknown` or `conflict`; it cannot send or release money |
 | Local Recovery Desk | `python -m recovery_app.server` | Persistent incidents, research JSONL journal, `second/` validation, evidence refresh, current permission checks and downloadable audit receipts |
 | Optional recovery model | `second/live_agent.py` | OpenAI proposes pointers and a cited verdict; deterministic validation decides support and the operator applies an eligible result |
 | Local refund provider | `services/ledger.py` through `recovery_app/engine.py` | SQLite simulation with fictional amounts and constructed interrupted states |
@@ -49,6 +54,7 @@ Verify the current and compatibility paths with:
 ```bash
 python -m unittest discover -s tests -p "test_mission_control.py" -v
 python -m unittest discover -s tests -p "test_purchase_simulator.py" -v
+python -m unittest discover -s tests -p "test_purchase_recovery.py" -v
 node --check purchase_simulator/web/app.js
 node --test tests/test_purchase_simulator_ui.mjs
 ```
@@ -127,6 +133,29 @@ stable operation identity prevent a repeated local transition from moving the
 same value again. The older `belay.purchase.v0.3` ticket API uses separate
 tables and does not drive the current interface.
 
+## Legacy v0.3 recovery bridge
+
+Commit `fe23651` connects the legacy ticket simulator's lost-payout path to a
+typed, read-only investigator. Before provider I/O, `dispatch_attempts_v3`
+durably binds the run, mission, order, operation and canonical intent. Once
+dispatch may have started, cancellation or expiry cannot release the order
+hold merely because a provider reply is missing.
+
+`POST /api/runs/{id}/investigate` accepts only the exact current
+`expected_revision`. It looks up the original operation and returns evidence,
+never an execution token. `PurchaseIntent` binds the grant digest,
+beneficiary, six-decimal USDC base units, USD cents and canonical intent. An
+unavailable lookup, missing record, partial status or malformed evidence stays
+`unknown`; mismatched identity or value becomes `conflict`. Only exact paid
+evidence sets `can_reconcile`.
+
+The legacy executor then reads the provider again and requires the evidence
+digest to remain current before it accounts the original payout once. It never
+accepts a browser-supplied verdict and never submits a replacement through the
+investigation route. Delivery, refunds and claims remain separate operations.
+This bridge is implemented for `belay.purchase.v0.3`; the generalized
+`belay.mission.v0.1` path still needs a domain-neutral typed adapter.
+
 The receipt states its evidence boundary. Payment does not prove delivery, tax
 filing, a remaining bill balance, insurance coverage or claim approval. A live
 payee-domain adapter must provide authoritative acceptance evidence before
@@ -188,8 +217,10 @@ insurance coverage.
 
 ## Safe integration contract
 
-Recovery Desk must remain a read-only observer until Payment Mission explicitly
-asks for an observation through a typed adapter. Do not expose its resolution
+For `belay.mission.v0.1`, Recovery Desk must remain a read-only observer until
+Payment Mission explicitly asks for an observation through a typed adapter.
+The legacy `belay.purchase.v0.3` bridge demonstrates that pattern for one
+fictional payout, but it is not a universal adapter. Do not expose a resolution
 callback to the purchasing agent. Do not relabel Arc Testnet receipts as Base
 payments: chain IDs, token addresses, gas and finality rules are different.
 

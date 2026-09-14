@@ -11,7 +11,7 @@ help:
 	@echo "make test-prototype  portable Recovery Lab tests"
 	@echo "make prototype      start the local Recovery Lab on port 8765"
 	@echo "make purchase-simulator customer and backend Payment Mission MVP on port 8777"
-	@echo "make test-purchase-simulator portable mission and legacy purchase tests"
+	@echo "make test-purchase-simulator mission, legacy purchase, recovery and UI tests"
 	@echo "make desk           start the Recovery Desk on port 8766"
 	@echo "make test-desk      operator workflow, wallet evidence and boundaries"
 	@echo "make test-recovery offline model, evaluation and demo checks"
@@ -49,6 +49,8 @@ purchase-simulator:
 test-purchase-simulator:
 	$(PY) -m unittest discover -s tests -p "test_mission_control.py" -v
 	$(PY) -m unittest discover -s tests -p "test_purchase_simulator.py" -v
+	$(PY) tests/test_purchase_recovery.py
+	node --test tests/test_purchase_simulator_ui.mjs
 
 desk:
 	$(PY) -m recovery_app.server --port 8766

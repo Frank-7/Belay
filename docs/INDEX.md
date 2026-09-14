@@ -12,6 +12,7 @@ financial integrations.
 | [Payment Mission MVP](PURCHASE_SIMULATOR.md) | Current runnable investor product | Open-ended request composer, reviewed authority, simulated payment, backend audit and scoped receipt |
 | [Mission presentation](MVP_PRESENTATION.md) | Current pitch | Three-minute walkthrough, 60-second pitch and investor questions |
 | [Integration guide](INTEGRATION.md) | Current implementation boundaries | Run both local products and understand their separate state, authority and evidence paths |
+| [Legacy purchase recovery bridge](PURCHASE_SIMULATOR.md#legacy-v03-recovery-bridge) | Implemented compatibility path | Durable pre-dispatch uncertainty and typed, read-only payout investigation for `belay.purchase.v0.3` |
 | [PR #10 integration record](PR10_PAYMENT_REVIEW.md) | Merged Recovery Desk review | Reusable recovery components, resolved lifecycle finding and remaining payment-adapter boundaries |
 | [Test-wallet setup](TEST_WALLET.md) | Human-signed test-network demo | Configure MetaMask, obtain test tokens and understand Arc receipt verification |
 | [Final Recovery Desk presentation](FINAL_PRESENTATION.md) | Prepared supporting pitch | Recovery-focused script, judge questions and buyer questions |
@@ -37,8 +38,11 @@ financial integrations.
 The Payment Mission MVP shapes invoices, bills, premiums, taxes,
 subscriptions, transfers, tickets and other purchases, but does not execute
 those real services. Its model, money and provider edges are simulated. The
-Recovery Desk can use an optional model to propose evidence interpretations;
-it cannot sign or autonomously send its Arc Testnet wallet transfer. The
-repository offers no guarantee, insurance, reimbursement, tax filing, bank
-connection, production USDC conversion or live purchasing integration.
-Research outcomes are controlled measurements, not customer loss rates.
+legacy `belay.purchase.v0.3` ticket path now uses a deterministic Recovery Desk
+evidence bridge for its fictional lost-payout case. The generalized
+`belay.mission.v0.1` path still needs its own typed recovery adapter. Recovery
+Desk can use an optional model to propose evidence interpretations; it cannot
+sign or autonomously send its Arc Testnet wallet transfer. The repository
+offers no guarantee, insurance, reimbursement, tax filing, bank connection,
+production USDC conversion or live purchasing integration. Research outcomes
+are controlled measurements, not customer loss rates.
