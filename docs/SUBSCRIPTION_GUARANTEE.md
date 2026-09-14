@@ -4,6 +4,14 @@
 The payer, launch jurisdictions, terms, price and limits are not approved.
 The examples below are design assumptions for review, not measured loss rates.
 
+The selected v0.3 architecture is [USDC funding with USD merchant payouts](USDC_SETTLEMENT_ARCHITECTURE.md).
+Returning still-held customer funds is a purchase remedy. Reimbursing a loss
+after merchant payment needs separately funded protection capital. This
+document develops the narrow agent-error benefit; supplier non-delivery and
+damage belong to separate buyer-protection terms in the
+[master plan](MVP_MASTER_PLAN.md). Shared case accounting prevents duplicate
+reimbursement. Dollar benefits require explicit USDC valuation/conversion terms.
+
 ## The offer in simple words
 
 The customer subscribes to an agent that executes permitted tasks, monitors
@@ -35,17 +43,12 @@ Recommendation: build the transaction-guarantee simulator now, while launching
 live services only with the remedy actually ready to be honored. Do not sell
 a transaction guarantee and silently substitute service credits.
 
-**Selected route: stage the remedies.** Belay funds its own defined service-fee
-remedy and handles execution support. Pursue an appropriately authorized
-insurance partner for covered transaction losses before offering that benefit
-live. Belay supplies evidence and customer support; the partner's agreed
-contract determines claim decisions and who pays. For the target arrangement,
-the partner pays covered transaction claims, while Belay pays its separate
-service-fee remedy. No partner or policy is currently secured.
-
-This avoids using subscription receipts as the sole funding source for
-transaction losses. It does not eliminate Belay's legal, distribution or
-operational responsibilities. See the
+**Selected v0.3 route:** demonstrate a separately funded reserve that advances
+approved capped claims. Evaluate an authorized partner for agreed ultimate
+losses. Funding from collected revenue is an alternative only if adequate
+capital and the approved legal/contractual route exist. A partner's later claim
+payment does not supply immediate cash by itself. No partner, funded reserve or
+live policy is secured. See the
 [recovery and guarantee decision](RECOVERY_AND_GUARANTEE_DECISION.md).
 
 ## A narrow transaction guarantee to evaluate
@@ -61,13 +64,19 @@ named connectors and task types that produce useful independent evidence.
 | Belay pays once but loses the response | Reconcile first; not automatically a reimbursable loss | An unknown result is not itself financial damage |
 | Merchant refund fully restores the additional charge | No duplicate reimbursement for the same loss | The loss has been recovered |
 | Customer changes their mind after a correct purchase | Outside this proposed guarantee | Belay executed the authorized action |
-| Event is cancelled or a seller fails to deliver despite a correct purchase | Merchant/provider remedies; outside the narrow execution guarantee | This adds third-party performance risk |
+| Event is cancelled or a seller fails to deliver despite a correct purchase | Separate buyer-protection terms and merchant/provider remedies; outside this narrow execution guarantee | This adds third-party performance risk |
 | Lost income, investment losses or missed opportunities | Outside this proposed guarantee | Indirect or speculative damage is a different exposure |
 
 Exclusions from this proposed voluntary benefit do not remove applicable
 customer rights or settle Belay's other legal obligations.
 
 ### Illustrative limits for a simulated offer
+
+The older pricing examples below are stress-test alternatives, not the v0.3
+presentation policy. The current two-ticket demo uses 200 USDC for the covered
+purchase and up to 100 USDC for eligible incremental agent error, subject to a
+300-USDC combined cap and no duplicated loss. It reserves that full cap before
+admitting the order. These are fictional policy terms, not a live offer.
 
 - USD 100 per eligible incident and USD 200 per subscriber per contract year.
 - No separate deductible in this example; ordinary purchase costs remain payable.
@@ -153,9 +162,10 @@ taxes, acquisition and capital needs. Monthly averages also hide delayed
 claims, annual-cap effects and correlated failures. One defect producing
 200 eligible USD 100 payouts requires USD 20,000, regardless of that month's
 subscription receipts. This supports evaluating partner-backed transaction
-protection. In the selected route, replace expected direct claim payments in
-Belay's model with actual partner charges, retained obligations and claim
-handling costs. No partner quote is available yet.
+protection. In a partner-backed route, model actual partner charges, retained
+obligations, claim handling and liquidity needed to advance customer remedies.
+In a Belay-funded route, retain direct claim costs and reserve capital needs.
+No partner quote is available yet.
 
 Collect exposure denominators, paid and unpaid claims, recoveries, support
 cost, claim development and failures by version. A blocked purchase is not

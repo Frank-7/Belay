@@ -41,7 +41,8 @@ or model retries. The interface labels which proposer actually ran.
 **Public blockchain option:** connect MetaMask to Arc Testnet, fund it with
 free test USDC from Circle, and approve a 0.01–1.00 test-USDC transfer. Belay
 saves its intent before the wallet request and recovers the finalized receipt
-without sending again. Wallet keys stay in MetaMask; this is human-authorized
+without sending again. A verified reverted transfer can be closed as failed
+without sending; another transfer needs a new intent and explicit signature. Wallet keys stay in MetaMask; this is human-authorized
 testnet recovery, not autonomous custody, escrow or real-dollar settlement.
 See [free test-wallet setup and guarantees](docs/TEST_WALLET.md).
 
@@ -62,6 +63,54 @@ These reports separate useful resolutions, false resolutions, refusals and
 abstentions. The frozen adversarial suite is classification-only and becomes
 regression evidence after publication; repeated fixtures are not new holdout
 incidents. No customer time savings or live-model improvement is assumed.
+
+## Explore the commerce use case
+
+The **Purchase Simulator** applies the same recovery principle to a merchant
+that accepts dollars: a fictional customer authorizes exactly two $100 tickets,
+200 USDC funds a conversion provider, and the merchant receives $200 USD.
+Payment, delivery and reimbursement remain separate outcomes. A separately
+seeded fictional reserve illustrates a remedy after non-delivery; it does not
+reverse the merchant's payment or establish live protection.
+
+Run this second application alongside the Recovery Desk:
+
+```bash
+python -m purchase_simulator.server --port 8777
+# Open http://127.0.0.1:8777
+```
+
+On Windows, double-click [Start-Belay-Simulator.cmd](Start-Belay-Simulator.cmd)
+and leave its terminal open. The launcher uses an isolated
+`.belay-purchase-simulator/demo-v4/` data directory.
+
+The purchase service now calls Recovery Desk's **typed, read-only payout
+investigator**. An unknown payout can be inspected under its original operation
+ID; the deterministic executor checks the saved intent and fresh provider
+evidence before reconciling its local ledger. USDC uses six-decimal base units
+and USD uses cents; the bridge does not disguise a purchase as a research refund.
+Dispatch uncertainty is saved before provider contact, so a crash or expired
+quote cannot return funds that the provider may already have received. Missing
+evidence keeps the hold reserved and never triggers another submission.
+
+All purchase providers, money, signatures, tickets, model decisions and reserve
+capital are local fixtures. The optional MetaMask adapter above remains an
+actual Arc Testnet integration in the Recovery Desk; the purchase simulator
+does not connect it to a USD payout provider.
+
+See [the purchase walkthrough](docs/PURCHASE_SIMULATOR.md),
+[commerce MVP proposal](docs/MVP_MASTER_PLAN.md),
+[USDC-to-USD architecture proposal](docs/USDC_SETTLEMENT_ARCHITECTURE.md),
+[proposed payment interfaces](docs/INTERNAL_PAYMENT_PROTOCOL.md), and
+[commerce presentation](docs/MVP_PRESENTATION.md).
+Base contracts, provider onboarding, bank settlement, subscription billing and
+funded protection remain future work. Belay's hackathon direction remains
+**AI Apps: explain and safely recover uncertain agent actions**.
+
+```bash
+python -m unittest discover -s tests -p "test_purchase*.py"
+node --test tests/test_purchase_simulator_ui.mjs
+```
 
 ## Earlier Recovery Lab
 

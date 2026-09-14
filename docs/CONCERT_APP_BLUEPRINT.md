@@ -5,6 +5,8 @@ per-purchase approval default and ticket-only initial product framing are
 superseded by the [autonomous app architecture](AUTONOMOUS_APP_ARCHITECTURE.md).
 The current direction uses advance delegated authority and keeps tickets as
 the first demonstration of a system that can support other domains.
+Its card/Stripe payment assumptions are also superseded by the selected
+[USDC settlement architecture](USDC_SETTLEMENT_ARCHITECTURE.md).
 
 Decisions confirmed by the user: **concert tickets first; United States first**.
 Prepared 12 September 2026. This is a proposed product and integration plan,

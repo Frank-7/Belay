@@ -1,5 +1,8 @@
 # Belay: Stripe, Criteo and a16z commerce learnings
 
+Historical source notes. Stripe is not the selected payment dependency;
+the current plan is [USDC settlement on Base](USDC_SETTLEMENT_ARCHITECTURE.md).
+
 Reviewed 12 September 2026. Product scope remains concert tickets in the
 United States. This is research and a proposed product direction, not an
 announcement of a live integration.
