@@ -16,15 +16,15 @@ echo Python 3.10 or newer is required. No other packages are needed.
 goto finished
 
 :bundled
-"%BELAY_DEMO_PYTHON%" -m purchase_simulator.server --port 8777 --data-dir .belay-purchase-simulator/demo-v3
+"%BELAY_DEMO_PYTHON%" -m purchase_simulator.server --port 8777 --data-dir .belay-purchase-simulator/demo-v4
 goto finished
 
 :launcher
-py -3 -m purchase_simulator.server --port 8777 --data-dir .belay-purchase-simulator/demo-v3
+py -3 -m purchase_simulator.server --port 8777 --data-dir .belay-purchase-simulator/demo-v4
 goto finished
 
 :standard
-python -m purchase_simulator.server --port 8777 --data-dir .belay-purchase-simulator/demo-v3
+python -m purchase_simulator.server --port 8777 --data-dir .belay-purchase-simulator/demo-v4
 
 :finished
 echo The server has stopped. If the port was already in use, open the existing simulator in your browser.

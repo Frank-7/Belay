@@ -1,11 +1,11 @@
 # Belay protected-purchase simulator
 
-This local application is the runnable Belay v0.3 investor demonstration. It
-places the customer experience beside the underlying controls for one fictional
-concert-ticket purchase. The shopping agent proposes an offer, deterministic
-code checks it against the customer's grant, USDC funds a simulated conversion,
-the merchant receives simulated USD, and delivery or protection evidence closes
-the order.
+This local application is the runnable Belay v0.4 investor demonstration. One
+canonical event drives a synchronized customer view and backend control room for
+the same fictional concert-ticket purchase. The shopping agent proposes an
+offer, deterministic code checks it against the customer's grant, USDC funds a
+simulated conversion, the merchant receives simulated USD, and delivery or
+protection evidence closes the order.
 
 The browser talks to a real loopback Python server and the server persists state
 in SQLite. Everything beyond that boundary is a fixture: there is no live model,
@@ -25,14 +25,15 @@ directory.
 
 On Windows, double-click `Start-Belay-Simulator.cmd` in the repository folder.
 Leave its terminal window open while using the app. The launcher tries the
-installed Codex Python runtime, then `py -3`, then `python`, and stores v0.3 demo
-runs under `.belay-purchase-simulator/demo-v3/`.
+installed Codex Python runtime, then `py -3`, then `python`, and stores v0.4 demo
+runs under `.belay-purchase-simulator/demo-v4/`.
 
 The server's default directory is `.belay-purchase-simulator/`. Pass
 `--data-dir PATH` for an isolated demonstration. Restarting with the same path
 preserves runs, ledger entries, claims and fictional provider records. A saved
 run from an older schema is rejected with an instruction to begin a new v0.3
-simulation; the launcher uses `demo-v3/` so it does not mix the two formats.
+schema simulation; the launcher uses `demo-v4/` so the redesigned walkthrough
+does not mix with earlier demo data.
 
 ## The main investor story
 
@@ -59,11 +60,16 @@ Those assumptions are not pricing or settlement promises.
    states. A final receipt links the grant, order, payout, delivery evidence and
    any remedy.
 
-Use **Next step** to inspect every transition or **Play through** for the
-presentation. The customer side explains the result in plain language. The
-backend side exposes the exact actor, request, response, state and ledger
-movement. All displayed credentials and `.invalid` URLs are intentionally
-fictional.
+Use **Next event** to inspect every transition or **Auto play** for the
+presentation. Six chapters keep the business story visible while the persistent
+value map follows customer USDC, the order hold, the settlement provider,
+merchant USD and protection reserve. The customer side explains the result in
+plain language. The backend side exposes the exact actor, trust boundary,
+control, proof, safe replay rule, request, response, state change and ledger
+movement. Selecting any technical-history event rewinds both views to the same
+point in time. On a narrow screen, use the Customer and Belay backend tabs to
+switch between the synchronized views. All displayed credentials and `.invalid`
+URLs are intentionally fictional.
 
 ## Scenarios
 
@@ -132,6 +138,8 @@ capital adequacy or concurrent admission against one shared reserve.
 - Expected-revision checks that stop stale or overlapping browser actions from
   advancing the same run twice.
 - A unified fictional receipt for completed purchases and remedies.
+- Per-event customer messages, state snapshots, balance deltas, provider
+  observations, ledger keys and technical explanations that drive both UI panes.
 
 ## Architecture boundaries
 

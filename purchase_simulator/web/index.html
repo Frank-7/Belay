@@ -3,217 +3,346 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Belay investor MVP: a protected transaction layer for autonomous agents.">
-  <title>Belay · Protected Purchase MVP</title>
+  <meta name="description" content="Belay's two-sided investor simulation for protected autonomous purchases.">
+  <title>Belay · Two-sided transaction simulator</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#demo">Skip to interactive demo</a>
+  <a class="skip-link" href="#simulator">Skip to the simulator</a>
   <header class="topbar">
     <a class="brand" href="/" aria-label="Belay home">
       <span class="brand-mark" aria-hidden="true">B</span>
       <span>belay</span>
     </a>
-    <div class="topbar-right">
-      <span class="simulation-pill"><i aria-hidden="true"></i> Investor MVP · simulated</span>
-      <a href="#how-it-works">How it works</a>
+    <div class="topbar-context">
+      <span>Protected purchase protocol</span>
+      <i aria-hidden="true"></i>
+      <strong>Investor simulation</strong>
     </div>
+    <span class="local-pill"><i aria-hidden="true"></i> Local · fictional</span>
   </header>
 
   <main>
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="eyebrow">THE TRANSACTION LAYER FOR AUTONOMOUS AGENTS</p>
-        <h1 id="hero-title">Agents can act.<br><em>Belay makes them accountable.</em></h1>
-        <p class="hero-lede">Authorize one outcome. Belay controls the purchase, pays supported merchants in ordinary dollars, records what happened, and restores the customer when an eligible failure occurs.</p>
-        <div class="hero-proof" aria-label="Product boundaries">
-          <span>One bounded instruction</span>
-          <span>One merchant payout</span>
-          <span>One linked receipt</span>
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">ONE PURCHASE · BOTH SIDES · EVERY PROOF</p>
+        <h1 id="page-title">Let an agent buy.<br><em>Keep every decision accountable.</em></h1>
+      </div>
+      <div class="intro-copy">
+        <p>Watch exactly what the customer experiences and what Belay executes behind it: authority, policy, USDC settlement, USD payout, delivery evidence, and recovery.</p>
+        <div class="intro-proof" aria-label="Simulation promises">
+          <span><b>23</b> deterministic checks</span>
+          <span><b>1</b> merchant payout identity</span>
+          <span><b>4</b> linked receipt facts</span>
         </div>
       </div>
-      <aside class="hero-card" aria-label="Example customer instruction">
-        <span class="hero-card-label">CUSTOMER SAYS</span>
-        <blockquote>“Get me two adjacent tickets. Stay under 300 USDC.”</blockquote>
-        <div class="hero-card-result"><span aria-hidden="true">✓</span><p><strong>No checkout approval loop.</strong><br>Rules and protection travel with the order.</p></div>
-      </aside>
     </section>
 
-    <section class="flow" id="how-it-works" aria-label="Belay protected purchase flow">
-      <div><b>01</b><span>Authorize</span><small>2 tickets · 300 USDC max</small></div>
-      <i aria-hidden="true">→</i>
-      <div><b>02</b><span>Control</span><small>Exact order · deterministic rules</small></div>
-      <i aria-hidden="true">→</i>
-      <div><b>03</b><span>Settle</span><small>USDC in · merchant gets USD</small></div>
-      <i aria-hidden="true">→</i>
-      <div><b>04</b><span>Evidence</span><small>Payment and delivery records</small></div>
-      <i aria-hidden="true">→</i>
-      <div><b>05</b><span>Recover</span><small>Bounded remedy when eligible</small></div>
-    </section>
-
-    <section id="demo" class="demo-shell" aria-labelledby="demo-title">
-      <div class="demo-heading">
+    <section id="simulator" class="simulator" aria-labelledby="simulator-title">
+      <div class="simulator-head">
         <div>
-          <p class="eyebrow dark">INTERACTIVE PRODUCT WALKTHROUGH</p>
-          <h2 id="demo-title">Run the purchase. See both sides.</h2>
+          <p class="eyebrow light">INTERACTIVE TRANSACTION LAB</p>
+          <h2 id="simulator-title">One timeline. Customer on the left. Infrastructure on the right.</h2>
         </div>
-        <p class="demo-disclosure"><strong>Local simulation</strong> · No live money, coverage, chain, bank, merchant, model, or tickets.</p>
+        <p class="boundary"><strong>Safe local simulation</strong> No live chain, money, bank, merchant, wallet, coverage, model, or tickets.</p>
       </div>
 
-      <form id="mission-form" class="mission-bar">
-        <label for="scenario">Choose the moment to test</label>
-        <select id="scenario" name="scenario">
-          <option value="success">Delivered — protected purchase</option>
-        </select>
-        <div class="mission-limit"><span>Customer grant</span><strong>2 tickets · 300 USDC</strong></div>
-        <button id="start" class="button primary" type="submit">Authorize &amp; start <span aria-hidden="true">→</span></button>
-        <p id="scenario-description" class="scenario-description">Two tickets are bought and verified.</p>
+      <form id="mission-form" class="scenario-console">
+        <div class="scenario-field">
+          <label for="scenario">Choose the test</label>
+          <select id="scenario" name="scenario" aria-describedby="scenario-description"></select>
+        </div>
+        <div class="scenario-story">
+          <span id="scenario-category">Protected recovery</span>
+          <strong id="scenario-trigger">The merchant is paid, but no tickets arrive.</strong>
+          <p id="scenario-description">The merchant keeps the original $200 while Belay restores 200 USDC from its reserve.</p>
+          <small id="scenario-guarantee">The buyer regains liquidity while supplier recovery stays separate.</small>
+        </div>
+        <div class="grant-summary">
+          <span>CUSTOMER AUTHORITY</span>
+          <strong>2 adjacent tickets</strong>
+          <small>300 USDC max · Northstar only · 30 min</small>
+        </div>
+        <div class="primary-actions">
+          <button id="start" class="button button-primary" type="submit">Authorize &amp; run <span aria-hidden="true">→</span></button>
+          <button id="play" class="button button-secondary" type="button" disabled aria-pressed="false">Auto play</button>
+        </div>
       </form>
       <div id="error" class="error" role="alert" hidden></div>
 
-      <div class="playback" aria-label="Simulation controls">
-        <div class="stage-summary" aria-live="polite" aria-atomic="true">
+      <div class="playback-bar" aria-label="Simulation controls">
+        <div class="playback-stage" aria-live="polite" aria-atomic="true">
           <span id="stage-dot" class="stage-dot" aria-hidden="true"></span>
-          <div><small id="step-count">READY</small><strong id="current-stage">Authorize the mission to begin</strong></div>
+          <div>
+            <small id="step-count">READY</small>
+            <strong id="current-stage">Authorize the mission to begin</strong>
+          </div>
         </div>
-        <div class="playback-actions">
-          <button id="play" class="button secondary" type="button" disabled>Play automatically</button>
-          <button id="next" class="button primary" type="button" disabled>Next step <span aria-hidden="true">→</span></button>
-          <button id="reset" class="button ghost" type="button" disabled>New run</button>
+        <div class="chapter-progress">
+          <div id="progress" class="progress" role="progressbar" aria-label="Workflow progress" aria-valuemin="0" aria-valuemax="13" aria-valuenow="0" aria-valuetext="Ready"><span></span></div>
+          <ol id="chapter-rail" aria-label="Investor story chapters">
+            <li data-chapter="authorize"><b>01</b><span>Authorize</span></li>
+            <li data-chapter="propose"><b>02</b><span>Propose</span></li>
+            <li data-chapter="control"><b>03</b><span>Control</span></li>
+            <li data-chapter="settle"><b>04</b><span>Settle</span></li>
+            <li data-chapter="verify"><b>05</b><span>Verify</span></li>
+            <li data-chapter="recover"><b>06</b><span>Recover</span></li>
+          </ol>
         </div>
-      </div>
-      <div class="progress-wrap">
-        <div id="progress" class="progress" role="progressbar" aria-label="Workflow progress" aria-valuemin="0" aria-valuemax="13" aria-valuenow="0"><span></span></div>
+        <div class="step-actions">
+          <button id="next" class="button button-primary" type="button" disabled>Next event <span aria-hidden="true">→</span></button>
+          <button id="reset" class="button button-ghost" type="button" disabled>New run</button>
+        </div>
       </div>
 
-      <section class="money-map" aria-labelledby="money-title">
-        <div class="money-heading">
-          <div><p class="section-kicker">MONEY MAP</p><h3 id="money-title">Where the value is, right now</h3></div>
-          <span class="rate-note">Demo quote: 1 USDC = $1.00 · zero fees</span>
+      <section class="synchronized-lens" aria-labelledby="lens-title">
+        <div class="lens-index"><span id="lens-step">00</span><small>SYNCED EVENT</small></div>
+        <div class="lens-copy">
+          <span id="lens-mode">Live timeline</span>
+          <h3 id="lens-title">The customer grants one bounded mission</h3>
+          <p id="lens-explanation">Start the run to see one customer action become a controlled backend transaction.</p>
         </div>
-        <div class="settlement-rail">
-          <article class="money-node" id="buyer-node"><span>Customer available</span><strong id="buyer-balance">300 USDC</strong><small>Inside the funded grant</small></article>
-          <i class="rail-arrow" aria-hidden="true">→</i>
-          <article class="money-node" id="hold-node"><span>Exact order hold</span><strong id="held-balance">0 USDC</strong><small>Before dispatch</small></article>
-          <i class="rail-arrow" aria-hidden="true">→</i>
-          <article class="money-node" id="provider-node"><span>Conversion provider</span><strong id="provider-balance">0 USDC</strong><small id="provider-note">USDC → USD adapter</small></article>
-          <i class="rail-arrow" aria-hidden="true">→</i>
-          <article class="money-node merchant" id="merchant-node"><span>Merchant received</span><strong id="merchant-balance">$0 USD</strong><small id="merchant-note">Northstar Tickets</small></article>
+        <div class="lens-side customer-lens">
+          <small>CUSTOMER SEES</small>
+          <strong id="customer-now">No purchase has started.</strong>
         </div>
-        <aside class="reserve-lane">
-          <div class="reserve-icon" aria-hidden="true">◇</div>
-          <div><span>Scenario protection reserve</span><strong id="reserve-cash">1,000 USDC cash</strong><small class="reserve-scope">Resets for each demo run</small></div>
-          <dl>
-            <div><dt>Available</dt><dd id="reserve-available">1,000 USDC</dd></div>
-            <div><dt>Committed</dt><dd id="reserve-committed">0 USDC</dd></div>
-            <div><dt>Claim pending</dt><dd id="reserve-pending">0 USDC</dd></div>
-            <div><dt>Paid</dt><dd id="reserve-paid">0 USDC</dd></div>
-          </dl>
-        </aside>
+        <div class="lens-link" aria-hidden="true">→</div>
+        <div class="lens-side backend-lens">
+          <small>BELAY PROVES</small>
+          <strong id="backend-now">No infrastructure action yet.</strong>
+        </div>
+        <button id="return-live" class="return-live" type="button" hidden>Return to current event</button>
       </section>
 
-      <div class="workspace">
-        <section class="customer-panel panel" aria-labelledby="customer-title">
-          <div class="panel-title"><div><span class="panel-index">01</span><h3 id="customer-title">Customer experience</h3></div><span>WHAT ALEX SEES</span></div>
-          <div class="chat">
-            <span class="speaker">ALEX</span>
-            <div class="customer-message">Find two adjacent tickets for The Midnight Signals on October 24. Stay under <strong>300 USDC total</strong>.</div>
-            <div class="grant-card">
-              <span class="grant-check" aria-hidden="true">✓</span>
-              <div><strong>One bounded approval</strong><p>Exactly 2 · Northstar only · 30 minutes · 300 USDC maximum</p></div>
-              <span id="grant-state">Ready</span>
+      <section class="money-strip" aria-labelledby="money-title">
+        <div class="money-strip-title">
+          <span>VALUE MAP</span>
+          <h3 id="money-title">Where every unit is now</h3>
+          <small id="money-change">No value movement</small>
+        </div>
+        <div class="money-route">
+          <article id="buyer-node" class="money-node">
+            <span>Alex</span><strong id="buyer-balance">300 USDC</strong><small>Available</small>
+          </article>
+          <i aria-hidden="true">→</i>
+          <article id="hold-node" class="money-node">
+            <span>Order hold</span><strong id="held-balance">0 USDC</strong><small>Exact purchase</small>
+          </article>
+          <i aria-hidden="true">→</i>
+          <article id="provider-node" class="money-node">
+            <span>Settlement</span><strong id="provider-balance">0 USDC</strong><small id="provider-note">Awaiting dispatch</small>
+          </article>
+          <i aria-hidden="true">→</i>
+          <article id="merchant-node" class="money-node merchant-node">
+            <span>Northstar</span><strong id="merchant-balance">$0 USD</strong><small id="merchant-note">Merchant payout</small>
+          </article>
+        </div>
+        <article class="reserve-node">
+          <span>PROTECTION RESERVE</span>
+          <strong id="reserve-cash">1,000 USDC</strong>
+          <small id="reserve-summary">1,000 available · 0 committed · 0 pending · 0 paid</small>
+        </article>
+      </section>
+
+      <div class="mobile-view-switch" role="tablist" aria-label="Simulation side">
+        <button id="view-customer" role="tab" aria-selected="true" aria-controls="customer-panel" type="button">Customer</button>
+        <button id="view-backend" role="tab" aria-selected="false" aria-controls="backend-panel" type="button">Belay backend</button>
+      </div>
+
+      <div class="workspace" data-mobile-view="customer">
+        <section id="customer-panel" class="customer-panel panel" aria-labelledby="customer-title">
+          <div class="panel-head customer-head">
+            <div>
+              <span class="panel-number">01</span>
+              <div><small>WHAT ALEX EXPERIENCES</small><h3 id="customer-title">Customer app</h3></div>
             </div>
-            <span class="speaker belay-speaker"><i aria-hidden="true">B</i> BELAY</span>
-            <div id="agent-message" class="agent-message">Choose a scenario and authorize the mission. I will explain each action in plain language.</div>
+            <div class="wallet-badge"><span>WALLET AVAILABLE</span><strong id="customer-wallet">300 USDC</strong></div>
           </div>
 
-          <article id="offer-card" class="offer-card" hidden>
-            <div class="event-art" aria-hidden="true"><span>THE<br>MIDNIGHT</span><strong>SIGNALS</strong><i>OCT 24</i></div>
-            <div class="offer-copy">
-              <div class="offer-line"><div><small>FICTIONAL CONCERT</small><h4>The Midnight Signals</h4></div><span id="offer-status" class="status-chip">Offer</span></div>
-              <p>Harbor Hall · Boston · 8:00 PM</p>
-              <div class="ticket-detail"><span id="offer-quantity">2 adjacent tickets</span><b id="offer-price">$200 USD</b></div>
-              <small id="offer-seats">Section 102 · Row H · Seats 12–13</small>
+          <div class="phone-shell">
+            <div class="phone-status"><span>9:41</span><strong>BELAY</strong><span>● ●●</span></div>
+            <div class="conversation-head">
+              <div class="belay-avatar" aria-hidden="true">B</div>
+              <div><strong>Purchase concierge</strong><span>Protected by your grant</span></div>
+              <i id="customer-connection" aria-hidden="true"></i>
             </div>
-          </article>
-
-          <section id="outcome" class="outcome active" aria-live="polite">
-            <span class="outcome-icon" aria-hidden="true">○</span>
-            <div><small>CURRENT OUTCOME</small><h4 id="outcome-headline">Mission not started</h4><p id="outcome-detail">No money has moved.</p></div>
-          </section>
-          <div id="ticket-list" class="ticket-list" hidden></div>
-
-          <section id="receipt" class="receipt" hidden aria-labelledby="receipt-title">
-            <div class="receipt-heading"><div><small>LINKED RECORD</small><h4 id="receipt-title">One receipt, four facts</h4></div><code id="receipt-id"></code></div>
-            <div class="receipt-grid">
-              <article><b>01</b><span>Instruction</span><strong id="receipt-instruction"></strong></article>
-              <article><b>02</b><span>Purchase</span><strong id="receipt-purchase"></strong></article>
-              <article><b>03</b><span>Payment</span><strong id="receipt-payment"></strong></article>
-              <article><b>04</b><span>Outcome</span><strong id="receipt-outcome"></strong></article>
+            <div class="conversation" id="customer-conversation">
+              <div class="message user-message">Find two adjacent tickets for The Midnight Signals on October 24. Stay under <strong>300 USDC total.</strong></div>
+              <div class="message agent-message" id="agent-message">Choose a scenario and authorize the mission. I will explain each action in plain language.</div>
             </div>
-          </section>
+
+            <article class="grant-card">
+              <div class="grant-seal" aria-hidden="true">✓</div>
+              <div><span>ONE BOUNDED APPROVAL</span><strong>2 tickets · 300 USDC maximum</strong><small>Northstar · expires in 30 minutes</small></div>
+              <b id="grant-state">READY</b>
+            </article>
+
+            <article id="offer-card" class="offer-card" hidden>
+              <div class="event-art" aria-hidden="true"><small>OCT 24</small><span>THE<br>MIDNIGHT</span><strong>SIGNALS</strong></div>
+              <div class="offer-copy">
+                <div><small>FICTIONAL CONCERT</small><span id="offer-status">Agent proposal</span></div>
+                <h4>The Midnight Signals</h4>
+                <p>Harbor Hall · Boston · 8:00 PM</p>
+                <dl><div><dt>Seats</dt><dd id="offer-seats">102-H-12 · 102-H-13</dd></div><div><dt>Order</dt><dd id="offer-quantity">2 adjacent tickets</dd></div><div><dt>Total</dt><dd id="offer-price">$200 USD</dd></div></dl>
+              </div>
+            </article>
+
+            <section id="outcome" class="outcome active" aria-live="polite" tabindex="-1">
+              <span class="outcome-icon" aria-hidden="true">○</span>
+              <div><small>CURRENT CUSTOMER OUTCOME</small><h4 id="outcome-headline">Mission not started</h4><p id="outcome-detail">No money has moved.</p></div>
+            </section>
+            <div id="ticket-list" class="ticket-list" hidden></div>
+
+            <section id="receipt" class="receipt" hidden aria-labelledby="receipt-title" tabindex="-1">
+              <div class="receipt-head"><div><small>LINKED RECORD</small><h4 id="receipt-title">One receipt, four facts</h4></div><code id="receipt-id"></code></div>
+              <div class="receipt-grid">
+                <article><b>01</b><span>Instruction</span><strong id="receipt-instruction"></strong></article>
+                <article><b>02</b><span>Purchase</span><strong id="receipt-purchase"></strong></article>
+                <article><b>03</b><span>Payment</span><strong id="receipt-payment"></strong></article>
+                <article><b>04</b><span>Outcome</span><strong id="receipt-outcome"></strong></article>
+              </div>
+            </section>
+          </div>
         </section>
 
-        <section class="control-panel panel" aria-labelledby="control-title">
-          <div class="panel-title"><div><span class="panel-index">02</span><h3 id="control-title">Belay control room</h3></div><span>WHAT ACTUALLY HAPPENS</span></div>
-          <div class="status-grid">
-            <div><span>Funding</span><strong id="funding-state">Not started</strong></div>
-            <div><span>Conversion</span><strong id="conversion-state">Not started</strong></div>
-            <div><span>USD payout</span><strong id="payout-state">Not started</strong></div>
-            <div><span>Merchant order</span><strong id="order-state">Not started</strong></div>
-            <div><span>Delivery</span><strong id="delivery-state">Not started</strong></div>
-            <div><span>Protection</span><strong id="protection-state">Not reserved</strong></div>
+        <section id="backend-panel" class="backend-panel panel" aria-labelledby="backend-title">
+          <div class="panel-head backend-head">
+            <div>
+              <span class="panel-number">02</span>
+              <div><small>WHAT ACTUALLY EXECUTES</small><h3 id="backend-title">Belay control room</h3></div>
+            </div>
+            <div class="run-mode"><i aria-hidden="true"></i><span id="entry-mode">GUARDED MODE</span><code id="run-short-id">NO RUN</code></div>
           </div>
 
-          <div class="control-facts">
-            <div><span>Provider payouts</span><strong id="payout-count">0</strong><small>must remain one</small></div>
-            <div><span>Provider attempts</span><strong id="attempt-count">0</strong><small>same operation</small></div>
-            <div><span>Execution mode</span><strong id="entry-mode">Guarded</strong><small id="entry-note">live path</small></div>
-          </div>
-
-          <section class="ledger-section" aria-labelledby="ledger-title">
-            <div class="subheading"><h4 id="ledger-title">Value movements</h4><span id="ledger-count">0 entries</span></div>
-            <div id="ledger-list" class="ledger-list"><p class="empty-state">No funds have moved.</p></div>
+          <section class="system-map" aria-labelledby="system-map-title">
+            <div class="section-head"><div><small>TRUST BOUNDARIES</small><h4 id="system-map-title">Who can do what</h4></div><span id="active-layer">Awaiting authority</span></div>
+            <div class="system-nodes">
+              <article data-layer="agent"><b>01</b><strong>Agent</strong><small>Propose only</small></article>
+              <i aria-hidden="true">→</i>
+              <article data-layer="authority"><b>02</b><strong>Authority</strong><small>Bound limits</small></article>
+              <i aria-hidden="true">→</i>
+              <article data-layer="policy"><b>03</b><strong>Policy</strong><small>Check exactness</small></article>
+              <i aria-hidden="true">→</i>
+              <article data-layer="treasury"><b>04</b><strong>Executor</strong><small>Move funds</small></article>
+              <i aria-hidden="true">→</i>
+              <article data-layer="settlement"><b>05</b><strong>Settlement</strong><small>USDC → USD</small></article>
+              <i aria-hidden="true">→</i>
+              <article data-layer="merchant"><b>06</b><strong>Merchant</strong><small>Order state</small></article>
+              <i aria-hidden="true">→</i>
+              <article data-layer="evidence"><b>07</b><strong>Evidence</strong><small>Verify outcome</small></article>
+              <i aria-hidden="true">→</i>
+              <article data-layer="protection"><b>08</b><strong>Recovery</strong><small>Remedy once</small></article>
+              <i aria-hidden="true">→</i>
+              <article data-layer="receipt"><b>09</b><strong>Receipt</strong><small>Link facts</small></article>
+            </div>
           </section>
 
-          <section class="trace-section" aria-labelledby="trace-title">
-            <div class="subheading"><h4 id="trace-title">Execution trace</h4><span id="event-count">0 events</span></div>
-            <ol id="trace-list" class="trace-list"></ol>
-            <details id="api-inspector" class="api-inspector">
-              <summary>Inspect API event</summary>
-              <div class="inspector-controls"><label for="event-select">Recorded event</label><select id="event-select"></select></div>
-              <div class="route"><span id="request-method">—</span><code id="request-url">No event selected</code><b id="request-status"></b></div>
-              <p id="request-explanation"></p>
-              <div class="payload-tabs" aria-label="Payload view">
-                <button id="request-tab" type="button" aria-pressed="true">Request</button>
-                <button id="response-tab" type="button" aria-pressed="false">Response</button>
+          <section id="backend-event-card" class="event-card" aria-labelledby="backend-event-title" tabindex="-1">
+            <div class="event-topline">
+              <div><span id="event-layer">WAITING</span><small id="event-actor">No component has acted</small></div>
+              <div class="route-badges"><b id="request-method">—</b><span id="request-status">—</span></div>
+            </div>
+            <h4 id="backend-event-title">Authorize a run to inspect the backend</h4>
+            <p id="backend-explanation">Each customer update will be paired with the exact infrastructure event that caused it.</p>
+            <div class="event-route"><span id="event-from">Customer</span><i aria-hidden="true">→</i><span id="event-to">Belay</span><code id="request-url">No route selected</code></div>
+
+            <div id="knowledge-strip" class="knowledge-strip" hidden>
+              <div><span>PROVIDER TRUTH</span><strong id="provider-knowledge">—</strong></div>
+              <div><span>BELAY KNOWS</span><strong id="belay-knowledge">—</strong></div>
+              <div><span>SAFE NEXT ACTION</span><strong id="safe-action">—</strong></div>
+            </div>
+
+            <div class="explanation-grid">
+              <article><span>CONTROL</span><strong id="current-control">No rule has run.</strong></article>
+              <article><span>STATE / MONEY CHANGE</span><strong id="current-money-effect">No value movement.</strong></article>
+              <article><span>PROOF CREATED</span><strong id="current-proof">No record yet.</strong></article>
+              <article><span>SAFE REPLAY</span><strong id="current-retry">No retry behavior yet.</strong></article>
+            </div>
+          </section>
+
+          <div class="backend-grid">
+            <section class="policy-card" aria-labelledby="policy-title">
+              <div class="section-head"><div><small>DETERMINISTIC GATE</small><h4 id="policy-title">Policy decision</h4></div><span id="policy-score">Waiting</span></div>
+              <p id="policy-reason">The shopping model cannot approve itself. Exact checks appear when an offer and quote are ready.</p>
+              <div id="control-groups" class="control-groups"></div>
+              <details id="all-checks" class="all-checks">
+                <summary>Inspect exact expected and observed values</summary>
+                <div id="check-list" class="check-list"></div>
+              </details>
+            </section>
+
+            <section class="state-card" aria-labelledby="state-title">
+              <div class="section-head"><div><small>STATE MACHINE</small><h4 id="state-title">Independent transaction states</h4></div><span id="state-delta">No change</span></div>
+              <div class="state-grid">
+                <div><span>Funding</span><strong id="funding-state">Not started</strong></div>
+                <div><span>Conversion</span><strong id="conversion-state">Not started</strong></div>
+                <div><span>USD payout</span><strong id="payout-state">Not started</strong></div>
+                <div><span>Merchant order</span><strong id="order-state">Not started</strong></div>
+                <div><span>Delivery</span><strong id="delivery-state">Not started</strong></div>
+                <div><span>Protection</span><strong id="protection-state">Not reserved</strong></div>
               </div>
-              <pre id="payload" tabindex="0">{}</pre>
-            </details>
+              <div class="idempotency-row">
+                <div><span>PAYOUTS</span><strong id="payout-count">0</strong><small>must remain one</small></div>
+                <div><span>ATTEMPTS</span><strong id="attempt-count">0</strong><small>same operation</small></div>
+                <div><span>LEDGER KEY</span><code id="latest-ledger-key">None yet</code><small>deduplicates movement</small></div>
+              </div>
+            </section>
+          </div>
+
+          <section class="api-exchange" aria-labelledby="api-title">
+            <div class="section-head"><div><small>SIMULATED INTERNAL EXCHANGE</small><h4 id="api-title">Request and response</h4></div><span>Real browser API stays on loopback</span></div>
+            <div class="payload-pair">
+              <article><div><span>REQUEST</span><small>What came in</small></div><pre id="request-payload" tabindex="0">{}</pre></article>
+              <article><div><span>RESPONSE</span><small>What came back</small></div><pre id="response-payload" tabindex="0">{}</pre></article>
+            </div>
+          </section>
+
+          <div class="records-grid">
+            <section class="changes-card" aria-labelledby="changes-title">
+              <div class="section-head"><div><small>DURABLE EFFECT</small><h4 id="changes-title">What changed in this event</h4></div><span id="change-count">0 changes</span></div>
+              <div id="balance-changes" class="balance-changes"><p class="empty-state">No account changed.</p></div>
+              <div id="ledger-list" class="ledger-list"><p class="empty-state">No ledger entry exists.</p></div>
+            </section>
+
+            <section class="proof-card" aria-labelledby="proof-title">
+              <div class="section-head"><div><small>EVIDENCE STACK</small><h4 id="proof-title">Records Belay can prove</h4></div><span id="proof-count">0 records</span></div>
+              <div id="proof-stack" class="proof-stack"></div>
+            </section>
+          </div>
+
+          <section class="history-card" aria-labelledby="history-title">
+            <div class="section-head"><div><small>FULL MICRO-TIMELINE</small><h4 id="history-title">Every recorded backend event</h4></div><div><span id="event-count">0 events</span><select id="event-select" aria-label="Recorded event"></select></div></div>
+            <ol id="trace-list" class="trace-list"></ol>
           </section>
         </section>
       </div>
 
       <details class="technical-details">
-        <summary>Technical details, demo credentials, and boundaries</summary>
-        <div class="technical-grid">
-          <div><span>Stable operation ID</span><code id="operation-id">Allocated after authorization</code></div>
+        <summary>Infrastructure identities, demo credentials, and production boundaries</summary>
+        <div class="identity-grid">
+          <div><span>Operation ID</span><code id="operation-id">Allocated after authorization</code></div>
           <div><span>Order ID</span><code id="order-id">Allocated after authorization</code></div>
-          <div><span>Scenario mode</span><code id="mode-id">live_guarded_simulation</code></div>
+          <div><span>Execution path</span><code id="mode-id">live_guarded_simulation</code></div>
         </div>
         <div id="credential-list" class="credential-list"></div>
-        <p id="technical-notice">All values are fictional local fixtures. The reserve resets per scenario; human review and supplier recovery are handoffs outside this demo. Production requires licensed providers, reviewed contracts, real authentication, funded coverage, and compliance approval.</p>
+        <p id="technical-notice">All values are fictional local fixtures.</p>
       </details>
     </section>
 
-    <section class="investor-close">
-      <p class="eyebrow">THE PRODUCT WEDGE</p>
-      <h2>One trusted transaction layer.<br>For every protected agent action.</h2>
-      <p>Belay separates intelligence from authority, settlement from delivery, and recovery from guesswork.</p>
+    <section class="investor-proof-section" aria-labelledby="proof-close-title">
+      <p class="eyebrow">WHAT THIS DEMO PROVES</p>
+      <h2 id="proof-close-title">The agent proposes. Belay controls the consequence.</h2>
+      <div>
+        <article><b>23/23</b><strong>Exact checks</strong><span>Consent, quantity, merchant, amount, assets, time, and binding.</span></article>
+        <article><b>1</b><strong>Payment identity</strong><span>A lost reply is reconciled without creating a second payout.</span></article>
+        <article><b>≠</b><strong>Payment and delivery</strong><span>Merchant settlement does not automatically prove customer fulfillment.</span></article>
+        <article><b>↺</b><strong>Independent remedy</strong><span>An eligible buyer can regain liquidity while recovery continues separately.</span></article>
+      </div>
     </section>
   </main>
-  <footer><span>Belay · v0.3 investor MVP</span><span>Fictional local simulation · No financial product or live coverage</span></footer>
+
+  <footer><span>Belay · two-sided investor simulation</span><span>Fictional local software demonstration · No financial product or live coverage</span></footer>
 </body>
 </html>

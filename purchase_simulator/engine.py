@@ -40,36 +40,57 @@ SCENARIOS = [
         "id": "success",
         "label": "Delivered — protected purchase",
         "description": "Belay buys exactly two $100 tickets, pays the merchant in USD, and verifies delivery.",
+        "category": "Happy path",
+        "trigger": "The offer matches and both tickets arrive.",
+        "guarantee": "One bounded purchase with a linked delivery receipt.",
     },
     {
         "id": "payout_reply_lost",
         "label": "Payout reply lost — recover safely",
         "description": "The merchant is paid once. Belay retrieves the exact payout instead of sending another.",
+        "category": "Payment recovery",
+        "trigger": "The provider pays, but its reply disappears.",
+        "guarantee": "Unknown never becomes a duplicate merchant payout.",
     },
     {
         "id": "non_delivery_paid",
         "label": "Merchant paid — tickets missing",
         "description": "The merchant keeps the original $200 while Belay restores 200 USDC from its reserve.",
+        "category": "Protected recovery",
+        "trigger": "The merchant is paid, but no tickets arrive.",
+        "guarantee": "The buyer regains liquidity while supplier recovery stays separate.",
     },
     {
         "id": "quantity_violation",
         "label": "Agent proposes three — blocked",
         "description": "The agent proposes three tickets; deterministic controls stop it before any funds move.",
+        "category": "Guardrail",
+        "trigger": "The agent exceeds the two-ticket authorization.",
+        "guarantee": "A model proposal cannot approve itself or move funds.",
     },
     {
         "id": "historical_agent_error",
         "label": "Injected past error — buyer restored",
         "description": "A labeled historical fixture already bought three; a contractual agent-error remedy returns the unauthorized 100 USDC.",
+        "category": "Agent-error remedy",
+        "trigger": "An imported receipt contains one unauthorized ticket.",
+        "guarantee": "Only the proven unauthorized charge is remedied.",
     },
     {
         "id": "cancel_before_dispatch",
         "label": "Cancel before dispatch",
         "description": "A reserved purchase is cancelled before USDC leaves Belay, so the hold returns immediately.",
+        "category": "Safe cancellation",
+        "trigger": "The customer cancels while funds are still held.",
+        "guarantee": "No merchant payout and no recovery claim are needed.",
     },
     {
         "id": "evidence_conflict",
         "label": "Evidence conflicts — review",
         "description": "Conflicting delivery evidence pauses the claim without paying either side twice.",
+        "category": "Human review",
+        "trigger": "Merchant and wallet evidence disagree.",
+        "guarantee": "Belay abstains when automation cannot know the truth safely.",
     },
 ]
 CREDENTIALS = [
@@ -98,6 +119,194 @@ CREDENTIALS = [
         "purpose": "A non-working fixture for a provider that receives USDC and pays a merchant in USD.",
     },
 ]
+
+# Investor-facing context for each durable transition. These descriptions let
+# the UI explain the trust boundary, evidence, money effect, and safe replay
+# behavior without inventing a second client-side simulation.
+EVENT_CONTEXT = {
+    "mission_authorized": {
+        "layer_id": "authority", "layer": "Authority",
+        "control": "The grant fixes quantity, merchant, date, budget, and a 30-minute expiry before the agent searches.",
+        "proof": "Time-bound customer grant",
+        "money_effect": "No money moves; 300 USDC stays available.",
+        "retry_rule": "A new run creates a new grant and operation ID.",
+    },
+    "historical_fixture_loaded": {
+        "layer_id": "evidence", "layer": "Evidence import",
+        "control": "The defect is explicitly labeled as historical so it cannot be confused with the guarded live path.",
+        "proof": "Imported grant, receipt, settlement, and delivery records",
+        "money_effect": "The fictional $300 payout already happened before this timeline begins.",
+        "retry_rule": "Importing the case does not create another merchant payout.",
+    },
+    "offer_found": {
+        "layer_id": "agent", "layer": "Agent commerce",
+        "control": "The model may propose an offer, but it has no signing key and no treasury permission.",
+        "proof": "Merchant offer with exact seats and price",
+        "money_effect": "No money moves.",
+        "retry_rule": "Searching and proposing are read-only commerce actions.",
+    },
+    "checkout_bound": {
+        "layer_id": "settlement", "layer": "Settlement quote",
+        "control": "The quote binds one USDC amount to one USD beneficiary under the same operation ID.",
+        "proof": "Expiring conversion quote",
+        "money_effect": "No money moves; the route is only quoted.",
+        "retry_rule": "An expired or changed quote must be re-admitted.",
+    },
+    "policy_blocked": {
+        "layer_id": "policy", "layer": "Policy gate",
+        "control": "Deterministic code compares every offer and payout field with the customer grant.",
+        "proof": "Failed check list",
+        "money_effect": "No hold, conversion, or merchant payout is created.",
+        "retry_rule": "A corrected offer needs a fresh admitted transaction.",
+    },
+    "admitted": {
+        "layer_id": "policy", "layer": "Atomic admission",
+        "control": "The order hold and protection commitment either succeed together or do not exist.",
+        "proof": "Persisted admission record and policy checks",
+        "money_effect": "200 USDC moves from available funds into the exact order hold.",
+        "retry_rule": "The hold uses one stable idempotency key.",
+    },
+    "intent_signed": {
+        "layer_id": "authority", "layer": "Protected signing",
+        "control": "The signer covers the grant, offer, quote, amount, order, and merchant beneficiary.",
+        "proof": "Transaction-bound intent digest and demo signature marker",
+        "money_effect": "No new money movement.",
+        "retry_rule": "Changing any bound field invalidates dispatch.",
+    },
+    "cancelled": {
+        "layer_id": "treasury", "layer": "Treasury release",
+        "control": "Cancellation is allowed only while funds are still inside Belay's order hold.",
+        "proof": "Hold-release ledger entry",
+        "money_effect": "200 USDC returns to the customer; the merchant receives $0.",
+        "retry_rule": "The release can settle only once.",
+    },
+    "usdc_dispatched": {
+        "layer_id": "treasury", "layer": "Treasury execution",
+        "control": "Only the deterministic executor can submit the already-signed settlement intent.",
+        "proof": "Stable operation ID and provider reference",
+        "money_effect": "200 USDC leaves the hold for the conversion provider.",
+        "retry_rule": "The same operation ID returns the existing provider operation.",
+    },
+    "converted": {
+        "layer_id": "settlement", "layer": "Asset conversion",
+        "control": "The adapter validates the provider record against the signed source amount and merchant net amount.",
+        "proof": "Provider conversion record",
+        "money_effect": "200 USDC is represented as $200 USD for payout in this demo.",
+        "retry_rule": "Conversion remains attached to the original payout operation.",
+    },
+    "payout_submitted": {
+        "layer_id": "settlement", "layer": "USD payout",
+        "control": "The beneficiary comes from the admitted and signed transaction, not from the shopping model.",
+        "proof": "Payout submission under the bound merchant ID",
+        "money_effect": "$200 USD is submitted to Northstar Tickets.",
+        "retry_rule": "A retry must reuse the same operation ID.",
+    },
+    "payout_unknown": {
+        "layer_id": "settlement", "layer": "Uncertain payout",
+        "control": "Belay records uncertainty instead of guessing that the payment failed.",
+        "proof": "Transport error plus the original provider operation",
+        "money_effect": "The provider says $200 was paid; Belay has not reconciled it yet.",
+        "retry_rule": "Only a read-only lookup is safe; no second payment request.",
+    },
+    "merchant_paid": {
+        "layer_id": "merchant", "layer": "Merchant payment",
+        "control": "Provider evidence must match the operation, intent, amount, asset, and beneficiary.",
+        "proof": "Persisted settlement record",
+        "money_effect": "Northstar has $200 USD; payment does not prove delivery.",
+        "retry_rule": "The provider payout count must remain one.",
+    },
+    "payout_reconciled": {
+        "layer_id": "settlement", "layer": "Payout reconciliation",
+        "control": "Belay reads the saved provider operation and verifies it before updating its ledger.",
+        "proof": "Exact lookup result for the original operation ID",
+        "money_effect": "No new payout; Belay records the existing $200 merchant payment.",
+        "retry_rule": "The reconciliation endpoint cannot create money.",
+    },
+    "order_confirmed": {
+        "layer_id": "merchant", "layer": "Merchant order",
+        "control": "Order acceptance is stored separately from settlement and delivery.",
+        "proof": "Merchant order reference",
+        "money_effect": "No additional money moves.",
+        "retry_rule": "Status reads remain linked to the original order ID.",
+    },
+    "delivery_check": {
+        "layer_id": "evidence", "layer": "Outcome verification",
+        "control": "Belay asks for the exact quantity and order outcome before closing protection.",
+        "proof": "Delivery-evidence request",
+        "money_effect": "No money moves while evidence is collected.",
+        "retry_rule": "Evidence checks are read-only.",
+    },
+    "non_delivery": {
+        "layer_id": "evidence", "layer": "Loss evidence",
+        "control": "Claims use independently stored payment and delivery facts, not the agent's opinion.",
+        "proof": "Zero-ticket delivery record and opened claim",
+        "money_effect": "Merchant keeps $200; 200 USDC is requested from protection.",
+        "retry_rule": "The case ID fixes one requested loss amount.",
+    },
+    "review_required": {
+        "layer_id": "evidence", "layer": "Evidence adjudication",
+        "control": "Conflicting facts force abstention and a human handoff.",
+        "proof": "Conflict record and unpaid review case",
+        "money_effect": "No automatic protection payout occurs.",
+        "retry_rule": "Automation stays paused until external review resolves the facts.",
+    },
+    "delivered": {
+        "layer_id": "evidence", "layer": "Verified delivery",
+        "control": "Ticket evidence must match the event, order, holder, and exact quantity.",
+        "proof": "Persisted delivery outcome and two ticket records",
+        "money_effect": "No new money moves; protection can now close.",
+        "retry_rule": "Verification cannot create a payout.",
+    },
+    "claim_approved": {
+        "layer_id": "protection", "layer": "Claim decision",
+        "control": "A separate claims component approves only the persisted, bounded loss amount.",
+        "proof": "Approved claim and pending reserve allocation",
+        "money_effect": "Protection capacity becomes pending; cash has not moved yet.",
+        "retry_rule": "Approval cannot exceed or change the saved request.",
+    },
+    "customer_restored": {
+        "layer_id": "protection", "layer": "Protection payout",
+        "control": "The treasury pays the approved claim once and leaves the merchant payment intact.",
+        "proof": "Claim payment and protection ledger entry",
+        "money_effect": "The customer receives the approved USDC remedy.",
+        "retry_rule": "Paid claims cannot be paid again.",
+    },
+    "agent_error_detected": {
+        "layer_id": "evidence", "layer": "Agent-error audit",
+        "control": "The audit compares the signed grant with the historical purchase receipt.",
+        "proof": "Quantity mismatch and isolated unauthorized item",
+        "money_effect": "No new payment; the prior $300 sale remains visible.",
+        "retry_rule": "The audit is read-only.",
+    },
+    "agent_error_claim": {
+        "layer_id": "protection", "layer": "Agent-error claim",
+        "control": "Only the unauthorized $100 charge is eligible; the two intended tickets stay valid.",
+        "proof": "Bounded claim and quarantined extra ticket",
+        "money_effect": "100 USDC is requested from protection.",
+        "retry_rule": "The same case cannot request a different amount.",
+    },
+    "complete": {
+        "layer_id": "receipt", "layer": "Linked receipt",
+        "control": "The receipt is derived from separate authority, settlement, delivery, and remedy records.",
+        "proof": "One receipt linking four independently stored facts",
+        "money_effect": "Unused protection is released or the paid remedy is recorded.",
+        "retry_rule": "Issuing the receipt cannot move money.",
+    },
+    "grant_expired": {
+        "layer_id": "authority", "layer": "Authority expiry",
+        "control": "The grant is rechecked before admission, signing, and dispatch.",
+        "proof": "Expiry decision and optional hold-release entry",
+        "money_effect": "Any held USDC returns before merchant dispatch.",
+        "retry_rule": "A new customer grant is required.",
+    },
+    "terms_rejected": {
+        "layer_id": "policy", "layer": "Dispatch revalidation",
+        "control": "Admitted terms, protection capacity, quote, and signed intent are compared again.",
+        "proof": "Revalidation failure and optional hold release",
+        "money_effect": "No merchant payout; any held USDC returns.",
+        "retry_rule": "Changed terms need a new admission and signature.",
+    },
+}
 
 
 class DemoError(Exception):
@@ -661,14 +870,115 @@ class Engine:
     def _event(
         self, state, *, step, stage, title, explanation, actor, sender,
         recipient, method, url, status=200, request=None, response=None,
+        provider_observation=None, knowledge=None,
     ):
         state.update(step=step, stage=stage, title=title, explanation=explanation)
+        technical = EVENT_CONTEXT.get(stage, {
+            "layer_id": "orchestrator", "layer": "Orchestration",
+            "control": "Belay records the transition before the next component can act.",
+            "proof": "Versioned event record",
+            "money_effect": "See the ledger for any value movement.",
+            "retry_rule": "Money-moving retries must preserve their original identity.",
+        })
         state["events"].append({
             "id": f"{state['id']}:{state['revision']}", "step": step,
-            "title": title, "explanation": explanation, "actor": actor,
+            "revision": state["revision"],
+            "stage": stage, "title": title, "explanation": explanation,
+            "user_message": state.get("user_message", ""), "actor": actor,
             "from": sender, "to": recipient, "method": method, "url": url,
             "status": status, "request": request or {}, "response": response or {},
+            "provider_observation": provider_observation,
+            "knowledge": knowledge,
+            "technical": technical,
+            "state_after": {
+                key: state.get(key) for key in (
+                    "funding_state", "conversion_state", "payout_state",
+                    "order_state", "delivery_state", "protection_state",
+                    "recovery_state",
+                )
+            },
+            "outcome": json.loads(encode(state.get("outcome", {}))),
         })
+
+    @staticmethod
+    def _event_state(state):
+        return {
+            key: state.get(key) for key in (
+                "funding_state", "conversion_state", "payout_state",
+                "order_state", "delivery_state", "protection_state",
+                "recovery_state",
+            )
+        }
+
+    @staticmethod
+    def _event_accounts(db, run_id):
+        return {
+            row["account"]: {"asset": row["asset"], "units": int(row["units"])}
+            for row in db.execute(
+                "SELECT account,asset,units FROM treasury_accounts_v3 WHERE run_id=?",
+                (run_id,),
+            )
+        }
+
+    @staticmethod
+    def _event_ledger_keys(db, run_id):
+        return {
+            row["idempotency_key"] for row in db.execute(
+                "SELECT idempotency_key FROM ledger_entries_v3 WHERE run_id=?",
+                (run_id,),
+            )
+        }
+
+    def _enrich_latest_event(
+        self, db, state, *, before_state=None, before_accounts=None,
+        before_ledger_keys=None,
+    ):
+        """Attach compact before/after facts to the newest durable event."""
+
+        event = state["events"][-1]
+        after_state = self._event_state(state)
+        after_accounts = self._event_accounts(db, state["id"])
+        after_ledger_keys = self._event_ledger_keys(db, state["id"])
+        changes = []
+        if before_accounts is not None:
+            for account in sorted(set(before_accounts) | set(after_accounts)):
+                previous = before_accounts.get(account, {"asset": "UNKNOWN", "units": 0})
+                current = after_accounts.get(account, {"asset": previous["asset"], "units": 0})
+                if previous["asset"] != current["asset"] or previous["units"] != current["units"]:
+                    changes.append({
+                        "account": account, "asset": current["asset"],
+                        "before_units": previous["units"], "after_units": current["units"],
+                        "delta_units": current["units"] - previous["units"],
+                    })
+        event["state_before"] = before_state
+        event["state_after"] = after_state
+        event["accounts_after"] = after_accounts
+        event["balance_changes"] = changes
+        event["ledger_keys"] = sorted(
+            after_ledger_keys - (before_ledger_keys or set())
+        )
+        coverage = self._coverage(db, state)
+        reserve_cash = after_accounts.get(
+            "protection_reserve", {"units": 0}
+        )["units"]
+        committed = int(coverage["committed_units"])
+        pending = int(coverage["pending_units"])
+        event["protection_after"] = {
+            "reserve_cash_usdc_units": reserve_cash,
+            "available_usdc_units": max(0, reserve_cash - committed - pending),
+            "committed_usdc_units": committed,
+            "pending_usdc_units": pending,
+            "paid_usdc_units": int(coverage["paid_units"]),
+            "status": coverage["status"],
+        }
+        provider = self.provider.lookup(state["operation_id"])
+        event["provider_after"] = {
+            key: provider[key] for key in (
+                "operation_id", "provider_reference", "attempt_count",
+                "funding_state", "conversion_state", "payout_state",
+                "source_usdc_units", "net_usd_cents",
+            )
+        } if provider else None
 
     def create(self, scenario, budget_cents, quantity=2):
         if not isinstance(scenario, str) or scenario not in {item["id"] for item in SCENARIOS}:
@@ -787,6 +1097,7 @@ class Engine:
                 request={"scenario": scenario, "mission": mission},
                 response={"entry_mode": state["entry_mode"], "grant_id": "grant_" + run_id[:16], "operation_id": operation_id},
             )
+            self._enrich_latest_event(db, state)
             db.execute("INSERT INTO runs VALUES(?,?)", (run_id, encode(state)))
             return self._snapshot(state, db)
 
@@ -840,11 +1151,19 @@ class Engine:
             self._guard_revision(state, expected_revision)
             if state["terminal"] or not state["can_advance"]:
                 raise DemoError("This run cannot advance in its current state.", 409, self._snapshot(state, db))
+            before_state = self._event_state(state)
+            before_accounts = self._event_accounts(db, run_id)
+            before_ledger_keys = self._event_ledger_keys(db, run_id)
             state["revision"] += 1
             if state["scenario"] == "historical_agent_error":
                 self._advance_historical(db, state)
             else:
                 self._advance_standard(db, state)
+            self._enrich_latest_event(
+                db, state, before_state=before_state,
+                before_accounts=before_accounts,
+                before_ledger_keys=before_ledger_keys,
+            )
             db.execute("UPDATE runs SET state_json=? WHERE id=?", (encode(state), run_id))
             return self._snapshot(state, db)
 
@@ -1013,6 +1332,11 @@ class Engine:
         elif step == 7:
             state["payout_state"] = "submitted"
             state["user_message"] = "The USD payout is now addressed to Northstar's fictional bank account."
+            state["outcome"] = {
+                "kind": "active",
+                "headline": "Merchant payout processing",
+                "detail": "$200 USD was submitted to Northstar. Payment confirmation and delivery are still pending.",
+            }
             self._event(
                 state, step=7, stage="payout_submitted", title="USD payout is submitted to the merchant",
                 explanation="Belay passes only the bound beneficiary and amount. This demo does not connect to a bank rail.",
@@ -1036,10 +1360,24 @@ class Engine:
                     actor="Fault injector", sender="Conversion provider", recipient="Belay payout adapter",
                     method="POST", url="https://fx.belay.invalid/v1/payouts/complete", status=504,
                     request={"operation_id": state["operation_id"]},
-                    response={"simulated_transport_error": "response_lost_after_commit", "provider_reference": provider["provider_reference"]},
+                    response={"delivered": False, "simulated_transport_error": "response_lost_after_commit"},
+                    provider_observation={
+                        "operation_id": state["operation_id"],
+                        "payout_state": "paid",
+                        "provider_reference": provider["provider_reference"],
+                    },
+                    knowledge={
+                        "provider": "paid_once", "belay": "unknown",
+                        "safe_next_action": "read_only_lookup_by_operation_id",
+                    },
                 )
                 return
             self._confirm_payout(db, state, provider)
+            state["outcome"] = {
+                "kind": "safe",
+                "headline": "Merchant paid once",
+                "detail": "Northstar received $200 USD. Belay still needs to confirm the order and ticket delivery.",
+            }
             self._event(
                 state, step=8, stage="merchant_paid", title="Merchant receives $200 USD",
                 explanation="The customer funded USDC; the merchant sees an ordinary USD payout. Payment still does not prove ticket delivery.",
@@ -1055,6 +1393,10 @@ class Engine:
                     raise DemoError("Exact provider payout is not yet final", 409)
                 self._confirm_payout(db, state, provider)
                 state["user_message"] = "Belay found the original paid operation. Exactly one merchant payout exists."
+                state["outcome"] = {
+                    "kind": "safe", "headline": "Payout reconciled: paid once",
+                    "detail": "Belay confirmed the original $200 operation with a read-only lookup. No second payout was created.",
+                }
                 self._event(
                     state, step=9, stage="payout_reconciled", title="Read-only lookup reconciles the exact payout",
                     explanation="The lookup cannot create money. It confirms the saved operation and prevents a duplicate USD payout.",
@@ -1066,6 +1408,11 @@ class Engine:
             else:
                 state["order_state"] = "merchant_confirmed"
                 state["user_message"] = "Northstar accepted the paid order and issued a merchant order reference."
+                state["outcome"] = {
+                    "kind": "active",
+                    "headline": "Order confirmed; delivery pending",
+                    "detail": "The merchant accepted the order after one $200 payout. Ticket evidence is still required.",
+                }
                 self._event(
                     state, step=9, stage="order_confirmed", title="Merchant confirms the ticket order",
                     explanation="Order acceptance is recorded separately from payment and separately from delivery.",
@@ -1083,6 +1430,11 @@ class Engine:
                 title = "Belay asks for delivery evidence"
                 explanation = "A paid order is not treated as fulfilled until ticket evidence matches the exact order."
             state["user_message"] = "Payment is settled. Belay now checks the actual ticket delivery."
+            state["outcome"] = {
+                "kind": "active",
+                "headline": "Checking ticket delivery",
+                "detail": "Payment and the merchant order are confirmed. Belay is waiting for evidence of exactly two tickets.",
+            }
             self._event(
                 state, step=10, stage="delivery_check", title=title, explanation=explanation,
                 actor="Outcome verifier", sender="Belay", recipient="Merchant delivery endpoint",
@@ -1370,6 +1722,11 @@ class Engine:
             state.update(delivery_state="verified", order_state="fulfilled", protection_state="ready_to_close")
             self._record_delivery_outcome(db, state)
             state["user_message"] = "Two matching tickets arrived. Payment and delivery are now recorded independently."
+            state["outcome"] = {
+                "kind": "success",
+                "headline": "Two tickets verified",
+                "detail": "Delivery matches the authorized order. Belay can now close the unused protection commitment.",
+            }
             self._event(
                 state, step=11, stage="delivered", title="Two tickets are verified",
                 explanation="The outcome receipt matches the event, order and exact quantity before coverage is released.",

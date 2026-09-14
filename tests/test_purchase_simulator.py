@@ -123,6 +123,16 @@ class PurchaseEngineTests(unittest.TestCase):
         self.assertEqual(final["delivery_state"], "verified")
         self.assertEqual(len(final["tickets"]), 2)
 
+        outcomes = {event["stage"]: event["outcome"] for event in final["events"]}
+        self.assertEqual(outcomes["payout_submitted"]["headline"], "Merchant payout processing")
+        self.assertEqual(outcomes["merchant_paid"]["headline"], "Merchant paid once")
+        self.assertEqual(
+            outcomes["order_confirmed"]["headline"],
+            "Order confirmed; delivery pending",
+        )
+        self.assertEqual(outcomes["delivery_check"]["headline"], "Checking ticket delivery")
+        self.assertEqual(outcomes["delivered"]["headline"], "Two tickets verified")
+
         self.assertEqual(final["buyer"]["available_usdc_units"], CUSTOMER_START - ORDER_COST)
         self.assertEqual(final["buyer"]["held_usdc_units"], 0)
         self.assertEqual(final["settlement"]["provider_in_transit_usdc_units"], 0)
@@ -222,6 +232,15 @@ class PurchaseEngineTests(unittest.TestCase):
         self.assertEqual(unknown["settlement"]["provider_observed_usd_cents"], ORDER_USD_CENTS)
         self.assertEqual(unknown["settlement"]["merchant_received_usd_cents"], 0)
         self.assertEqual(unknown["settlement"]["provider_in_transit_usdc_units"], ORDER_COST)
+        unknown_event = unknown["events"][-1]
+        self.assertFalse(unknown_event["response"]["delivered"])
+        self.assertNotIn("provider_reference", unknown_event["response"])
+        self.assertEqual(unknown_event["provider_observation"]["payout_state"], "paid")
+        self.assertEqual(unknown_event["knowledge"]["belay"], "unknown")
+        self.assertEqual(
+            unknown_event["knowledge"]["safe_next_action"],
+            "read_only_lookup_by_operation_id",
+        )
 
         self.restart()
         restored = self.engine.get(unknown["id"])
@@ -239,12 +258,48 @@ class PurchaseEngineTests(unittest.TestCase):
         self.assertEqual(reconciled["settlement"]["provider_in_transit_usdc_units"], 0)
         self.assertEqual(reconciled["events"][-1]["method"], "GET")
         self.assertFalse(reconciled["events"][-1]["request"]["creates_payment"])
+        self.assertEqual(reconciled["outcome"]["kind"], "safe")
+        self.assertEqual(reconciled["outcome"]["headline"], "Payout reconciled: paid once")
 
         final = self.finish(reconciled)
         self.assertEqual(final["settlement"]["provider_attempt_count"], 1)
         self.assertEqual(final["settlement"]["provider_payout_count"], 1)
         self.assertEqual(self.ledger_kinds(final).count("provider_dispatch"), 1)
         self.assertEqual(self.ledger_kinds(final).count("conversion_and_merchant_payout"), 1)
+
+    def test_events_preserve_both_sides_and_exact_backend_effects(self):
+        created = self.create("success")
+        first = created["events"][0]
+        self.assertEqual(first["stage"], "mission_authorized")
+        self.assertEqual(first["revision"], 0)
+        self.assertIn("two adjacent tickets", first["user_message"])
+        self.assertEqual(first["technical"]["layer_id"], "authority")
+        self.assertIn("control", first["technical"])
+        self.assertIn("proof", first["technical"])
+        self.assertIn("money_effect", first["technical"])
+        self.assertIn("retry_rule", first["technical"])
+        self.assertEqual(
+            first["accounts_after"]["customer_available"]["units"],
+            300 * USDC,
+        )
+        self.assertEqual(first["balance_changes"], [])
+        self.assertEqual(first["ledger_keys"], [])
+
+        admitted = self.to_step(created, 3)
+        event = admitted["events"][-1]
+        self.assertEqual(event["stage"], "admitted")
+        self.assertEqual(event["state_before"]["funding_state"], "funded_grant")
+        self.assertEqual(event["state_after"]["funding_state"], "held")
+        self.assertEqual(
+            {change["account"] for change in event["balance_changes"]},
+            {"customer_available", "order_hold"},
+        )
+        self.assertEqual(event["ledger_keys"], [f"{admitted['order_id']}:hold"])
+        self.assertEqual(
+            event["protection_after"]["committed_usdc_units"],
+            300 * USDC,
+        )
+        self.assertEqual(event["outcome"], admitted["outcome"])
 
     def test_mismatched_provider_payout_fails_closed_before_app_settlement(self):
         mutations = (

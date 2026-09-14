@@ -41,8 +41,9 @@ before dispatch and abstention on conflicting evidence. The demo keeps customer
 funds, merchant USD and reserve capital separate; paying a post-payout remedy
 does not pretend to reverse the merchant's original payment.
 
-**Project status:** v0.3 implements this architecture as a durable local
-simulation. The live product remains a proposal: there is no deployed contract,
+**Project status:** the v0.4 investor experience runs on the durable
+`belay.purchase.v0.3` simulation schema. The live product remains a proposal:
+there is no deployed contract,
 custody, exchange or bank connection, merchant integration, active coverage,
 insurance policy, subscription or real ticket checkout. Read the
 [MVP master plan](docs/MVP_MASTER_PLAN.md),

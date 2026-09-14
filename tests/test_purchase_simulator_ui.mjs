@@ -15,56 +15,65 @@ const css = readFileSync(
   "utf8",
 );
 
-test("investor view explains the product and labels every simulated boundary", () => {
-  assert.match(html, /Agents can act[\s\S]*Belay makes them accountable/);
-  assert.doesNotMatch(html, /pays any merchant|Every agent\. Any merchant/);
-  assert.match(html, /USDC in · merchant gets USD/);
-  assert.match(html, /No live money, coverage, chain, bank, merchant, model, or tickets/);
-  assert.match(html, /Scenario protection reserve/);
-  assert.match(html, /No financial product or live coverage/);
-  assert.match(html, /Demo quote: 1 USDC = \$1\.00 · zero fees/);
+test("investor story leads with one synchronized customer and backend simulation", () => {
+  assert.match(html, /Let an agent buy[\s\S]*Keep every decision accountable/);
+  assert.match(html, /Customer on the left[\s\S]*Infrastructure on the right/);
+  assert.match(html, /CUSTOMER SEES/);
+  assert.match(html, /BELAY PROVES/);
+  assert.match(html, /Safe local simulation[\s\S]*No live chain, money, bank, merchant, wallet, coverage, model, or tickets/);
+  assert.match(html, /Fictional local software demonstration · No financial product or live coverage/);
 });
 
-test("money, reserve, status, receipt, and trace surfaces have stable unique IDs", () => {
+test("backend exposes trust, state, request, response, money, proof, and history surfaces", () => {
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(ids).size, ids.length, "HTML IDs must be unique");
   for (const id of [
+    "customer-panel", "backend-panel", "customer-now", "backend-now",
     "buyer-balance", "held-balance", "provider-balance", "merchant-balance",
-    "reserve-cash", "reserve-committed", "reserve-pending", "reserve-paid",
-    "funding-state", "conversion-state", "payout-state", "order-state",
-    "delivery-state", "protection-state", "receipt", "trace-list", "payload",
+    "reserve-cash", "current-control", "current-money-effect", "current-proof",
+    "current-retry", "policy-score", "control-groups", "funding-state",
+    "conversion-state", "payout-state", "order-state", "delivery-state",
+    "protection-state", "request-payload", "response-payload", "balance-changes",
+    "latest-ledger-key", "proof-stack", "trace-list", "event-select", "return-live",
   ]) {
-    assert.ok(ids.includes(id), `missing investor surface #${id}`);
+    assert.ok(ids.includes(id), `missing two-sided simulator surface #${id}`);
   }
-  assert.equal((html.match(/class="receipt-grid"/g) || []).length, 1);
-  for (const label of ["Instruction", "Purchase", "Payment", "Outcome"]) {
+  for (const label of ["CONTROL", "STATE / MONEY CHANGE", "PROOF CREATED", "SAFE REPLAY"]) {
     assert.match(html, new RegExp(`>${label}<`));
   }
 });
 
-test("walkthrough uses native accessible controls and responsive motion hooks", () => {
-  assert.match(html, /class="skip-link" href="#demo"/);
-  assert.match(html, /role="progressbar"[^>]*aria-valuemin="0"[^>]*aria-valuemax="13"/);
-  for (const id of ["start", "play", "next", "reset", "request-tab", "response-tab"]) {
+test("controls are accessible and mobile swaps synchronized sides instead of stacking both", () => {
+  assert.match(html, /class="skip-link" href="#simulator"/);
+  assert.match(html, /aria-describedby="scenario-description"/);
+  assert.match(html, /role="progressbar"[^>]*aria-valuemin="0"[^>]*aria-valuemax="13"[^>]*aria-valuenow="0"[^>]*aria-valuetext="Ready"/);
+  for (const id of ["start", "play", "next", "reset", "view-customer", "view-backend", "return-live"]) {
     assert.match(html, new RegExp(`<button[^>]*id="${id}"[^>]*type="(?:submit|button)"`));
   }
-  assert.match(html, /aria-live="polite"/);
-  assert.match(css, /:focus-visible/);
+  assert.match(html, /role="tablist" aria-label="Simulation side"/);
+  assert.match(css, /\.workspace\[data-mobile-view="customer"\] \.backend-panel/);
+  assert.match(css, /\.workspace\[data-mobile-view="backend"\] \.customer-panel/);
+  assert.match(css, /@media \(max-width: 960px\)/);
   assert.match(css, /@media \(max-width: 720px\)/);
   assert.match(css, /prefers-reduced-motion: reduce/);
-  assert.match(css, /scroll-behavior: auto/);
+  assert.match(css, /:focus-visible/);
 });
 
-test("browser calls only the local run API and renders payloads without innerHTML", () => {
+test("browser follows one local event timeline and renders backend truth safely", () => {
   assert.match(script, /api\("\/api\/config"\)/);
   assert.match(script, /api\("\/api\/runs"/);
   assert.match(script, /budget_cents: 30_000/);
   assert.match(script, /expected_revision: run\.revision/);
-  assert.match(script, /run\?\.payout_state === "unknown"/);
+  assert.match(script, /event\?\.user_message/);
+  assert.match(script, /event\?\.accounts_after/);
+  assert.match(script, /event\?\.balance_changes/);
+  assert.match(script, /event\?\.ledger_keys/);
+  assert.match(script, /provider_observation/);
+  assert.match(script, /read_only_lookup_by_operation_id|Reconcile paid operation/);
+  assert.match(script, /request-payload/);
+  assert.match(script, /response-payload/);
+  assert.match(script, /selectedButton\.offsetTop/);
+  assert.match(script, /non_delivery_paid/);
   assert.doesNotMatch(script, /\.innerHTML\s*=/);
-  assert.match(script, /receipt\.outcome\.recovery_state/);
-  assert.match(script, /needsReconciliation/);
-  assert.doesNotMatch(script, /remedy · recovery open/);
   assert.match(script, /document\.createTextNode/);
-  assert.match(script, /response_lost|Reconcile exact payout/i);
 });
