@@ -1,1 +1,1 @@
-"""Local purchase teaching simulator: fictional money, credentials and signing."""
+"""Belay protected-purchase MVP with entirely fictional local money flows."""

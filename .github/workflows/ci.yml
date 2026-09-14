@@ -17,8 +17,10 @@ jobs:
           node-version: "22"
       - name: History refresh ordering and error handling
         run: node --test tests/test_prototype_ui.mjs
-      - name: Purchase simulator script syntax
+      - name: Protected purchase simulator script syntax
         run: node --check purchase_simulator/web/app.js
+      - name: Protected purchase investor UI contract
+        run: node --test tests/test_purchase_simulator_ui.mjs
 
   prototype:
     name: portable prototype (${{ matrix.os }} / py${{ matrix.python }})
@@ -35,7 +37,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: HTTP, crash recovery and persistent case tests
         run: python -m unittest discover -s tests -p "test_prototype.py" -v
-      - name: Purchase workflow, duplicate prevention and lost-reply recovery
+      - name: Protected USDC purchase, USD payout and reserve accounting
         run: python -m unittest discover -s tests -p "test_purchase_simulator.py" -v
       - name: Evidence source and order boundaries (offline)
         run: python tests/test_evidence_boundaries.py

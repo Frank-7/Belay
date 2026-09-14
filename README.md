@@ -13,13 +13,14 @@ the contract: *belay* also means stop.
 
 ---
 
-## Try the initial product prototype
+## Try the protected-purchase MVP
 
 The **Purchase Simulator** shows the customer experience beside the backend
-execution of a fictional concert-ticket purchase. Authorize one bounded mission,
-then step through checkout, scoped credentials, payment and delivery. Inspect
-the demo API keys and every request/response, or simulate a lost reply, an
-over-budget offer, bank verification or a declined payment.
+execution of a fictional concert-ticket purchase. Authorize exactly two tickets
+within a 300 USDC grant, then follow deterministic policy, a simulated
+USDC-to-USD conversion, the merchant's $200 USD payout, delivery evidence and a
+separately funded customer remedy. Inspect every state, ledger movement and
+request/response from one investor-ready walkthrough.
 
 ```bash
 python -m purchase_simulator.server --port 8777
@@ -27,18 +28,26 @@ python -m purchase_simulator.server --port 8777
 ```
 
 See [purchase simulator instructions](docs/PURCHASE_SIMULATOR.md).
-The browser talks to a real local server; merchant and payment services are
-mock functions with fictional credentials. No external APIs are contacted.
+The browser talks to a real local server and persists the run in SQLite. The
+agent, USDC transfer, conversion provider, bank payout, ticket delivery,
+protection reserve, signatures and credentials are fictional local fixtures.
+No model, wallet, blockchain, merchant, bank, insurer or external API is
+connected.
 
-**Project status:** the runnable application below is a local recovery
-simulation. The current product plan is a broader autonomous task app with
-advance delegation and [USDC settlement on Base](docs/USDC_SETTLEMENT_ARCHITECTURE.md).
-The proposed payment partner converts USDC and pays suppliers in USD; a separate
-reserve backs eligible post-payment remedies. Read the [MVP master plan](docs/MVP_MASTER_PLAN.md)
-and [presentation outline](docs/MVP_PRESENTATION.md). Subscriptions and a
-limited customer guarantee remain proposals; there is no deployed contract,
-live coverage, bank connection or ticket checkout. The simulator above still
-demonstrates the earlier fictional payment-provider flow.
+The seven scenarios demonstrate successful delivery, lost payout-response
+reconciliation, supplier non-delivery after payment, a quantity violation
+blocked before money moves, a labeled historical agent error, cancellation
+before dispatch and abstention on conflicting evidence. The demo keeps customer
+funds, merchant USD and reserve capital separate; paying a post-payout remedy
+does not pretend to reverse the merchant's original payment.
+
+**Project status:** v0.3 implements this architecture as a durable local
+simulation. The live product remains a proposal: there is no deployed contract,
+custody, exchange or bank connection, merchant integration, active coverage,
+insurance policy, subscription or real ticket checkout. Read the
+[MVP master plan](docs/MVP_MASTER_PLAN.md),
+[USDC settlement architecture](docs/USDC_SETTLEMENT_ARCHITECTURE.md) and
+[presentation outline](docs/MVP_PRESENTATION.md).
 Start with the [document index](docs/INDEX.md),
 [current architecture](docs/AUTONOMOUS_APP_ARCHITECTURE.md), and
 [next-stage plan](docs/NEXT_STAGE.md).

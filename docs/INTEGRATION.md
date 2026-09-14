@@ -10,11 +10,11 @@ USD payouts or claims; network identifiers cannot be relabeled across Arc/Base.
 
 ## What works together today
 
-The repository combines a portable local Recovery Lab, the recorded Recovery
-Desk, the research evidence adjudicator and the live decision experiments.
-All components are checked in the same CI workflow. The lab is a separate
-implementation of the recovery pattern; it is not a production adapter around
-the research runtime.
+The repository combines a portable local Recovery Lab, the v0.3 protected
+Purchase Simulator, the recorded Recovery Desk, the research evidence
+adjudicator and the live decision experiments. All components are checked in
+the same CI workflow. Each application owns its state and demonstrates a
+different boundary; none is a production adapter around another component.
 
 | Component | Entry point | State and boundary |
 |---|---|---|
@@ -24,8 +24,8 @@ the research runtime.
 | Optional recovery model | `second/live_agent.py` | OpenAI proposes evidence pointers and claims; deterministic validation and the guarded executor retain control |
 | Live decision experiment | `experiments/run_live_agent.py` | Optional API-backed measurement and committed results; not the lab's decision engine |
 | Recovery Lab | `python -m prototype.server` | Separate SQLite application/provider stores and loopback HTTP; scripted decisions and fictional money |
-| Purchase Simulator | `python -m purchase_simulator.server` | Separate local application/provider records; interactive ticket purchase, permission checks, mock credentials and exact-operation recovery |
-| Autonomous USDC app and guarantee | Architecture and proposal documents | Future grants/settlement contract and services; no deployed blockchain, live purchases, subscriptions, coverage or reimbursements |
+| Protected Purchase Simulator v0.3 | `python -m purchase_simulator.server` | Separate SQLite application and provider records; bounded ticket grant, deterministic policy, fictional USDC-to-USD settlement, USD merchant payout, delivery evidence, reserve accounting, claims and exact-operation recovery |
+| Live autonomous USDC app and guarantee | Architecture and proposal documents | Future contracts, custody/provider integrations and funded terms; no deployed blockchain, live purchases, subscriptions, active coverage or real reimbursements |
 
 Keep lab data under `.belay-prototype/` or another isolated directory. Do not
 point it at research evidence or treat its database as the JSONL research
@@ -33,11 +33,18 @@ journal. Preserve committed `results/` when validating documentation; they
 are research evidence rather than application state.
 
 The Purchase Simulator uses `.belay-purchase-simulator/` and port 8777, with
-no imports from the research or Recovery Lab execution engines. It demonstrates
-the proposed purchase boundary without changing those engines or their stores.
-Its internal mock-service calls are displayed as fictional API traces; only
-browser-to-loopback requests are actual HTTP. The records are deliberately
-simplified and are not AP2 schema implementations. See
+no imports from the research or Recovery Lab execution engines. Its
+`belay.purchase.v0.3` state keeps customer USDC, an order hold, provider transit,
+merchant USD, protection cash, coverage commitments and claim payments
+separate. The deterministic policy and fictional provider are also separate
+modules, while admission, ledger and claim transitions share one local SQLite
+transaction boundary. Stable identities prevent a lost provider reply from
+creating a second payout.
+
+Only browser-to-loopback requests are actual HTTP. Internal service calls use
+invented `belay://` or `.invalid` traces. No token is transferred, no currency
+is converted and no bank or reserve is connected. The records are deliberately
+simplified and are neither AP2 messages nor deployed blockchain contracts. See
 [PURCHASE_SIMULATOR.md](PURCHASE_SIMULATOR.md) for scenarios and limitations.
 
 ## Run and test
@@ -47,16 +54,20 @@ From a clone with Python 3.10 or newer:
 ```bash
 python -m prototype.server --port 8765
 python -m unittest discover -s tests -p "test_prototype.py" -v
+python -m purchase_simulator.server --port 8777
+python -m unittest discover -s tests -p "test_purchase_simulator.py" -v
+node --check purchase_simulator/web/app.js
 python tests/test_evidence_boundaries.py
 python tests/test_live_agent.py
 python tests/test_evaluate_recovery.py
 python experiments/check_docs.py
 ```
 
-The server binds to `127.0.0.1`; it is a local development demonstration.
-Use one server per lab data directory. No external payment credentials are
-needed. The prototype runs from a clone; the existing distribution described
-by `pyproject.toml` does not package the lab or its web assets.
+Both application servers bind to `127.0.0.1`; they are local development
+demonstrations. Use one server per application data directory. No external
+payment credentials are needed. The applications run from a clone; the
+existing distribution described by `pyproject.toml` does not package either
+web application or its assets.
 
 On POSIX with Make available, `make prototype` starts the lab,
 `make test-prototype` runs its tests, and `make all` includes both the lab and
@@ -94,13 +105,16 @@ The current v0.3 default is USD supplier prepayment through an approved partner;
 eligible post-payment reimbursements use a separate protection reserve. Supplier
 crypto wallets/signatures are not required by the main flow. See the complete
 [MVP master plan](MVP_MASTER_PLAN.md) before adapting the older demo traces.
-These `/internal/v1` routes and blockchain functions are not implemented by
-the existing lab or simulator. Preserve their current fictional workflows.
+The Purchase Simulator now implements local state-machine equivalents for that
+flow, including a 1:1 zero-fee conversion fixture and seeded reserve. It does
+not implement the proposed `/internal/v1` services, a chain transaction,
+provider compliance, bank settlement or legally funded coverage.
 
-The future app should expose one controlled action submission boundary. The
+The production app should expose one controlled action submission boundary. The
 planner supplies a proposal; the authority service validates it and the
 executor records and performs the permitted operation. This is an extension
-contract, not an implemented API in the current lab.
+contract, not a claim that the simulator's in-process Python boundaries provide
+production isolation.
 
 The record passed across that boundary must retain:
 
@@ -144,10 +158,13 @@ terms, calculates eligible unrecovered loss and sends the claim to its
 designated decision maker and payer. Its payout record must not be confused
 with the original purchase or merchant refund.
 
-The purchasing model cannot approve its own reimbursement. Use distinct
-claim and payout IDs, deduplicate retries and account for refunds already
-received. The current research adjudicator does not supply subscription
-entitlement, financial-loss assessment, insurance authority or claim funding.
+The purchasing model cannot approve its own reimbursement. The v0.3 simulator
+shows this separation with distinct case, economic-loss and payout identities,
+an independent claim transition and a seeded fictional reserve. It deduplicates
+the local payment for one loss, but it does not supply subscription entitlement,
+financial-loss assessment, insurance authority or real claim funding. The
+current research adjudicator supplies none of those production authorities
+either.
 
 ## Migration gates
 

@@ -1,10 +1,15 @@
-# Belay purchase simulator
+# Belay protected-purchase simulator
 
-This local app puts the customer experience beside the backend execution of
-one fictional concert-ticket purchase. It turns the proposed Belay workflow
-into a step-through demonstration with inspectable requests, demo credentials,
-separate order/payment/delivery states and a provider record that survives
-an intentionally lost reply.
+This local application is the runnable Belay v0.3 investor demonstration. It
+places the customer experience beside the underlying controls for one fictional
+concert-ticket purchase. The shopping agent proposes an offer, deterministic
+code checks it against the customer's grant, USDC funds a simulated conversion,
+the merchant receives simulated USD, and delivery or protection evidence closes
+the order.
+
+The browser talks to a real loopback Python server and the server persists state
+in SQLite. Everything beyond that boundary is a fixture: there is no live model,
+wallet, blockchain, exchange, bank, merchant, ticket system, insurer or money.
 
 ## Run
 
@@ -14,123 +19,166 @@ From a repository clone with Python 3.10 or newer:
 python -m purchase_simulator.server --port 8777
 ```
 
-Open `http://127.0.0.1:8777`. No installation, API key, model account or payment
-account is needed. The server listens on loopback only. Use a single server
-process per data directory. This source-tree application is not included in
-the existing Python distribution, matching the Recovery Lab packaging boundary.
+Open `http://127.0.0.1:8777`. No installation, API key or payment account is
+needed. The server listens on loopback only. Use one server process per data
+directory.
 
-On Windows, you can double-click `Start-Belay-Simulator.cmd` in the repository
-folder. Leave its terminal window open while using the app. The launcher uses
-the installed Codex Python runtime when available, otherwise `py -3` or
-`python`, and stores demo runs in `.belay-purchase-simulator/demo-v1/`.
-This is a local app: the browser URL works only while its server is running.
+On Windows, double-click `Start-Belay-Simulator.cmd` in the repository folder.
+Leave its terminal window open while using the app. The launcher tries the
+installed Codex Python runtime, then `py -3`, then `python`, and stores v0.3 demo
+runs under `.belay-purchase-simulator/demo-v3/`.
 
-The application stores its state under `.belay-purchase-simulator/`, separate
-from the Recovery Lab and research evidence. To use another isolated data
-directory, pass `--data-dir PATH`. Reloading the browser resumes its most
-recent run if browser storage is available. Restarting the server with the same
-data directory preserves the run and simulated provider records. Playback
-does not automatically resume after a reload.
+The server's default directory is `.belay-purchase-simulator/`. Pass
+`--data-dir PATH` for an isolated demonstration. Restarting with the same path
+preserves runs, ledger entries, claims and fictional provider records. A saved
+run from an older schema is rejected with an instruction to begin a new v0.3
+simulation; the launcher uses `demo-v3/` so it does not mix the two formats.
 
-## Follow both sides
+## The main investor story
 
-1. Choose a scenario and a total budget. The default mission is two adjacent
-   tickets for The Midnight Signals at Harbor Hall, Boston, on October 24,
-   2026 at 8 PM, from the fictional Northstar Tickets merchant.
-2. Click **Authorize mission**. This is the initial bounded approval. The
-   fixture's grant supplies a fixed event, seller, quantity and expiry.
-3. Use **Next step** to inspect the sequence or **Play through** for timed
-   playback. The left panel shows what the customer hears; the right shows
-   the current backend event and ledger state.
-4. Open **Demo credentials** to inspect the invented API credentials and
-   protected-key reference. Use **Request / Response** and **Inspect a step**
-   to read each event's payload and explanation.
-5. Playback pauses on an unknown outcome or bank challenge. Reconciliation
-   is a deliberate next step; verification requires the customer-view button.
-6. After a completed or blocked run, **New simulation** starts an independent
-   demo mission. It does not erase the previous server records or refund it.
+The default fixture starts with a customer grant of 300 USDC and a separate
+fictional protection reserve containing 1,000 USDC. Two adjacent tickets cost
+$100 each. For readability the demo assumes `1 USDC = $1.00` and zero fees.
+Those assumptions are not pricing or settlement promises.
 
-Each grant lasts 30 minutes. The simulator checks expiry before signing,
-token release, checkout submission and bank verification. A submitted purchase
-may still finish, and read-only recovery remains possible, after that deadline.
-An expired bank challenge stays pending with its reservation held; this demo
-does not implement mission renewal or cancellation of that pending operation.
+1. The customer authorizes exactly two adjacent tickets, from the named seller,
+   with a maximum spend of 300 USDC.
+2. The shopping agent proposes an exact offer. The model-shaped component can
+   search and propose, but it cannot approve its proposal or move funds.
+3. A payout quote binds 200 USDC in, $200 USD out, the seller beneficiary and
+   the same stable operation identity.
+4. Deterministic policy checks quantity, seller, event, date, adjacency, budget,
+   assets and beneficiary. Admission holds 200 USDC and commits up to 300 USDC
+   of separate protection capacity in one local database transaction.
+5. A protected executor creates an immutable settlement instruction. Its
+   signature is a labeled mock marker; no cryptography is performed.
+6. The fictional provider receives 200 USDC once, converts it, and records a
+   $200 USD payout to the merchant. The merchant never handles crypto in this
+   flow.
+7. Payment, merchant order acceptance and ticket delivery remain separate
+   states. A final receipt links the grant, order, payout, delivery evidence and
+   any remedy.
+
+Use **Next step** to inspect every transition or **Play through** for the
+presentation. The customer side explains the result in plain language. The
+backend side exposes the exact actor, request, response, state and ledger
+movement. All displayed credentials and `.invalid` URLs are intentionally
+fictional.
 
 ## Scenarios
 
 | Scenario | What happens | Expected result |
 |---|---|---|
-| Successful purchase | A $280 offer satisfies a $300 mission | One provider capture, $280 confirmed spend and two demo tickets |
-| Merchant reply is lost | Provider capture succeeds, but the checkout response is withheld | Belay keeps the reservation, reports unknown status, then reconciles the exact operation without a second capture |
-| Offer exceeds your budget | Seller returns $320; the default mission allows $300 | Purchase stops at the permission check before token release or payment; a larger explicitly approved budget can allow the offer |
-| Bank asks for verification | The issuer requires a challenge | Execution pauses with no capture until simulated verification completes |
-| Bank declines | Authorization is rejected | No capture or ticket delivery; reserved budget is released |
+| Delivered — protected purchase | Two $100 tickets pass policy, 200 USDC funds the route and the tickets match the order | Merchant receives $200 USD once, the customer retains 100 USDC, no claim is paid and the demo releases its coverage commitment after verification |
+| Payout reply lost — recover safely | The provider pays the merchant but its response disappears | Belay records an unknown outcome, performs a read-only lookup under the original operation ID and confirms one $200 payout without sending another |
+| Merchant paid — tickets missing | The $200 merchant payout is final, but no tickets arrive | An independent claim is opened and approved; the reserve pays 200 USDC to the customer, falls to 800 USDC and hands supplier recovery to a flow outside this demo |
+| Agent proposes three — blocked | The proposal conflicts with the signed two-ticket grant | Deterministic policy stops the order before a hold, coverage commitment or provider request; all 300 USDC remains available |
+| Injected past error — buyer restored | A clearly labeled historical fixture starts after three $100 tickets were already bought despite a two-ticket grant | The unauthorized extra ticket is quarantined for return or resale; independent controls pay the contractual 100 USDC remedy once, the customer keeps the intended two tickets and the reserve falls to 900 USDC |
+| Cancel before dispatch | A valid order is admitted and then cancelled before provider dispatch | The 200 USDC hold returns to the customer, the coverage commitment is released and the merchant receives nothing |
+| Evidence conflicts — review | One source says delivered while another says missing | Automation abstains, no claim is paid and the case stays open for a human-review handoff that is not implemented in this demo |
 
-**Budget reserved** is the amount unavailable to another action within this
-mission; it does not itself move money. **Confirmed spent** is what Belay has
-confirmed. **Provider captures** is the simulator's observer view of the
-provider's actual local records. In the lost-reply state that counter is one
-while Belay's confirmed spending remains zero and its reservation stays held.
-The agent does not receive that observer counter as a shortcut to recovery.
+The historical error is injected initial state. The normal execution path never
+bypasses the quantity guard to manufacture a failure. Supplier non-delivery and
+agent error are distinct loss types, and each claim has an economic-loss ID so
+one loss cannot be paid twice in the local ledger.
 
-The UI permits one active run at a time. Budgets and grants are isolated per
-mission; this is not a shared wallet across browser tabs, users or subscriptions.
+## Reading the money view
 
-## What is real and what is simulated
+The simulator keeps different assets and obligations separate:
 
-The browser makes actual HTTP requests to the local Python server. That
-server executes the checks and advances durable state, rather than animating
-a canned screenshot. A stable operation identity ties the intended purchase,
-provider record and recovery lookup together. An expected revision prevents
-repeated or overlapping step requests from executing an action twice.
+| Field | Meaning |
+|---|---|
+| Customer available | USDC the customer can still use in this fictional run |
+| Order hold | Customer USDC admitted for this exact order but not yet dispatched |
+| Provider in transit | USDC sent to the conversion fixture and not yet reflected as merchant USD |
+| Merchant received | USD cents recorded as paid to the merchant |
+| Protection reserve cash | Separate fictional USDC available to fund eligible remedies |
+| Coverage committed | Maximum protection capacity reserved for the order |
+| Claim pending / paid | Approved but unpaid exposure, or USDC already moved from the reserve to the customer |
 
-Merchant, credential-provider, payment-processor and issuer calls are local
-mock functions. Their trace URLs end in `.invalid` and are never contacted.
-The API keys, card references, tokens, agent decisions and signature markers
-are fictional. They do not implement cryptographic authorization, PCI
-compliance, an AP2 schema, a real wallet or live payments. Both initial and
-transaction-bound authority are represented with simplified demo records.
+USDC base units and USD cents are never added into one balance. Committing
+coverage does not move reserve cash. Paying an approved claim does. Once the
+merchant has received USD, the original customer funds cannot be pulled back by
+the blockchain. The non-delivery example therefore uses separate reserve cash
+and shows the original merchant payment unchanged.
 
-The protected executor is a logical boundary inside one process, not a
-production security boundary or a hardware-backed key store. The demo exposes
-fixture credentials intentionally; real private keys and raw payment data
-would not appear in a developer panel or a model context.
+The demo commits a maximum combined 300 USDC of protection for the order. It
+uses 200 USDC for the supplier non-delivery example or a contractual 100 USDC
+remedy for the unauthorized extra-ticket charge, never both for the same event. These
+are fictional policy fixtures, not active coverage, insurance or a promise that
+a production claim would be automatic or immediate. The successful path closes
+coverage immediately after its simulated delivery check; a production policy
+would retain capacity through its defined claim window.
 
-This simulation demonstrates the flow on top of the existing
-[autonomous app architecture](AUTONOMOUS_APP_ARCHITECTURE.md). It does not
-wrap the research runtime or Recovery Lab. Their tests and data retain their
-existing meanings. No blockchain, guarantee payout, refund execution,
-subscription, merchant account or bank access is added.
+Every new walkthrough receives its own seeded 1,000-USDC sandbox reserve. The
+MVP therefore demonstrates one order's accounting and idempotency, not portfolio-wide
+capital adequacy or concurrent admission against one shared reserve.
 
-The lost reply is deliberately injected. Its provider is cooperative and can
-return a definitive record for the exact operation. The demo does not establish
-recovery from every process crash or model production provider consistency,
-chargebacks, delayed settlement, real ticket fulfillment or multi-process
-concurrency. Production adapters must declare those capabilities independently.
+## What is implemented
+
+- A versioned `belay.purchase.v0.3` run schema with stable grant, order,
+  operation, case and provider identities.
+- Persistent application, provider, account, coverage, ledger and claim records
+  in local SQLite databases.
+- Exact deterministic policy checks in `purchase_simulator/policy.py`.
+- A persisted order-authority record that freezes the admitted grant, offer,
+  quote, amount and beneficiary before signing or dispatch.
+- An independent local payout fixture in `purchase_simulator/provider.py` with
+  one record per operation and read-only lost-reply reconciliation.
+- Exact provider-response validation plus a persisted settlement record binding
+  both assets, both amounts, beneficiary, intent digest and provider reference.
+- Atomic local admission of the customer hold and protection commitment.
+- Separate funding, conversion, payout, order, delivery and protection states.
+- Expected-revision checks that stop stale or overlapping browser actions from
+  advancing the same run twice.
+- A unified fictional receipt for completed purchases and remedies.
+
+## Architecture boundaries
+
+The local state machine demonstrates how the proposed components fit together;
+it is not the production payment protocol. The `belay://` and `.invalid` trace
+routes are descriptive and never contacted. The provider does not convert a
+token, perform KYC/AML checks or send a bank payment. The reserve is a seeded
+SQLite balance rather than safeguarded or insured capital. Delivery evidence is
+constructed data, not an authenticated ticket issuer or customer device report.
+
+The deterministic executor is a logical boundary within one Python process. It
+is not a smart contract, HSM, custodian, money transmitter or licensed payout
+service. The authorization object uses a `mocksig` value and a fake key
+reference. Private keys never appear because the demo has none. The shopping
+agent is scripted fixture behavior and this repository does not connect the
+conversation's language model to the app.
+
+The simulator remains isolated from the research runtime, the legacy Recovery
+Lab and the teammate Recovery Desk work. It does not alter their journals,
+databases or reported experiment results. The broader live architecture still
+requires reviewed contracts, provider approval, authenticated users, custody
+and compliance decisions, real evidence adapters, funded terms and operational
+controls.
 
 ## Verify
 
 ```bash
 python -m unittest discover -s tests -p "test_purchase_simulator.py" -v
 node --check purchase_simulator/web/app.js
+node --test tests/test_purchase_simulator_ui.mjs
 ```
 
-The suite checks purchase outcomes, persistent state, reconciliation without
-duplicate capture, cap rejection before spending, mandatory bank verification,
-stale/concurrent step requests and loopback HTTP validation. It uses temporary
-databases and no remote services. The existing portable CI matrix runs these
-tests on Windows and Linux alongside the Recovery Lab tests.
+The Python suite uses temporary databases and no remote services. It checks the
+scenario outcomes, asset conservation, reserve accounting, policy rejection,
+stable-operation recovery, duplicate claim prevention, persisted schema and
+loopback HTTP boundary. CI runs it on Windows and Linux.
 
 ## Local API
 
 | Route | Body | Purpose |
 |---|---|---|
-| `GET /api/config` | — | Scenarios and fictional credentials |
-| `POST /api/runs` | `scenario`, integer `budget_cents`, `quantity: 2` | Approve and create a bounded demo mission |
-| `GET /api/runs/{id}` | — | Read the persisted run and trace |
+| `GET /api/config` | — | Read schema version, scenarios, assumptions and fictional credentials |
+| `POST /api/runs` | `scenario`, integer `budget_cents`, `quantity: 2` | Create a bounded fictional mission; the cents-shaped input is projected to six-decimal demo USDC units |
+| `GET /api/runs/{id}` | — | Read the persisted run, separate balances, provider observation, claims and trace |
 | `POST /api/runs/{id}/advance` | integer `expected_revision` | Execute one permitted transition |
-| `POST /api/runs/{id}/verify` | integer `expected_revision` | Complete the simulated issuer challenge |
+| `POST /api/runs/{id}/verify` | integer `expected_revision` | Compatibility route from the earlier card demo; v0.3 has no bank challenge and returns HTTP 409 without changing the run |
 
-A stale revision returns HTTP 409 with the current run in `current`. Unknown
-outcomes retain their operation identity. The UI pauses on an HTTP failure;
-it does not automatically resend a purchase or assume the prior request failed.
+A stale revision returns HTTP 409 with the current run in `current`. The UI
+pauses after an HTTP failure and never treats a missing reply as proof that a
+payout failed.
