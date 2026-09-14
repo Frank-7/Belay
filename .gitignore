@@ -8,6 +8,7 @@ dist/
 venv/
 .env
 .belay-prototype/
+.belay-recovery/
 
 # ---- Tooling caches ----
 .pytest_cache/

@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      - "recovery_app/**"
+      - "tests/test_operator_export.py"
+      - "tests/test_recovery_app_ui.mjs"
       - "scripts/build_site.py"
       - "tests/test_build_site.py"
       - "tests/test_site_ui.mjs"
@@ -22,6 +25,9 @@ on:
   pull_request:
     paths:
       - "site/**"
+      - "recovery_app/**"
+      - "tests/test_operator_export.py"
+      - "tests/test_recovery_app_ui.mjs"
       - "scripts/build_site.py"
       - "tests/test_build_site.py"
       - "tests/test_site_ui.mjs"
@@ -59,7 +65,9 @@ jobs:
       - name: Verify publication boundaries and evidence
         run: python3 tests/test_build_site.py
       - name: Verify the interactive walkthrough (offline)
-        run: node --test tests/test_site_ui.mjs
+        run: node --test tests/test_site_ui.mjs tests/test_recovery_app_ui.mjs
+      - name: Verify the recorded operator export
+        run: python3 tests/test_operator_export.py
       - name: Build the site and recorded sandbox Recovery Desk
         run: python3 scripts/build_site.py --out _site
       - name: Upload the static site

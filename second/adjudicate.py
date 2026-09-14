@@ -42,11 +42,22 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass
+from itertools import islice
 
 from belay.journal import Journal  # reads only; imports no ledger
 from second.dossier import Claim, Dossier, Proposal, ProposalKind, Verdict
-from second.evidence import SEL_MANIFEST, SEL_ORDER, EvidenceStore, Observation, Pointer
+from second.evidence import (
+    MAX_AGENT_POINTERS,
+    MAX_CONTEXT_SOURCES,
+    SEL_MANIFEST,
+    SEL_ORDER,
+    Coverage,
+    EvidenceStore,
+    Observation,
+    Pointer,
+)
 
 
 @dataclass(frozen=True)
@@ -172,24 +183,50 @@ def project_escalated_slots(records: list[dict], order_id: str) -> list[Escalate
 
 def adjudicate(esc: EscalatedSlot, store: EvidenceStore, agent) -> Dossier:
     """Run one adjudication. Never raises; a bad agent yields an abstention."""
-    view = esc.view(store.catalog())
+    catalog = store.catalog()
+    if len(catalog) > MAX_CONTEXT_SOURCES:
+        return Dossier.abstain(esc.anchor, esc.slot, "evidence context exceeds the 8-source safety budget; narrow the case before adjudicating")
+    view = esc.view(catalog)
 
     # Round 1: where to look. Raw strings, straight from the model.
     try:
-        raw_pointers = list(agent.propose_pointers(view) or [])
+        raw_pointers = list(islice(agent.propose_pointers(view) or [], MAX_AGENT_POINTERS + 1))
     except Exception as exc:  # a model wrapper may fail in any way at all
         return Dossier.abstain(esc.anchor, esc.slot, f"agent failed proposing: {exc!r}")
+    if len(raw_pointers) > MAX_AGENT_POINTERS:
+        return Dossier.abstain(
+            esc.anchor, esc.slot, "agent exceeded the 16-pointer budget",
+            pointers_proposed=len(raw_pointers),
+        )
 
     # Deterministic fetch. Unparseable and unresolvable pointers vanish
     # here, which is why a fabricated one is inert rather than harmful.
     observations: list[Observation] = []
     seen: set[str] = set()
-    for raw in raw_pointers[:16]:            # a cap, so a runaway agent cannot spin
+    for raw in raw_pointers[:MAX_AGENT_POINTERS]:
         obs = store.fetch(Pointer.parse(raw))
         if obs is None or obs.digest in seen:
             continue
         seen.add(obs.digest)
         observations.append(obs)
+
+    # A model may overlook or selectively omit a source. Read the bounded
+    # catalog's exact order queries and manifests for a deterministic veto.
+    # These extra observations cannot provide missing citations or upgrade the
+    # model's conclusion; the model still has to request and cite its support.
+    fetched = {str(obs.pointer): obs for obs in observations}
+    context: list[Observation] = []
+    for source in catalog:
+        for selector in (SEL_MANIFEST, f"{SEL_ORDER}:{esc.order_id}"):
+            pointer = Pointer(source, selector)
+            obs = fetched.get(str(pointer)) or store.fetch(pointer)
+            if obs is None:
+                return Dossier.abstain(
+                    esc.anchor, esc.slot,
+                    f"available source {source!r} could not be read safely; obtain a valid source snapshot",
+                    pointers_proposed=len(raw_pointers), pointers_resolved=len(observations),
+                )
+            context.append(obs)
 
     # Round 2: conclude, over verified observations only.
     try:
@@ -209,6 +246,7 @@ def adjudicate(esc: EscalatedSlot, store: EvidenceStore, agent) -> Dossier:
         esc, claim, observations,
         pointers_proposed=len(raw_pointers),
         pointers_resolved=len(observations),
+        context_observations=context,
     )
 
 
@@ -224,11 +262,113 @@ def validate(
     *,
     pointers_proposed: int = 0,
     pointers_resolved: int = 0,
+    context_observations: list[Observation] | None = None,
+) -> Dossier:
+    """Fail closed even on malformed claims or manually supplied observations.
+
+    Context is trusted fetcher output used only to reject a claim. It cannot
+    satisfy a citation the agent did not request. Direct callers must supply
+    the full bounded context; production callers should use ``adjudicate``.
+    """
+    try:
+        return _validate(
+            esc, claim, observations, pointers_proposed=pointers_proposed,
+            pointers_resolved=pointers_resolved, context_observations=context_observations,
+        )
+    except (AttributeError, TypeError, ValueError, OverflowError, RecursionError):
+        return Dossier.abstain(
+            esc.anchor, esc.slot, "malformed claim or evidence; obtain a valid source snapshot",
+            pointers_proposed=pointers_proposed, pointers_resolved=pointers_resolved,
+        )
+
+
+def _context_problem(esc: EscalatedSlot, observations: list[Observation]) -> str | None:
+    """Conservative consistency check under the one-refund-slot assumption.
+
+    Local file provenance and declared coverage are assumed truthful. This is
+    conflict detection, not Byzantine consensus or provider finality proof.
+    """
+    manifests: dict[str, Observation] = {}
+    silent: set[str] = set()
+    hits: list[dict] = []
+    identities: set[int] = set()
+    transactions_by_chain: dict[int, set[str]] = {}
+    snapshots: dict[str, str] = {}
+    for obs in observations:
+        source = obs.pointer.source
+        if obs.payload.get("source") != source:
+            return "source identity disagrees with the fetched pointer"
+        previous = snapshots.setdefault(str(obs.pointer), obs.digest)
+        if previous != obs.digest:
+            return "source changed within the evidence snapshot; fetch a consistent snapshot"
+        if obs.pointer.selector == SEL_MANIFEST:
+            if not isinstance(obs.payload.get("coverage"), dict):
+                return "malformed source coverage; obtain a valid manifest"
+            manifests[source] = obs
+            continue
+        if obs.payload.get("selector") != obs.pointer.selector:
+            return "query selector disagrees with its fetched pointer"
+        records = obs.payload.get("matches")
+        if not isinstance(records, list) or any(not isinstance(r, dict) for r in records):
+            return "malformed evidence records; obtain a valid source snapshot"
+        if obs.pointer.kind == SEL_ORDER and any(rec.get("order_id") != obs.pointer.arg for rec in records):
+            return "query returned evidence for a different order"
+        if obs.pointer.selector != f"{SEL_ORDER}:{esc.order_id}":
+            continue
+        if not records:
+            silent.add(source)
+        for rec in records:
+            if rec.get("order_id") != esc.order_id:
+                return "query returned evidence for a different order"
+            if rec.get("kind") not in (None, "refund"):
+                continue
+            if type(rec.get("amount_cents")) is not int or rec["amount_cents"] < 0:
+                return "malformed refund amount; obtain a valid source snapshot"
+            if rec["amount_cents"] != esc.amount_cents:
+                return "conflicting refund amount for this order; reconcile the slot identity before acting"
+            external_id = rec.get("external_id")
+            if external_id is not None:
+                if type(external_id) is not int or external_id < 0:
+                    return "malformed simulator effect identity; transaction hashes belong in receipt metadata"
+                identities.add(external_id)
+            metadata = rec.get("metadata") or {}
+            if not isinstance(metadata, dict):
+                return "malformed receipt metadata; obtain a valid source snapshot"
+            tx_hash = rec.get("transaction_hash", metadata.get("transaction_hash"))
+            chain_id = rec.get("chain_id", metadata.get("chain_id"))
+            if tx_hash is not None:
+                if not isinstance(tx_hash, str) or re.fullmatch(r"0x[0-9a-fA-F]{64}", tx_hash) is None:
+                    return "malformed transaction hash in receipt metadata"
+                if chain_id is not None:
+                    if type(chain_id) is not int or chain_id <= 0:
+                        return "malformed chain identity in receipt metadata"
+                    transactions_by_chain.setdefault(chain_id, set()).add(tx_hash.lower())
+            hits.append(rec)
+    if len(identities) > 1:
+        return "conflicting effect identities for one refund slot; reconcile possible duplicate effects"
+    if any(len(hashes) > 1 for hashes in transactions_by_chain.values()):
+        return "conflicting transaction hashes for one refund slot on the same chain; reconcile possible duplicate transfers"
+    if hits:
+        for source in silent:
+            manifest = manifests.get(source)
+            if manifest and Coverage.from_dict(manifest.payload["coverage"]).proves_absence_at(esc.intent_ts):
+                return "conflicting sources: a matching commit and a complete silent source; reconcile their coverage and event identity"
+    return None
+
+
+def _validate(
+    esc: EscalatedSlot,
+    claim: Claim,
+    observations: list[Observation],
+    *,
+    pointers_proposed: int = 0,
+    pointers_resolved: int = 0,
+    context_observations: list[Observation] | None = None,
 ) -> Dossier:
     """Decide whether the claim is supported by evidence actually fetched.
 
-    Pure, deterministic, and total: every path returns a Dossier, and every
-    path that is not fully supported returns an abstention.
+    Deterministic validation over typed claims and observations. The public
+    wrapper also turns malformed input into an abstention.
     """
     notes: list[str] = []
     counts = {"pointers_proposed": pointers_proposed, "pointers_resolved": pointers_resolved}
@@ -240,6 +380,10 @@ def validate(
             citations=[o.as_dict() for o in (cited or [])],
             **counts,
         )
+
+    problem = _context_problem(esc, observations + (context_observations or []))
+    if problem:
+        return give_up(problem, observations + (context_observations or []))
 
     # -- citations must name observations this adjudication really fetched --
     by_digest = {o.digest: o for o in observations}
@@ -264,7 +408,7 @@ def validate(
     if not cited:
         return give_up(f"verdict {verdict.value!r} with no verifiable citation", cited)
 
-    # -- COMMITTED: any single source showing the effect is enough ---------
+    # -- COMMITTED: one matching source, with no contextual contradiction ---
     if verdict is Verdict.COMMITTED:
         for obs in cited:
             for rec in obs.matches:
@@ -272,7 +416,7 @@ def validate(
                     continue
                 if rec.get("order_id") != esc.order_id:
                     continue
-                if int(rec.get("amount_cents", -1)) != esc.amount_cents:
+                if type(rec.get("amount_cents")) is not int or rec["amount_cents"] != esc.amount_cents:
                     # A refund for this order at a different amount is not
                     # this slot. See the assumption in the module docstring.
                     notes.append(
@@ -290,7 +434,7 @@ def validate(
                     # this rung needs no permission.
                     proposal=Proposal(ProposalKind.QUERY, amount_cents=esc.amount_cents),
                     amount_cents=esc.amount_cents,
-                    external_id=int(ext) if ext is not None else None,
+                    external_id=ext,
                     citations=[obs.as_dict()],
                     reasoning=claim.reasoning,
                     validator_notes=notes + [
@@ -302,6 +446,14 @@ def validate(
         return give_up("no cited observation shows a matching committed effect", cited)
 
     # -- ABSENT: needs coverage, not just silence --------------------------
+    # A matching positive observation cannot be concealed by citing only a
+    # silent source whose coverage is old or missing.
+    for obs in observations + (context_observations or []):
+        if any(
+            rec.get("kind") in (None, "refund") and rec.get("order_id") == esc.order_id
+            and rec.get("amount_cents") == esc.amount_cents for rec in obs.matches
+        ):
+            return give_up("absence contradicted by an available matching committed effect", [obs])
     # Silence from a lossy source proves nothing at any drop rate, so the
     # agent must cite a manifest claiming completeness over the intent
     # window *and* the silent query from that same source.
@@ -325,8 +477,6 @@ def validate(
         if silent is None:
             continue
         cov_raw = obs.payload.get("coverage") or {}
-        from second.evidence import Coverage  # local: keeps the import graph flat
-
         cov = Coverage.from_dict(cov_raw)
         if not cov.proves_absence_at(esc.intent_ts):
             notes.append(

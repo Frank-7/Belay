@@ -1,198 +1,84 @@
-# Checkpoint plan
+# Remaining hackathon checkpoints
 
-For the current evidence-recovery extension, use [the demo guide](DEMO.md) and
-the counts from the exact recording or evaluation being presented. The scripts
-below describe earlier milestones; their sample numbers and model limitations
-must be checked against the current artifact. The default demo still uses a
-heuristic, even though an optional live-model adapter is available.
+Belay remains in **AI Apps**. Every remaining submission should show the same
+operator application and the same value proposition: determine what an
+interrupted AI action did and what can safely happen next.
 
-Five scored check-ins plus a final round, all judged on the same four
-categories: Innovation & Creativity 30%, Technical Implementation 25%,
-Business Value & Impact 25%, Presentation & Communication 20%. Check-in
-scores are averaged and combined with the final. A missed check-in is a zero.
+The supplied schedule is inconsistent. The original invitation says 72 hours
+and five check-ins; the challenge briefs say Saturday 10:00 through Monday
+12:00 ET, with progress checkpoints at Saturday 22:00, Sunday 10:00,
+Sunday 22:00 and Monday 10:00. Neither this file nor a previous estimate
+resolves that conflict.
 
-That structure, not the deadline, is what this plan optimises for.
+Until the actual schedule is confirmed, prepare against the **earlier**
+remaining deadlines: Sunday 13 September at 22:00 ET, Monday 14 September
+at 10:00 ET, and the Monday 12:00 ET final. Leave at least 30 minutes for
+recording and upload. A prepared artifact is not a submitted artifact.
 
-> **Confirm with the organisers before Saturday.** The invite email says 72
-> hours and five check-ins; the challenge briefs say Saturday 10:00 to Monday
-> 12:00 (50 hours) with four progress checkpoints plus a final. Those are
-> different clocks and a different number of scored rounds. Ask, in writing,
-> and plan against the answer.
+The rubric supplied by the organizers is Innovation & Creativity 30%,
+Technical Implementation 25%, Business Value & Impact 25%, and Presentation
+& Communication 20%. Missing a required checkpoint receives zero under the
+supplied rules. Confirm the actual windows and score carryover without
+reopening the team's fixed track choice.
 
----
+## Each 60-second progress video
 
-## The 60-second template
-
-Reuse this shape every round. It maps onto the rubric in order, so a judge
-scoring against the sheet hears each category where they expect it.
-
-| seconds | beat | rubric category |
-|---|---|---|
-| 0–10 | **The stake.** One concrete irreversible action going wrong. | Business Value |
-| 10–20 | **The claim.** One sentence, falsifiable. | Innovation |
-| 20–40 | **The evidence.** Screen recording of the failure, then ours. Numbers on screen. | Technical Implementation |
-| 40–50 | **What changed since last checkpoint.** | Presentation |
-| 50–60 | **Next 12 hours**, named specifically. | Presentation |
-
-Rules that matter more than the script:
-
-- **Show the ledger, not the logs.** The money number is the evidence. Logs
-  are what you cut when you run over.
-- **Say the limitation out loud in every video.** Judges who have read the
-  briefs are explicitly primed to distrust a polished demo with no stated
-  limits. Twelve seconds of "here is what this does not show" reads as
-  confidence, not weakness.
-- **Never re-explain the problem after round 1.** Ten seconds of stake, then
-  straight to what's new. Repeating the setup is the single most common way
-  teams waste a scored minute.
-- **One number per video.** Round 1 is `0/240 versus 78/240`. Don't stack five
-  statistics; nobody retains them.
-
----
-
-## Checkpoint 1 — Saturday 22:00
-
-**Have working:** everything currently in the repo. Core result, four
-runtimes, 960-trial matrix, contract, tests, viewer.
-
-Shipping a complete result at checkpoint one is the whole strategy. Most
-teams will show a scaffold and a plan.
-
-**Script**
-
-> An agent issues a refund. The process dies between the payment landing and
-> the acknowledgement coming back. On restart, nothing says whether fifty
-> dollars left.
->
-> Durable execution frameworks fix this by replaying the workflow from a
-> journal. That's sound only if the workflow is deterministic — and if
-> there's a model in it, the decision *is* the control flow.
->
-> Our claim: an idempotency key derived from a nondeterministic decision
-> inherits that nondeterminism, and a key that isn't stable across restarts
-> isn't an idempotency key.
->
-> [screen: baseline double-refunds $80 on a $50 order]
-> [screen: ours, one refund]
->
-> 960 real SIGKILLs, graded against an external ledger. Content-keyed replay
-> violates the contract 78 times out of 240. Ours, zero. The fix is two
-> fsyncs in the right order — allocate effect identity before you call the
-> model.
->
-> What this doesn't show: a real model. Our agent is simulated, so we've
-> measured the mechanism, not how often it fires. That's the next twelve
-> hours.
-
----
-
-## Checkpoint 2 — Sunday 10:00
-
-**Build:** the standalone live harness and FINDINGS.md §10. Measure how often
-identical requests produce different decisions, separately by model,
-temperature, reasoning setting and fixed scenario. Keep live calls outside
-the runtime and recovery path. Preserve raw responses and earlier runs.
-
-This tests an assumed parameter, and it is the thing a sceptical judge will
-ask about first. It does not promise that the measured rate will be non-zero.
-
-**Script beats:** the original `gemini-3.1-flash-lite` run, minimal reasoning,
-requested JSON output: no observed decision disagreement in each of three
-N=50 cells (`borderline` at temperatures 1 and 0; `clear_cut` at 1). The
-one-sided 95% upper bound is 11.3% per cell, assuming independent stationary
-calls. Say "bounded by 11.3%", not "the model is deterministic" or "below
-11%".
-
-**Later update (Sunday 12:27–12:36 ET):** the follow-up kept that same model,
-minimal reasoning, `borderline`
-prompt and temperature 1: N=50 with explanations and N=50 with fresh JSON
-output both again had no observed disagreement, no unparseables and no API
-failures. All 50 explanation texts differed; every final decision was the
-split refund. Each cell still has an 11.3% one-sided 95% upper bound. Larger
-models remain quota-limited; their tiny checks are not findings. Do not pool
-conditions into a production rate. State parse failures and API errors
-separately. This did not confirm frequent divergence in the tested cases.
-The frequency determines how often divergence causes trouble; anchoring's
-identity guarantee under the stated contract does not depend on that rate.
-
----
-
-## Checkpoint 3 — Sunday 22:00
-
-**Build:** FINDINGS.md §9 item 2, the largest gap. A lease so two processes
-cannot recover the same journal, then extend invariant I1 to cover
-concurrency and re-run the matrix with concurrent recoverers injected.
-
-**Script beats:** name the assumption you have been carrying since round one
-and show it removed. Judges reward a team that attacks its own weakest claim
-unprompted.
-
----
-
-## Checkpoint 4 — Monday 10:00
-
-**Build:** pick exactly one.
-
-- **Unbounded effect slots** (§8 item 3). Anchoring needs slots enumerated
-  before the decision. What happens when the *number* of actions is itself
-  model-chosen? Our hypothesis is a bounded slot pool with refusal on
-  exhaustion. If it doesn't hold, say so — a negative result here is a
-  stronger contribution than a feature.
-- **Converting opaque to queryable** (§8 item 4). A write-ahead proxy that
-  gives an uncooperative service a lookup. This moves the impossibility
-  rather than removing it, and the trade should be measured.
-
-Do not start both. A half-built second thing scores worse than one finished
-thing at every checkpoint.
-
-**Script beats:** the result, and explicitly whether it confirmed or broke
-the hypothesis.
-
----
-
-## Checkpoint 5 / Final — Monday 12:00
-
-No new code. Consolidation only.
-
-- Re-run `make all` clean and confirm every number in FINDINGS.md.
-- Trim the limitations section to what is still true.
-- Final video: the stake, the claim, the single strongest before/after, the
-  headline number, and the one thing you would build next.
-
-**Final-round script**
-
-> Companies shipping agents that take irreversible actions — refunds,
-> orders, provisioning — are wrapping them in durable-execution frameworks
-> built on an assumption the agent violates. The failures are rare, silent,
-> and financial.
->
-> We showed why: a key derived from a model's decision isn't stable across a
-> restart, so it isn't a key. We showed it costs real money — [N] dollars
-> mis-moved across our matrix. We fixed it by allocating effect identity
-> before the model is consulted, and proved the one case where nobody can
-> win.
->
-> Zero contract violations in [N] real process kills. Zero availability cost
-> on any service that cooperates at all, and on services that don't, a
-> proof that the escalation is necessary rather than conservative.
->
-> The gap we'd close next: [whatever checkpoint 4 left open].
-
----
-
-## Division of labour
-
-| owner | scope |
+| Time | Show or say |
 |---|---|
-| **Systems** | Runtime, journal, chaos injector, the lease at checkpoint 3. |
-| **ML / research** | The agent, the live divergence measurement, the matrix and analysis. |
-| **Product / frontend** | The viewer, and all six videos. |
+| 0–10 seconds | The operator's problem: an AI-issued action has no reliable confirmation. |
+| 10–20 seconds | The decision they need to make and the original request that constrains it. |
+| 20–40 seconds | One working investigation: evidence, validated answer or specific uncertainty, and guarded resolution. |
+| 40–50 seconds | One improvement since the last submission, with one traceable result. |
+| 50–60 seconds | The limitation and exactly what the next block will establish. |
 
-The videos are one person's standing job from hour one. Six scored minutes
-at 20% each is more rubric weight than any single technical feature, and a
-team that films at the deadline loses that weight every round.
+Lead with the application, not an architecture lecture. Show the original
+amount, current evidence and the operator's next action together. Use clear
+audio. Label simulated money, a recorded demonstration, optional model calls
+and real test-network transactions accurately.
 
-The viewer is the presentation multiplier: four lanes, a hard red seam where
-the process died, and a money figure per lane. It makes the twenty-second
-evidence beat work without narration. Keep it current at every checkpoint —
-regenerating it is one command.
+## Sunday 22:00 target
+
+Show the live local Recovery Desk, including a contradictory or stale source
+that prevents an unsupported resolution. Request updated evidence and finish
+the same incident. Explain that its JSONL journal and validator are shared
+with the research implementation.
+
+Use the 24-case offline evaluation or the frozen 12-case boundary suite for
+one measured claim. Do not call 12 constructed cases a production success rate.
+If a live model or wallet transaction has not actually run, say it remains
+the next proof instead of presenting the available adapter as a completed run.
+
+## Monday 10:00 target
+
+Present the strongest completed external demonstration: one configured model
+comparison or one human-signed Arc Testnet transfer recovered from its receipt.
+Show actual configuration or transaction evidence. Report a null result or
+external dependency plainly.
+
+Freeze feature scope. Verify the public website, the local launch command,
+the current branch/revision and the exact video/repository links. Preserve
+the original committed experiments and write new runs to separate artifacts.
+
+## Monday 12:00 final
+
+Use [the final script and Q&A](FINAL_PRESENTATION.md). Show one complete
+operator journey, one independent check, one business hypothesis and one
+honest limit. Explain what AI contributes today and what the baseline can
+already do.
+
+The historical crash results remain supporting evidence. Do not reuse older
+scripts claiming that durable frameworks cannot handle model calls, that
+synthetic refunds prove real customer losses, that any cooperative service
+guarantees zero escalation, or that no live-model divergence was measured
+when a sampled cell actually showed none.
+
+## Team execution
+
+One owner records and verifies submission materials. Another can run the
+application and collect receipts; a third can run evaluation and check claims.
+If fewer people are available, combine roles and reduce optional integrations.
+
+Prepared materials: this plan, [FINAL_PRESENTATION.md](FINAL_PRESENTATION.md),
+application receipts and separately saved evaluation reports. Human work still
+required: confirm the schedule, record the actual demonstration, review the
+video and upload it. This repository does not claim those actions occurred.

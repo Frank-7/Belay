@@ -223,6 +223,100 @@ class EvidenceBoundaryTests(unittest.TestCase):
         source.symlink_to(outside)
         self.assertIsNone(self.store.fetch(Pointer("settlement", "manifest")))
 
+    def test_selective_citations_cannot_hide_complete_silence_or_commit(self):
+        self.write_source("complete", records=[])
+        hit = {"kind": "refund", "order_id": self.order, "amount_cents": self.amount, "external_id": 1}
+        self.write_source("receipt", records=[hit])
+        for verdict, sources in [("absent", ["complete"]), ("committed", ["receipt"]), ("committed", ["complete", "receipt"])]:
+            with self.subTest(verdict=verdict, sources=sources):
+                agent, _ = self.model([
+                    pointer for source in sources
+                    for pointer in (f"{source}:manifest", f"{source}:order:{self.order}")
+                ], verdict=verdict)
+                dossier = adjudicate(self.slot, EvidenceStore(str(self.evidence)), agent)
+                self.assertEqual(dossier.verdict, Verdict.ABSTAIN)
+                self.assertIn("conflicting sources", " ".join(dossier.validator_notes))
+
+    def test_context_cannot_supply_missing_model_citations(self):
+        self.write_source()
+        agent, _ = self.model([f"settlement:order:{self.order}"])
+        dossier = adjudicate(self.slot, self.store, agent)
+        self.assertEqual(dossier.verdict, Verdict.ABSTAIN)
+        self.assertIn("absence not established", " ".join(dossier.validator_notes))
+
+    def test_amount_and_effect_identity_conflicts_fail_closed(self):
+        for field, value in [("amount_cents", self.amount + 1), ("external_id", 2)]:
+            with self.subTest(field=field):
+                hit = {"kind": "refund", "order_id": self.order, "amount_cents": self.amount, "external_id": 1}
+                self.write_source("left", records=[hit])
+                self.write_source("right", records=[{**hit, field: value}])
+                agent, _ = self.model([f"left:order:{self.order}"], verdict="committed")
+                dossier = adjudicate(self.slot, EvidenceStore(str(self.evidence)), agent)
+                self.assertEqual(dossier.verdict, Verdict.ABSTAIN)
+                self.assertIn("conflicting", " ".join(dossier.validator_notes))
+
+    def test_malformed_available_source_blocks_even_when_model_omits_it(self):
+        self.write_source("good")
+        hit = {"kind": "refund", "order_id": self.order, "amount_cents": self.amount}
+        malformed = [
+            {"records": [None]}, {"records": "not records"},
+            {"records": [{**hit, "amount_cents": "5000"}]},
+            {"records": [{**hit, "amount_cents": True}]},
+            {"source": "forged-identity"},
+            {"coverage": {"kind": "complete_until", "cutoff_ts": "tomorrow"}},
+            {"coverage": {"kind": "complete_until", "cutoff_ts": float("inf")}},
+        ]
+        for override in malformed:
+            with self.subTest(override=override):
+                doc = {"coverage": {"kind": "complete_until", "cutoff_ts": self.cutoff}, "records": [], **override}
+                (self.evidence / "bad.json").write_text(json.dumps(doc), encoding="utf-8")
+                agent, _ = self.model(["good:manifest", f"good:order:{self.order}"])
+                dossier = adjudicate(self.slot, EvidenceStore(str(self.evidence)), agent)
+                self.assertEqual(dossier.verdict, Verdict.ABSTAIN)
+                self.assertIn("could not be read safely", " ".join(dossier.validator_notes))
+
+    def test_bounded_context_refuses_more_than_eight_sources(self):
+        for index in range(9):
+            self.write_source(f"source{index}")
+        agent, requests = self.model(["source0:manifest", f"source0:order:{self.order}"])
+        dossier = adjudicate(self.slot, self.store, agent)
+        self.assertEqual(dossier.verdict, Verdict.ABSTAIN)
+        self.assertEqual(requests, [])
+        self.assertEqual(self.store.fetch_log, [])
+        self.assertIn("budget", " ".join(dossier.validator_notes))
+
+    def test_receipt_metadata_preserves_transaction_hash_as_string(self):
+        tx_hash = "0x" + "ab" * 32
+        self.write_source(records=[{
+            "kind": "refund", "order_id": self.order, "amount_cents": self.amount,
+            "metadata": {"transaction_hash": tx_hash, "network": "test-only"},
+        }])
+        agent, _ = self.model([f"settlement:order:{self.order}"], verdict="committed")
+        dossier = adjudicate(self.slot, self.store, agent)
+        self.assertEqual(dossier.verdict, Verdict.COMMITTED)
+        self.assertIsNone(dossier.external_id)
+        self.assertEqual(dossier.citations[0]["payload"]["matches"][0]["metadata"]["transaction_hash"], tx_hash)
+
+    def test_manually_malformed_observation_or_claim_never_raises(self):
+        for payload in [None, {"source": "settlement", "selector": f"order:{self.order}", "matches": [None]}]:
+            with self.subTest(payload=payload):
+                obs = Observation(Pointer("settlement", f"order:{self.order}"), payload, "test")
+                dossier = validate(self.slot, Claim("committed", []), [obs])
+                self.assertEqual(dossier.verdict, Verdict.ABSTAIN)
+        self.assertEqual(validate(self.slot, None, []).verdict, Verdict.ABSTAIN)
+
+    def test_distinct_same_chain_transactions_cannot_be_hidden(self):
+        for source, suffix in [("left", "ab"), ("right", "cd")]:
+            self.write_source(source, records=[{
+                "kind": "refund", "order_id": self.order, "amount_cents": self.amount,
+                "external_id": None, "chain_id": 5042002,
+                "transaction_hash": "0x" + suffix * 32,
+            }])
+        agent, _ = self.model([f"left:order:{self.order}"], verdict="committed")
+        dossier = adjudicate(self.slot, self.store, agent)
+        self.assertEqual(dossier.verdict, Verdict.ABSTAIN)
+        self.assertIn("conflicting transaction hashes", " ".join(dossier.validator_notes))
+
 
 if __name__ == "__main__":
     unittest.main()

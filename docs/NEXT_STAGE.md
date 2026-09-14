@@ -1,91 +1,96 @@
-# Next stage
+# Next stage: one useful recovery application
 
-## Deliverable now
+Belay is competing in **AI Apps**. The track is fixed; do not build different
+products for hypothetical reassignment. Keep one value proposition:
 
-The repository contains the local Recovery Lab plus current architecture,
-subscription/guarantee proposal and this execution plan. These documents do
-not activate customer coverage, subscription billing or a payment integration.
-Use [the index](INDEX.md) to distinguish implemented work from plans.
+> Belay helps an operator determine what an interrupted AI action actually did,
+> and what can safely happen next.
 
-## First build increment
+The current buyer hypothesis is a support-automation or financial-operations
+team whose agents can issue refunds or account changes. No interviews,
+willingness to pay or customer incident rates are established by this repository.
 
-Keep concert tickets as the main example. Build a simulated purchase flow
-that shares the Recovery Lab's durable-execution approach. One user grants
-authority for exactly two adjacent seats within an inclusive USD 300 budget.
-The agent selects an eligible USD 280 fixture offer, submits it, survives an
-interruption and shows the original outcome without another routine approval.
+## Implemented increment
 
-Required pieces are a real model planning adapter, structured grant and quote,
-deterministic validation, atomic budget reservation, a protected test signer,
-simulated seller adapter, persisted operation and an activity screen.
-Label test signatures and simulated money; do not claim production AP2
-interoperability without implementing and checking the selected profile.
+The local Recovery Desk joins the research journal, evidence adjudication and
+guarded resolution into a persistent operator journey. Its cases cover a lost
+acknowledgment, an unsubmitted refund, stale evidence, contradictory sources,
+revoked permission and missing evidence. The operator can request refreshed
+records and investigate again; unknown outcomes explain the next evidence
+needed.
 
-Done means: eligible work proceeds; wrong quantity, wrong event/date and
-excessive cost are blocked; current authority is checked; restart recovers the
-original action; an unknown outcome stays unknown. A correct provider-idempotent
-baseline must be shown alongside Belay.
+The optional OpenAI assistant selects evidence and proposes a cited verdict.
+A deterministic consistency scan can reject omitted contradictions. A
+separate wallet demonstration uses a human-signed Arc Testnet transfer and
+read-only receipt verification. Belay holds no funds and cannot send a wallet
+transaction by itself.
 
-## Second build increment
+The 24-case evaluator now separates precision, useful resolution coverage,
+refusal, unknown handling, latency and model usage. A separately authored,
+frozen 12-case boundary suite is available. These additions preserve the
+historical committed experiments.
 
-Add a guarantee demonstration using fictional subscription entitlement and
-claim amounts. Simulate a duplicate purchase that cannot be fully refunded.
-Show its evidence, net loss, cap and proposed reimbursement. Also show a
-correct purchase with buyer remorse and explain its different treatment.
+## Finish the demonstration before adding breadth
 
-Done means: the same loss cannot produce two payouts; previous refunds reduce
-the eligible amount; terms version and remaining limits are visible; an
-unknown purchase is not automatically treated as a loss. Actual claims remain
-unavailable until the commercial and legal route is established.
-
-## Commercial validation in parallel
-
-| Work | Evidence required before advancing |
+| Priority | Concrete completion criterion |
 |---|---|
-| Interview frequent delegators | A recent failed purchase/task, real impact and current workaround |
-| Test the offer | Willingness to delegate and pay at a clearly disclosed cap; compare service-only and guarantee propositions |
-| Confirm financial structure | Named payer, reviewed terms, funded obligations and approved launch scope |
-| Confirm provider access | Supported booking/payment route and documented recovery guarantees |
-| Observe a controlled pilot | Eligible actions, net losses, unresolved outcomes, support cost and repeat use |
+| Operator workflow | Create one case, identify what is unknown, investigate, explain the evidence, resolve safely or name the missing evidence, then export the audit receipt. |
+| Real AI contribution | Run an explicitly configured model on the same fixtures as the heuristic. Report differences, including no benefit if that is the result. Preserve raw evidence and exact model configuration. |
+| Test-wallet proof | A person funds test accounts from the faucet, signs one small Arc transfer, and recovers the original outcome from verified receipt evidence. Record the explorer link and state that it is test money. |
+| Failure explanation | Demonstrate stale evidence and a cross-source contradiction. Refresh the appropriate source, then re-investigate. A guessed answer must not become authority. |
+| Presentation | Record a 60-second AI Apps pitch showing the operator and one difficult decision. Include the limitation and the next measurable improvement. |
 
-Do not invent demand or broad market statistics from interviews that have not
-happened. A small pilot can expose problems without proving a rare-loss rate.
-Before expanding limits, test common-cause failures and delayed claims as
-well as ordinary successful purchases.
+Model credentials, model quota, faucet access and a person's wallet signature
+are dependencies, not work that an offline test can silently replace.
+A wallet fallback recording must be labeled as recorded; a local provider
+fixture must be labeled as simulated.
 
-## Expansion after the first working mission
+## Remaining work allocation
 
-Add one paid research mission using the same grants, budget ledger, executor
-and evidence model. Use named sources for trends and traffic estimates.
-Do not build an agent marketplace or support every merchant at once.
+Use time relative to the next confirmed checkpoint. Keep a 30-minute recording
+and upload buffer; do not begin an integration in that buffer.
 
-For the hackathon, target a complete demonstration by hour 48. The supplied
-72-hour playbook conflicts with the stated 48-hour environment window.
-If 72 hours is confirmed, use the remaining time for hardening and evaluation.
-Prepare a repository link and 60-second progress video for each required
-check-in; confirm the actual schedule with the organizers.
+1. **First block:** run the application acceptance path and targeted tests;
+   correct any misleading labels or broken transitions.
+2. **Second block:** run one bounded, fair model comparison if credentials are
+   available. Otherwise preserve the offline evidence and disclose that the
+   live-model comparison remains pending.
+3. **Third block:** complete one human-signed test-wallet recording if the faucet
+   is available. Do not buy tokens or switch to a real-money chain to rescue
+   the demo.
+4. **Final block:** rehearse, record, export the exact revision's receipts and
+   prepare the repository/video links. Freeze new features before the final
+   presentation.
 
-## Selected direction and remaining dependencies
+With multiple teammates, assign the operator demonstration, evaluation and
+presentation/customer evidence to separate owners. With one teammate, follow
+the same sequence and stop feature work earlier. No assumption about the
+actual team size is needed.
 
-- Use existing payment rails with cancellation/refund recovery. Blockchain is
-  not a prerequisite for reversing an economic loss.
-- Belay supplies the app and its service-fee remedy. Pursue a licensed partner
-  for transaction-loss protection; no partner or policy is secured.
-- Exact guarantee triggers, amount limits, price and initial live jurisdiction.
-- Which merchant and autonomous payment integration grants access.
+## Validate the business problem
 
-The architecture and simulator can proceed while these decisions are resolved.
-Live financial promises depend on the payer, terms and permissions actually
-being ready.
+Use the three buyer questions in [FINAL_PRESENTATION.md](FINAL_PRESENTATION.md).
+Capture a real recent incident, the current workaround and the evidence needed
+before that operator would authorize another action. Measure investigation
+time and false conclusions against their existing process, including correct
+stable-key retries and current permission checks.
 
-## Recent repository work to preserve
+Start with a shadow pilot that does not issue live actions. Track useful
+resolutions, unresolved cases, unsupported conclusions, integration effort,
+operator time and added latency. A small sample cannot establish a rare-loss
+rate, market size or guarantee price.
 
-The main branch now includes a separate Gemini decision-stability experiment
-and an evidence adjudicator under `second/`. The Gemini results preserve
-separate archived and partial runs, including the earlier 150-response sample.
-Inspect each run's configuration and completion counts before quoting its
-results. These measurements do not establish a production error rate or
-replace the proposed app planner.
-The adjudicator evaluates evidence for research recovery; it is not a claims
-operation or a funded reimbursement service. Preserve these additions when
-integrating the Recovery Lab and current product documents.
+## Defer until the recovery workflow earns use
+
+Do not spend the remaining hackathon time on ticket buying, a generic agent
+marketplace, broad provider coverage, subscription billing, custody, escrow,
+insurance or a guarantee. The earlier concert and delegation ideas remain
+available as future research in
+[CONCERT_APP_BLUEPRINT.md](CONCERT_APP_BLUEPRINT.md) and
+[AUTONOMOUS_APP_ARCHITECTURE.md](AUTONOMOUS_APP_ARCHITECTURE.md);
+they are no longer the first implementation increment.
+
+The supplied schedules disagree. Until an authoritative deadline is confirmed,
+use the earlier Sunday 22:00, Monday 10:00 and Monday 12:00 ET milestones in
+[CHECKPOINTS.md](CHECKPOINTS.md). This document does not assert that a submission,
+customer interview or organizer message has been sent.

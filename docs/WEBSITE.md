@@ -1,13 +1,21 @@
 # Public website
 
-The GitHub Pages site introduces Belay, explains the crash-recovery problem,
-and links to a recorded, interactive Recovery Desk. After the first successful
+The GitHub Pages site introduces Belay, explains the recovery problem,
+and links to recorded, interactive operator and research walkthroughs. After the first successful
 deployment, its address is <https://frank-7.github.io/Belay/>.
 
 `site/` holds the HTML, CSS, JavaScript and local assets. There is no framework,
 package installation, API key, analytics service or backend required to build
 or use the site. GitHub Pages serves static files; it does not run the separate
-[local application prototype](PROTOTYPE.md).
+[live Recovery Desk](INTEGRATION.md) or the earlier local prototype.
+
+The main CTA opens `desk/`, an explicit recording using the same UI and
+validator path as `python -m recovery_app.server`. It shows six local
+simulator cases, including conflicting sources, and disables model, wallet
+and mutation controls. `recovery-desk.html` remains the separate research
+viewer with recorded POSIX crash experiments. Both are recordings; neither
+is a hosted Python application. Run the local app for fresh investigations
+and user-signed Arc Testnet transfers.
 
 ## Build and preview
 
@@ -33,7 +41,7 @@ when they contain the builder's marker. A failed generation leaves the prior
 build intact. Source symlinks, hidden assets and reserved generated filenames
 are rejected. Missing local HTML links/assets and root-relative URLs fail the
 build, so the same files can be served below the `/Belay/` project path.
-Only the site assets, generated viewer and public evidence
+Only the site assets, recorded operator cases, generated viewer and public evidence
 summary enter the output directory.
 
 ## Evidence and claims

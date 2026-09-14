@@ -1,125 +1,123 @@
 # Repository integration guide
 
-## What works together today
+The main demonstration is now the local **Belay Recovery Desk**, an operator
+application using the same JSONL journal and evidence adjudicator as the
+research work. It creates an incident, investigates the available records,
+shows a supported resolution or the evidence still needed, and records the
+operator's guarded resolution.
 
-The repository combines a portable local Recovery Lab, the recorded Recovery
-Desk, the research evidence adjudicator and the live decision experiments.
-All components are checked in the same CI workflow. The lab is a separate
-implementation of the recovery pattern; it is not a production adapter around
-the research runtime.
+## Components and boundaries
 
-| Component | Entry point | State and boundary |
+| Component | Entry point | Actual behavior |
 |---|---|---|
-| Research runtime | `worker.py`, `belay/runtimes/anchored.py` | Research journal, permission store and synthetic services; POSIX crash experiments |
-| Evidence adjudicator | `second/adjudicate.py`, `second/apply.py` | Research dossiers and evidence; may complete a verified absent effect through a callback |
-| Recovery Desk | `experiments/recovery_demo.py`, `viewer/build_viewer.py` | Recorded POSIX crash scenarios using the research runtime and adjudicator; browser controls only inspect recordings |
-| Optional recovery model | `second/live_agent.py` | OpenAI proposes evidence pointers and claims; deterministic validation and the guarded executor retain control |
-| Live decision experiment | `experiments/run_live_agent.py` | Optional API-backed measurement and committed results; not the lab's decision engine |
-| Recovery Lab | `python -m prototype.server` | Separate SQLite application/provider stores and loopback HTTP; scripted decisions and fictional money |
-| Autonomous app and guarantee | Architecture and proposal documents | Future services; no live purchases, subscriptions, coverage or reimbursements |
+| Local Recovery Desk | `python -m recovery_app.server` | Persistent incidents, research JSONL journal, `second/` validation, evidence refresh, current permission checks and downloadable audit receipts. |
+| Optional model | `second/live_agent.py` | OpenAI proposes pointers and a cited verdict; the validator determines support and the operator applies an eligible result. |
+| Local refund provider | `services/ledger.py` through `recovery_app/engine.py` | SQLite simulation with fictional amounts. Constructed interrupted states; creating an app incident does not kill a process. |
+| Arc Testnet evidence | `recovery_app/arc.py` and browser wallet adapter | A person signs a capped test-USDC transfer in MetaMask. The server only reads the original transaction and verifies its receipt against persisted intent. |
+| Research runtime | `worker.py`, `belay/runtimes/anchored.py` | Journal, permission store, simulated external services and POSIX SIGKILL experiments. |
+| Recorded Recovery Desk | `experiments/recovery_demo.py`, `viewer/build_viewer.py` | Saved real-crash demonstrations; browser controls inspect a recording. |
+| GitHub Pages | `site/`, `scripts/build_site.py` | Static product introduction and recordings. It does not host the Python API or contain model credentials. |
+| Legacy Recovery Lab | `python -m prototype.server` | Separate SQLite implementation retained for the earlier baseline comparison. Its database is not a research journal. |
+| Autonomous purchasing and guarantee | Architecture/proposal documents | Future ideas; no ticket booking, subscriptions, banking, insurance or reimbursement service. |
 
-Keep lab data under `.belay-prototype/` or another isolated directory. Do not
-point it at research evidence or treat its database as the JSONL research
-journal. Preserve committed `results/` when validating documentation; they
-are research evidence rather than application state.
-
-## Run and test
+## Run locally
 
 From a clone with Python 3.10 or newer:
 
 ```bash
-python -m prototype.server --port 8765
-python -m unittest discover -s tests -p "test_prototype.py" -v
+python -m recovery_app.server --port 8766
+```
+
+Open `http://127.0.0.1:8766`. The deterministic baseline works without a
+wallet, credentials or network. Application data defaults to
+`.belay-recovery/`; use `--data-dir` for an isolated demonstration.
+One process owns each directory, and mutation calls are serialized.
+This loopback development server is not an authenticated hosted service.
+
+Set `OPENAI_API_KEY` and an explicit `OPENAI_MODEL` in the server environment
+to enable the optional model. Do not put either in browser code or commit
+the key. Each investigation permits at most two model requests and no
+automatic retries. Model requests can incur charges; the offline baseline
+does not make them. The model receives the bounded case view and requested
+evidence, never a signing key, payment credential or execution callback.
+
+The portable checks and evaluations are:
+
+```bash
 python tests/test_evidence_boundaries.py
 python tests/test_live_agent.py
 python tests/test_evaluate_recovery.py
+python tests/test_recovery_holdout.py
+python experiments/evaluate_recovery.py --audit-unvalidated --out tmp-runs/recovery-evaluation.json
+python experiments/recovery_holdout.py --out tmp-runs/recovery-holdout.json
 python experiments/check_docs.py
 ```
 
-The server binds to `127.0.0.1`; it is a local development demonstration.
-Use one server per lab data directory. No external payment credentials are
-needed. The prototype runs from a clone; the existing distribution described
-by `pyproject.toml` does not package the lab or its web assets.
+The raw-claim audit is classification only: it never executes an unvalidated
+dossier. For an optional model comparison use
+`python experiments/evaluate_recovery.py --agent openai --model MODEL_ID`.
+Both agents receive identical isolated cases and evidence limits; the
+heuristic uses no model tokens. This is not an equal-compute comparison.
 
-On POSIX with Make available, `make prototype` starts the lab,
-`make test-prototype` runs its tests, and `make all` includes both the lab and
-recovery suites alongside the existing research checks. `make test-evidence`
-runs portable order/source isolation regressions. `make test-recovery` also
-runs the adapter, evaluation and recorded demo checks. `make test` and `make test-second`
-remain the research contract and evidence-adjudicator suites. The full crash
-and adjudication experiments require POSIX. CI tests the lab on Windows and
-Linux and the research suites on Linux and macOS.
+The full research contract and recorded crash demo require POSIX signals:
+run them on Linux, macOS or WSL. Preserve committed `results/` while testing;
+the commands above write new reports under `tmp-runs/`.
 
-Use `make recovery-demo` on POSIX to record the Recovery Desk, then open
-`viewer/trace.html`. See [DEMO.md](DEMO.md) for the optional model and
-`make evaluate-recovery` for an offline comparison. The model never receives
-payment credentials or an execution callback.
+## Evidence and authority
 
-CI checks committed results against documentation before experiments run.
-It then asserts the fresh results and uploads those same results with the
-standalone viewer. Do not restore committed results before these assertions
-or the artifact upload.
+The source store allows only files within its configured root. The model
+can request at most 16 pointers. A deterministic consistency scan covers
+at most eight advertised sources, with a manifest and exact-order query
+for each. Each source is limited to 1 MiB and 1,000 records. Exceeding a
+bound or encountering unreadable evidence yields abstention.
 
-The shared evidence store restricts sources to files inside its evidence root.
-The recovery adapter restricts pointers to advertised sources, their manifests
-and exact current-order selectors. Absence validation requires the exact order identity;
-a similarly prefixed order is not evidence for the current action. Reapplying
-a dossier also requires its bound journal state to remain current.
+Every cited observation must have actually been fetched for the model.
+Additional context can reject selective or contradictory conclusions but
+cannot provide missing support on the model's behalf. Matching committed
+records conflict with complete covered silence; inconsistent amounts,
+source identities, simulator effect IDs or same-chain transaction hashes
+also block resolution. The scan does not decide which conflicting source
+is true. Local file provenance and declared coverage remain assumptions,
+not Byzantine consensus or authenticated merchant attestations.
 
-## Boundary for the proposed autonomous app
+Applying a dossier requires the current halted journal revision and original
+intent. The app also invalidates proposals after its evidence snapshot
+changes. Reporting an established commitment issues no effect. Completing
+a verified absent local refund checks current permission immediately before
+the simulated call. A failure after the durable application intent requires
+fresh adjudication.
 
-The future app should expose one controlled action submission boundary. The
-planner supplies a proposal; the authority service validates it and the
-executor records and performs the permitted operation. This is an extension
-contract, not an implemented API in the current lab.
+## Test-wallet demonstration
 
-The record passed across that boundary must retain:
+Belay has no custodial wallet or balance of its own. MetaMask holds the
+user-controlled signing key; Belay only stores public addresses, the exact
+test transfer intent and a transaction hash. The integration is fixed to Arc
+Testnet, chain ID `5042002`, and Circle's test-USDC token. Amounts are limited
+to 0.01–1.00 test USDC in 0.01 increments.
 
-- User, mission and stable operation identity, kept separate from a provider's
-  request/receipt identifiers.
-- Grant version, allowed action, provider and credential reference.
-- Exact immutable intent, quote/version/hash, amount and currency.
-- Reserved budget, submission status and verified provider evidence.
+Use two test accounts and the faucet linked from the app. Faucet availability,
+rate limits and network access are external prerequisites. No real funds are
+needed, but a faucet balance is needed for the transfer and test gas.
+The wallet confirmation belongs to the person holding the key; neither the
+server nor the model signs or broadcasts a replacement transfer.
+Follow [the test-wallet setup guide](TEST_WALLET.md) for the actual browser steps.
 
-An adapter declares its actual capabilities and retry rules. A success response
-needs evidence tied to the original operation and exact inputs. A failed
-connection or empty lookup does not automatically establish absence. Provider
-idempotency scope and lifetime must be respected across restarts.
+A confirmed outcome requires the correct chain, token, sender, recipient,
+amount, original transaction, successful Transfer event and the adapter's
+canonical finalized-block checks. A missing, pending, failed or inconsistent
+receipt cannot authorize another transfer. The RPC node and network consensus
+remain trust assumptions; this is not a light-client proof. Transaction hashes
+remain strings, separate from integer IDs in the local payment simulator.
 
-Do not make both the model and an adjudicator independent executors. If
-`second/` is adapted, read validated findings through a reviewed translation
-layer. Keep its production completion callback behind the same authority,
-budget, intent and idempotency controls. Do not expose `apply_dossier` with
-an unrestricted payment callback to the app's agent.
+The downloadable receipt is a local audit record of the evidence and decision.
+It is not a cryptographic guarantee of external truth, a refund promise or
+insurance coverage.
 
-Research evidence fixtures are not authenticated merchant reports. Any
-production evidence adapter must establish source identity, integrity,
-completeness and freshness, then bind the observation to the correct
-operation. A correct research verdict does not establish live bank authority.
+## Production work remains
 
-## Boundary for a guarantee
-
-Provider recovery and customer compensation use different authorizations.
-The recovery service reconciles orders/payments and requests available
-remedies. The claims service reads that evidence and the customer's active
-terms, calculates eligible unrecovered loss and sends the claim to its
-designated decision maker and payer. Its payout record must not be confused
-with the original purchase or merchant refund.
-
-The purchasing model cannot approve its own reimbursement. Use distinct
-claim and payout IDs, deduplicate retries and account for refunds already
-received. The current research adjudicator does not supply subscription
-entitlement, financial-loss assessment, insurance authority or claim funding.
-
-## Migration gates
-
-Before calling a future integration ready, demonstrate policy rejection,
-concurrent budget reservation, expired/revoked authority, provider challenges,
-crash recovery, delayed evidence and duplicate callbacks with the chosen
-provider. Preserve unknown outcomes when evidence is insufficient. Verify
-the exact adapter and payment/mandate profile; do not infer compatibility
-from similar names or fields.
-
-Known original-runtime defects remain documented in [REVIEW.md](REVIEW.md).
-Neither the separate lab suite nor an architectural diagram proves that
-the research runtime or a future live app is production-ready.
+[REVIEW.md](REVIEW.md) distinguishes fixed defects from open limitations.
+A real deployment still needs authenticated users, reviewed provider-specific
+authority and finality semantics, deployment migration rules, operational
+monitoring and a concurrency model appropriate to its storage. Any future
+payout or guarantee service requires separate authority and funding; the
+recovery model must never approve its own compensation.

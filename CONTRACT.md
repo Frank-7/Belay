@@ -219,3 +219,51 @@ Named so that nobody has to guess what we quietly skipped.
 - **Model quality.** Whether the agent's refund decision is *correct* is a
   separate question from whether it was executed once and authorised. We
   make no claim about the former.
+
+## 8. Operator application and testnet evidence
+
+`recovery_app/` shares this journal and the `second/` validation/application
+path. It serializes operations and holds an OS file lock for its data
+directory. This prevents two local app instances sharing that directory;
+it is not distributed coordination for arbitrary research-runtime workers.
+Local scenarios perform SQLite operations with controlled missing
+acknowledgments. Their application tests are separate from the historical
+SIGKILL measurements and do not broaden their grader coverage.
+
+The adjudicator now scans a bounded context independently of the model's
+selected citations: up to eight sources, sixteen contextual reads and
+sixteen proposed pointers. Malformed, unreadable or over-budget context
+withholds resolution. Observable contradictions, including a matching
+commit against a purportedly complete silent report, veto a supported
+verdict. This detects some violations of the truthful-source assumption;
+it cannot establish truth when all sources agree on a false account or
+when relevant evidence is unavailable. It never treats model confidence
+as a substitute for coverage.
+
+The Arc adapter supports only Arc Testnet (5042002) and Circle's fixed USDC
+ERC-20 interface. It verifies a transaction against the saved sender,
+recipient, token, exact amount, transaction hash and pre-dispatch block
+boundary. A successful canonical receipt must lie at or before the node's
+finalized head and contain the matching token transfer event. These are
+checks under the selected RPC and Arc consensus assumptions, not a
+light-client or independently signed provider proof.
+
+An Arc receipt is normalized to a **positive-only** recovery observation.
+The demo permits 0.01–1.00 test USDC, so conversion to the existing integer
+cent field is exact; the original six-decimal units and string transaction
+hash are retained. A missing, pending, inconsistent or failed receipt
+never produces permission to send a second transaction. Resolution only
+records an existing transfer; the app has no blockchain signing or
+broadcast callback. One transaction hash cannot resolve two app incidents.
+The app refuses simultaneous unresolved cases with the same sender,
+recipient and amount. Manual attachment must identify the original transfer:
+the receipt proves a matching transfer after preparation, not a cryptographic
+binding to a Belay order ID absent from the ERC-20 transaction.
+
+MetaMask retains keys and asks the person to sign. Belay durably records
+dispatch before requesting that signature, and a saved dispatch cannot be
+sent again through the app. A browser failure before hash persistence
+requires inspection and manual hash attachment. Revoking local permission
+cannot cancel an already-open wallet prompt or undo a signed transaction;
+the person must reject the prompt in MetaMask. This is human-authorized
+testnet recovery, not autonomous custody, escrow or a financial guarantee.
