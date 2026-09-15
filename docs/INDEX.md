@@ -10,6 +10,8 @@ financial integrations.
 | Document | Status | Purpose |
 |---|---|---|
 | [Payment Mission MVP](PURCHASE_SIMULATOR.md) | Current runnable commerce journey | Request composer, reviewed authority, simulated payment, read-only recovery, backend audit and receipt |
+| [90-second investor deck](pitch/Belay_90_Second_Investor_Pitch.pptx) | Current pitch deck | Five slides with the team, verified problem scale, live-demo fallback, business model, pre-seed ask and silent ending |
+| [90-second recording script](pitch/BELAY_90_SECOND_SCRIPT.md) | Current run of show | Exact timing and speaker handoffs for Abdulaziz and Amir Khan, plus live-demo actions and claim boundaries |
 | [Mission presentation](MVP_PRESENTATION.md) | Current pitch | Three-minute walkthrough, 60-second pitch and investor questions |
 | [Integration guide](INTEGRATION.md) | Current implementation boundaries | Run both local products and understand their separate state, authority and evidence paths |
 | [Legacy purchase recovery bridge](PURCHASE_SIMULATOR.md#legacy-v03-recovery-bridge) | Implemented compatibility path | Durable pre-dispatch uncertainty and typed, read-only payout investigation for `belay.purchase.v0.3` |
